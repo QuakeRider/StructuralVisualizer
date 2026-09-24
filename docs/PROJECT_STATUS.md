@@ -4,14 +4,21 @@ Last updated: 2026-09-23
 
 ## Summary
 
-Structural Visualizer is at **guided-lesson prototype** status (`0.2.0`). All ten reference stress states can be selected, numerically inspected, modified, and visualized on a common deformable 3D block. A seven-step guided lesson and a classroom presentation layout now use that same explorer.
+Structural Visualizer is planned as a modular, university-level learning environment for the full structural-geology curriculum. The current release is the **interactive learning-laboratory prototype** (`0.4.0`): a redesigned force-to-stress-state vertical slice used to establish the interaction model, 3D visualization, guided lessons, free exploration, presentation mode, testing, and offline distribution.
 
-The current version demonstrates the central interaction, a complete opening lesson flow, and separable domain, lesson-content, rendering, and interface layers. It is not yet a complete multi-topic course.
+Stress states are one curriculum topic, not the identity or endpoint of the application. Planned scope includes stress and strain analysis, deformation kinematics, rheology, brittle and ductile structures, folds, faults, structural measurements, stereographic projection, maps, cross-sections, and synthesis. The complete product goal is documented in [CURRICULUM_VISION.md](CURRICULUM_VISION.md).
+
+The current version demonstrates the first reusable interaction pattern and separable domain, lesson-content, rendering, and interface layers. It is not yet a complete multi-topic course. The redesigned first module now provides the candidate visual and interaction standard that should be validated before later modules inherit it.
 
 ## Completed
 
 ### Core interaction
 
+- [x] Direct 3D force-vector manipulation with a draggable handle.
+- [x] Synchronized force magnitude and `Fx/Fy/Fz` numerical controls.
+- [x] Clickable block faces and explicit surface-normal selection.
+- [x] Resizable contact patch and average-traction calculation.
+- [x] Geometric normal and shear traction decomposition.
 - [x] Ten reference stress states represented as selectable presets.
 - [x] Shared generic block instead of a material-specific specimen.
 - [x] Animated transitions between undeformed and deformed states.
@@ -35,6 +42,7 @@ The current version demonstrates the central interaction, a complete opening les
 
 ### Documentation
 
+- [x] Full-curriculum product vision and topic map.
 - [x] Setup and operating instructions.
 - [x] Architecture overview.
 - [x] Scientific-scope statement.
@@ -43,7 +51,11 @@ The current version demonstrates the central interaction, a complete opening les
 
 ### Teaching and distribution
 
-- [x] Seven-step guided stress lesson.
+- [x] Five-step 3D force-and-traction laboratory sequence.
+- [x] Explicit distinction between resultant force, average traction, signed normal traction, and the stress tensor.
+- [x] Live vector traction calculation with newton, square-centimeter, and megapascal units.
+- [x] Transition from normal and shear stress into the 3D stress-state sequence.
+- [x] Ten-step guided opening module.
 - [x] Prediction questions with immediate feedback.
 - [x] Progressive reveal of tension, compression, shear, and combined loading.
 - [x] Free Explore mode retained as the full sandbox.
@@ -72,11 +84,16 @@ Manual verification should cover:
 6. Replaying deformation and resetting the camera.
 7. Opening `release/Structural-Visualizer.html` without a development server.
 8. Checking desktop and narrow-screen layouts.
-9. Completing every guided lesson step, including incorrect and correct predictions.
-10. Entering and exiting presentation mode and changing its state and magnitude controls.
+9. Changing force and area and confirming that the live stress calculation follows `F/A`.
+10. Dragging the 3D force handle and confirming that all three numerical components update smoothly.
+11. Selecting multiple block faces and confirming the surface normal and traction decomposition update.
+12. Switching among normal, oblique, and tangential loading.
+13. Completing every guided lesson step, including incorrect and correct predictions.
+14. Entering and exiting Explore and Present without carrying invalid zero-magnitude foundation state.
 
 ## Known limitations
 
+- The current navigation and state model still need extraction into a curriculum-level module registry.
 - The deformation mapping is qualitative and intentionally exaggerated.
 - Preset values are illustrative and are not calibrated to a particular rock or laboratory material.
 - The block does not yet support constitutive material models, yield, fracture, or damage.
@@ -88,11 +105,11 @@ Manual verification should cover:
 
 ## Next recommended milestone
 
-Pilot the guided lesson with students or an instructor before adding quantitative strain. Record where students misread vector direction, sign, shape change, volume change, or the undeformed outline. Use those observations to revise the lesson and establish a small set of teaching-validation notes in the repository.
+Validate the redesigned force-to-stress module with instructors and students. Record scientific misconceptions, drag and face-selection failures, accessibility barriers, and lesson duration. Use that evidence to refine the shared scene, lesson shell, control, typography, color, and interaction patterns before building the next curriculum module.
 
 ## Decisions intentionally deferred
 
-- Exact curriculum order after the opening stress lesson.
+- Exact ordering and grouping of the curriculum families in `CURRICULUM_VISION.md`.
 - Whether student progress is stored locally or in a hosted account.
 - Which quantitative material model is introduced first.
 - Whether 2D cross-sections are derived from the same scene or use a separate renderer.

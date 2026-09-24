@@ -1,97 +1,147 @@
 # Roadmap
 
-This roadmap keeps the opening stress-state explorer useful by itself while preserving a path toward a broader structural-geology learning platform.
+Structural Visualizer is planned as a modular learning environment for a full university structural-geology curriculum. The force-to-stress-state experience is the first vertical slice, not the product boundary. The broader topic map and experience principles are maintained in [CURRICULUM_VISION.md](CURRICULUM_VISION.md).
 
-## Phase 1 — Stress-state explorer
+This roadmap is deliberately iterative. Curriculum order should be reviewed with instructors, and each module should be tested with students before its interaction pattern is generalized.
 
-**Status: implemented in prototype form**
+## Platform milestone 1 — First vertical slice
 
-- Ten selectable stress states.
-- Generic deformable block.
-- Normal and shear vectors.
-- Numerical tensor display.
-- Magnitude, exaggeration, and component controls.
-- Animated transitions and comparison outline.
-- Offline single-file build.
+**Status: original prototype superseded by the 0.4 redesign**
 
-Exit condition: a student can select any reference case, change its loading, and explain the visible shape or volume response.
+- Force and area foundations.
+- Ten selectable three-dimensional stress states.
+- Generic deformable block, vectors, tensor display, and qualitative response.
+- Guided, Explore, and Present modes.
+- Offline single-file classroom build.
+- Separated domain, lesson, interface, and renderer layers.
 
-## Phase 2 — First guided lesson
+The prototype established technical feasibility. Its guided foundation steps, visual hierarchy, typography, accessibility, interaction depth, and mode-state handling require redesign before this becomes the pattern for the larger curriculum.
 
-**Status: implemented in prototype form**
+Exit condition: the opening module functions as a coherent university-level interactive laboratory rather than a sequence of illustrated slides.
 
-- Add an optional guided mode alongside free exploration.
-- Introduce vector direction before tensor notation.
-- Walk through tension, compression, shear, and combined states.
-- Add prediction prompts before selected transitions.
-- Add concise reflection checks without turning the explorer into a quiz application.
-- Add instructor presentation mode with larger labels and simplified controls.
+## Platform milestone 2 — Shared learning laboratory
 
-Implemented as a seven-step lesson with three prediction checkpoints, progressive examples, and a focused presentation layout. Student/instructor validation is still required before the phase is considered complete.
+**Status: implemented in prototype form; validation next**
 
-Exit condition: an instructor can assign or demonstrate a coherent 15–25 minute lesson using the same explorer.
+- Replace the separate foundation SVG with a reusable interactive 3D force laboratory. **Implemented.**
+- Support direct manipulation and numerical entry for vectors, surfaces, and contact area.
+- Introduce average traction and normal/shear decomposition accurately before tensor notation.
+- Establish a minimal two-column guided layout with readable typography.
+- Replace persistent lesson navigation and redundant readouts with progressive disclosure.
+- Introduce a colorblind-safe semantic palette with labels, shapes, and line patterns.
+- Correct input continuity, mode transitions, keyboard operation, and responsive behavior.
+- Define shared control, scene, lesson-step, feedback, and presentation contracts.
 
-## Phase 2.5 — Classroom validation
+Exit condition: classroom validation confirms that later modules can reuse the shell and interaction system without inheriting stress-specific assumptions.
 
-**Status: next**
+## Platform milestone 3 — Classroom validation
+
+**Status: follows redesign**
 
 - Test the standalone file on the intended Windows classroom computer.
-- Run the lesson with a small student group or instructor.
-- Note misconceptions about vector direction, sign convention, and stress versus response.
-- Check whether prediction prompts improve explanation rather than merely add clicks.
-- Revise wording, camera defaults, and visual emphasis from observed use.
-- Record the tested lesson duration and any accessibility barriers.
+- Run the opening module with students and instructors.
+- Record misconceptions, interaction failures, accessibility barriers, and actual lesson duration.
+- Verify that construction and prediction tasks improve explanation rather than merely add clicks.
+- Revise the shared design system before building several additional modules.
 
-Exit condition: the lesson has been used in a realistic setting and the resulting changes are documented.
+Exit condition: the platform pattern has evidence from realistic classroom use.
 
-## Phase 3 — Quantitative strain
+## Curriculum track A — Stress analysis
 
-**Status: planned**
+**Status: first module in progress**
 
-- Separate stress inputs from strain outputs.
-- Introduce normal and shear strain.
-- Display dimensional changes and strain components.
-- Add synchronized 2D sections or projections.
-- Introduce principal directions.
-- Compare coaxial and non-coaxial deformation.
+- Force vectors, surfaces, contact area, and average traction.
+- Normal and shear traction components.
+- Three-dimensional stress tensor and sign convention.
+- Principal stresses and principal directions.
+- Stress transformation and Mohr diagrams.
+- Mean and deviatoric stress and relevant invariants.
 
-Exit condition: students can distinguish stress from strain and connect tensor components to measured geometric change.
+Exit condition: students can move between force on a plane, tensor representation, transformed planes, and common stress states.
 
-## Phase 4 — Material response
-
-**Status: planned**
-
-- Add material-response modules behind a common interface.
-- Begin with a simple isotropic elastic model.
-- Introduce Poisson coupling and stiffness.
-- Add time-dependent or rate-dependent behavior only after the elastic lesson is validated.
-- Make assumptions and units explicit in every model.
-
-Exit condition: the same stress state can produce different responses because students selected different stated material assumptions.
-
-## Phase 5 — Failure and geological structures
+## Curriculum track B — Strain and deformation kinematics
 
 **Status: planned**
 
-- Add strength and failure criteria.
-- Add conceptual fracture initiation and orientation.
-- Introduce confining pressure.
-- Connect stress and material response to fractures and faults.
-- Add fold visualizations as a separate structural module.
+- Displacement, rotation, distortion, and dilation.
+- Normal and shear strain.
+- Homogeneous and heterogeneous deformation.
+- Infinitesimal and finite strain.
+- Strain ellipse and strain ellipsoid.
+- Pure shear, simple shear, progressive deformation, and strain paths.
+- Coaxial and non-coaxial deformation.
 
-Exit condition: failure visuals are calculated or rule-driven and no longer presented as a direct consequence of stress alone.
+Exit condition: students can distinguish stress from strain and explain how measured geometry records a deformation history.
 
-## Phase 6 — Course platform capabilities
+## Curriculum track C — Material behavior and rheology
+
+**Status: planned**
+
+- Elastic, viscous, plastic, and viscoelastic behavior.
+- Stiffness, Poisson coupling, yield, and time dependence.
+- Temperature, pressure, strain-rate, and material controls.
+- Layered and heterogeneous material response.
+
+Exit condition: students can explain why the same loading may produce different responses under different stated material assumptions.
+
+## Curriculum track D — Brittle structures
+
+**Status: planned**
+
+- Fractures, joints, faults, and fault-slip kinematics.
+- Confining pressure, friction, strength, and failure criteria.
+- Stress orientation versus fracture or slip orientation.
+- Linked structures and geological interpretation.
+
+Exit condition: failure and slip visuals are driven by explicit criteria and students can distinguish stress, strength, and resulting structure.
+
+## Curriculum track E — Ductile structures and folds
+
+**Status: planned**
+
+- Fold geometry, elements, classification, and three-dimensional form.
+- Buckling, bending, flexural slip, and flow concepts.
+- Foliations, lineations, shear zones, and kinematic indicators.
+- Relationships among stress, strain, rheology, and structures.
+
+Exit condition: students can describe, classify, manipulate, and interpret common ductile structures in three dimensions.
+
+## Curriculum track F — Structural data and spatial reasoning
+
+**Status: planned**
+
+- Strike, dip, trend, plunge, and rake.
+- Stereographic projections and orientation statistics.
+- Geological maps, structure contours, and cross-sections.
+- Apparent dip, three-point problems, and outcrop patterns.
+- Balanced sections and restoration where appropriate.
+
+Exit condition: students can move confidently among field measurements, three-dimensional geometry, projections, maps, and sections.
+
+## Curriculum track G — Synthesis
 
 **Status: exploratory**
 
-- Lesson registry and course navigation.
+- Connect hand-sample, outcrop, map, and regional scales.
+- Reconstruct deformation histories and overprinting relationships.
+- Compare multiple interpretations against observations and assumptions.
+- Integrate geometry, mechanics, kinematics, and geological context.
+
+## Course-platform capabilities
+
+**Status: exploratory**
+
+- Curriculum and lesson registry.
 - Student progress and resume behavior.
-- Instructor-authored lesson configuration.
-- Accessibility audit and keyboard-only 3D alternatives.
+- Instructor-authored activities and presentation sequences.
+- Accessible non-pointer and non-color alternatives.
 - Localization and unit preferences.
 - Hosted deployment and optional analytics.
 
-## Work-selection rule
+## Work-selection rules
 
-Before starting a new phase, validate the previous phase with students or an instructor. Prefer improving conceptual clarity in an existing interaction over adding another model that has not been placed in a teaching sequence.
+1. Treat every topic as a module within Structural Visualizer, not as an extension of the stress-state explorer.
+2. Prefer reusable interaction and teaching patterns, but do not force unrelated scientific topics into one renderer.
+3. Validate scientific scope and classroom value before expanding a module deeply.
+4. Prefer a few excellent interactive activities over broad but shallow slide-like coverage.
+5. Keep the full curriculum vision visible while implementing one bounded vertical slice at a time.

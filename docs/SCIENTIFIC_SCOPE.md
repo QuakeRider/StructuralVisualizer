@@ -2,8 +2,27 @@
 
 ## What the prototype represents
 
-The current application visualizes a relationship between a selected stress tensor and a deliberately exaggerated block deformation. It is designed to help students connect:
+The opening laboratory calculates vector average traction from a resultant force divided by the selected contact area:
 
+```text
+t̄ = F / A
+```
+
+The units are converted explicitly from newtons and square centimeters to megapascals. The calculation assumes a uniformly distributed resultant over the highlighted patch. It is not a local boundary-condition solution or a claim that traction is spatially uniform in a real specimen.
+
+For an outward unit surface normal `n`, the laboratory resolves traction into a signed normal projection and an in-plane shear vector:
+
+```text
+tn = t̄ · n
+τ  = t̄ − tn n
+```
+
+An inward compressive applied force therefore gives `tn < 0` in this surface-traction calculation. When the lesson introduces the compression-positive geological stress tensor `σ`, it states the corresponding mapping explicitly as `t(n) = −σn`. This prevents the traction sign and the chosen tensor sign convention from being silently mixed.
+
+The later application steps visualize a relationship between a selected stress tensor and a deliberately exaggerated block deformation. Together, the sequence is designed to help students connect:
+
+- Force magnitude, direction, and contact area.
+- Average traction and its signed normal and shear components on a surface.
 - Stress magnitude and direction.
 - Normal and shear components.
 - Tension, compression, and combined loading.

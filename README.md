@@ -1,12 +1,14 @@
 # Structural Visualizer
 
-Structural Visualizer is an interactive teaching application for building intuition about stress, strain, and deformation. The current prototype lets a student select one of ten common stress states, inspect its stress tensor, adjust its components, and watch a generic three-dimensional block deform.
+Structural Visualizer is intended to become a university-level interactive learning environment for the full structural-geology curriculum. Its long-term scope includes mathematical and mechanical foundations, stress analysis, strain and kinematics, rheology, brittle and ductile deformation, folds, faults, structural data, maps, cross-sections, and integrative geological interpretation.
 
-The visual response is deliberately qualitative. It connects arrows and tensor values to visible shape and volume changes without implying a material-specific constitutive or failure model.
+The current force-to-stress-state experience is the first working module and architectural proving ground—not the product's final identity or scope. It begins with force magnitude and direction, introduces contact area and stress, and then moves into three-dimensional stress states on a deformable block. Its visual response is deliberately qualitative and does not imply a material-specific constitutive or failure model.
+
+The long-term curriculum and shared experience principles are defined in [docs/CURRICULUM_VISION.md](docs/CURRICULUM_VISION.md).
 
 ## Current release
 
-**Status:** guided-lesson prototype (`0.2.0`)
+**Status:** interactive learning-laboratory prototype (`0.4.0`)
 
 Implemented:
 
@@ -20,11 +22,16 @@ Implemented:
 - Approximate volume-change readout.
 - Responsive layout and reduced-motion support.
 - A single-file offline production build.
-- A seven-step guided lesson with prediction-and-feedback checkpoints.
+- A ten-step university-level guided module connecting force vectors, surfaces, average traction, traction decomposition, and three-dimensional stress states.
+- A shared Three.js force laboratory with direct vector dragging, `Fx/Fy/Fz` entry, smooth magnitude control, selectable block faces, and resizable contact area.
+- Live average-traction and normal/shear decomposition with explicit surface normals, units, assumptions, and sign conventions.
+- Prediction-and-feedback checkpoints integrated with construction and comparison tasks.
+- A minimal two-column guided layout with readable typography and progressive disclosure.
+- Colorblind-safe semantic colors reinforced by labels, symbols, and geometry.
 - A focused classroom presentation layout.
 - Automated GitHub testing and standalone-file packaging.
 
-The current status, known limitations, and next decisions are maintained in [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). Planned phases are in [docs/ROADMAP.md](docs/ROADMAP.md).
+The current status and known limitations are maintained in [docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md). Product and curriculum direction are defined in [docs/CURRICULUM_VISION.md](docs/CURRICULUM_VISION.md), with implementation priorities in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Quick start
 
@@ -67,13 +74,17 @@ The release build produces `release/Structural-Visualizer.html`. JavaScript, CSS
 
 The source interface requests web fonts during development. The production visualization remains functional if the font request is unavailable and falls back to system fonts. A later packaging pass will vendor the preferred fonts as well.
 
-## Stress convention
+## Traction and stress convention
 
-The application uses the structural-geology convention:
+The opening laboratory uses newtons for force, square centimeters for contact area, and megapascals for average traction. Its calculation performs the unit conversion explicitly: `1 cm² = 10⁻⁴ m²` and `1 MPa = 10⁶ Pa`. With outward surface normal `n`, inward loading produces a negative signed projection `tn = t̄ · n`.
+
+The stress-state section declares the structural-geology convention:
 
 - Compression is positive.
 - Tension is negative.
 - Shear signs follow the displayed x, y, and z axes.
+
+Under that compression-positive tensor convention, the lesson writes the plane-traction relation as `t(n) = −σn`.
 
 Preset magnitudes are teaching values rather than measurements from a particular material or experiment.
 
@@ -89,16 +100,19 @@ See [docs/SCIENTIFIC_SCOPE.md](docs/SCIENTIFIC_SCOPE.md) before adding material 
 src/
 ├── domain/
 │   ├── stressStates.js       Preset catalog and tensor helpers
+│   ├── forceStress.js        Force/area conversion and stress notation
 │   ├── deformation.js        Qualitative deformation mapping
-│   └── deformation.test.js   Domain tests
+│   └── *.test.js             Domain tests
 ├── visualization/
-│   └── StressScene.js        Three.js scene, vectors, block, and camera
+│   ├── ForceLabScene.js      Direct-manipulation force and traction laboratory
+│   └── StressScene.js        Stress tensors, vectors, deformation, and camera
 ├── lessons/
 │   └── stressLesson.js       Guided lesson content and answer keys
 ├── main.js                       Application interface and state coordination
 └── styles.css                    Responsive visual design
 docs/
 ├── ARCHITECTURE.md
+├── CURRICULUM_VISION.md
 ├── PROJECT_STATUS.md
 ├── ROADMAP.md
 └── SCIENTIFIC_SCOPE.md
@@ -106,7 +120,7 @@ docs/
 
 ## GitHub distribution
 
-The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.2.0` is pushed, the same file is attached to the matching GitHub Release.
+The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.4.0` is pushed, the same file is attached to the matching GitHub Release.
 
 Students should download `Structural-Visualizer.html`, not the development `index.html` at the repository root.
 
@@ -115,10 +129,11 @@ Students should download `Structural-Visualizer.html`, not the development `inde
 When behavior or scope changes:
 
 1. Update `docs/PROJECT_STATUS.md` with what is actually working.
-2. Move completed or rescheduled items in `docs/ROADMAP.md`.
-3. Update `docs/SCIENTIFIC_SCOPE.md` if the mathematical assumptions change.
-4. Update `CHANGELOG.md` for user-visible changes.
-5. Keep this README focused on setup, use, and the current release.
+2. Keep `docs/CURRICULUM_VISION.md` aligned with the intended course scope and experience principles.
+3. Move completed or rescheduled items in `docs/ROADMAP.md`.
+4. Update `docs/SCIENTIFIC_SCOPE.md` if the mathematical assumptions change.
+5. Update `CHANGELOG.md` for user-visible changes.
+6. Keep this README focused on the product goal, setup, use, and current release.
 
 ## License
 

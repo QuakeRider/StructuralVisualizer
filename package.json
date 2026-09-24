@@ -1,9 +1,9 @@
 {
   "name": "structural-visualizer",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "description": "An interactive teaching tool for visualizing stress states and deformation.",
+  "description": "A modular interactive learning environment for university structural geology.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

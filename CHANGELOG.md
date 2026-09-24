@@ -2,6 +2,47 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.4.0 — 2026-09-23
+
+### Added
+
+- Shared Three.js force laboratory with a draggable 3D vector handle.
+- Synchronized force magnitude and `Fx/Fy/Fz` numerical inputs.
+- Clickable block faces with explicit outward surface normals.
+- Resizable contact area and vector average-traction calculation.
+- Geometric normal and shear traction decomposition.
+- Labeled, colorblind-safe axes and semantic scene legend.
+
+### Changed
+
+- Rebuilt Guided mode as a focused two-column learning laboratory.
+- Increased instructional, control, and navigation typography substantially.
+- Reduced the opening module from twelve slide-like steps to ten interactive university-level activities.
+- Replaced the blue-teal visual theme with a restrained neutral palette and accessible semantic colors.
+- Removed redundant guided-mode readouts and persistent lesson navigation.
+- Corrected the bridge between signed surface traction and the compression-positive stress convention.
+
+### Fixed
+
+- Sliders no longer replace their own DOM nodes during input, restoring continuous pointer dragging.
+- Entering Explore or Present from a foundation activity no longer carries a zero-magnitude hidden stress state.
+
+## 0.3.0 — 2026-09-23
+
+### Added
+
+- Five interactive foundation steps covering force vectors, direction, contact area, stress calculation, and normal versus shear stress.
+- Live force and contact-area controls with a unit-aware `F/A` calculation.
+- A dedicated 2D foundation illustration that transitions into the existing 3D block.
+- Automated tests for force-to-stress conversion and notation.
+
+### Changed
+
+- Expanded the guided lesson from seven to twelve steps.
+- Made Guided Lesson the default entry point while retaining Explore and Present modes.
+- Updated project positioning and documentation around a foundations-first course sequence.
+- Established Structural Visualizer as a full structural-geology curriculum platform, with the stress experience documented as its first vertical slice.
+
 ## 0.2.0 — 2026-09-23
 
 ### Added

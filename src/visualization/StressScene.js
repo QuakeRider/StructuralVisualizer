@@ -23,6 +23,23 @@ const AXES = {
   z: new THREE.Vector3(0, 0, 1),
 };
 
+function makeTextSprite(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 64;
+  const context = canvas.getContext('2d');
+  context.font = '600 34px system-ui, sans-serif';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillStyle = '#f4f5f7';
+  context.fillText(text, 64, 32);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false }));
+  sprite.scale.set(0.42, 0.21, 1);
+  return sprite;
+}
+
 export class StressScene {
   constructor(container, { onVolumeChange } = {}) {
     this.container = container;
@@ -71,7 +88,7 @@ export class StressScene {
   }
 
   createLighting() {
-    this.scene.add(new THREE.HemisphereLight(0xd9f3ef, 0x18243a, 2.4));
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x20242c, 2.4));
 
     const key = new THREE.DirectionalLight(0xffffff, 4.2);
     key.position.set(4, 7, 5);
@@ -79,7 +96,7 @@ export class StressScene {
     key.shadow.mapSize.set(1024, 1024);
     this.scene.add(key);
 
-    const rim = new THREE.DirectionalLight(0x6dd8d2, 2.1);
+    const rim = new THREE.DirectionalLight(0x8db4ff, 1.6);
     rim.position.set(-5, 2, -4);
     this.scene.add(rim);
   }
@@ -89,7 +106,7 @@ export class StressScene {
     this.originalPositions = Float32Array.from(this.geometry.attributes.position.array);
 
     const material = new THREE.MeshPhysicalMaterial({
-      color: 0x84b9b2,
+      color: 0x8f99a6,
       roughness: 0.48,
       metalness: 0.02,
       clearcoat: 0.18,
@@ -105,7 +122,7 @@ export class StressScene {
     this.edgeGeometry.setAttribute('position', new THREE.BufferAttribute(edgePositions, 3));
     this.deformedEdges = new THREE.LineSegments(
       this.edgeGeometry,
-      new THREE.LineBasicMaterial({ color: 0xd9f6f1, transparent: true, opacity: 0.78 }),
+      new THREE.LineBasicMaterial({ color: 0xf4f5f7, transparent: true, opacity: 0.74 }),
     );
     this.scene.add(this.deformedEdges);
 
@@ -125,7 +142,7 @@ export class StressScene {
   }
 
   createReferenceObjects() {
-    const grid = new THREE.GridHelper(8, 16, 0x34516c, 0x263c54);
+    const grid = new THREE.GridHelper(8, 16, 0x555d68, 0x343a44);
     grid.position.y = -1.6;
     grid.material.transparent = true;
     grid.material.opacity = 0.48;
@@ -141,8 +158,22 @@ export class StressScene {
     shadow.scale.set(1.25, 0.72, 1);
     this.scene.add(shadow);
 
-    this.axes = new THREE.AxesHelper(1.05);
-    this.axes.position.set(-1.82, -1.48, -1.8);
+    const origin = new THREE.Vector3(-1.82, -1.48, 1.65);
+    this.axes = new THREE.Group();
+    const axisDefinitions = [
+      { label: 'X', direction: AXES.x, color: 0x56b4e9 },
+      { label: 'Y', direction: AXES.y, color: 0xe69f00 },
+      { label: 'Z', direction: AXES.z, color: 0xcc79a7 },
+    ];
+    for (const definition of axisDefinitions) {
+      const arrow = new THREE.ArrowHelper(definition.direction, origin, 0.72, definition.color, 0.14, 0.08);
+      arrow.line.material.depthTest = false;
+      arrow.cone.material.depthTest = false;
+      arrow.renderOrder = 5;
+      const label = makeTextSprite(definition.label);
+      label.position.copy(origin).add(definition.direction.clone().multiplyScalar(0.9));
+      this.axes.add(arrow, label);
+    }
     this.scene.add(this.axes);
   }
 
@@ -215,7 +246,7 @@ export class StressScene {
     if (Math.abs(value) < 0.05) return;
     const axis = AXES[axisName];
     const length = this.arrowLength(value);
-    const color = value > 0 ? 0xffa45f : 0x56ded4;
+    const color = value > 0 ? 0xe69f00 : 0x56b4e9;
 
     if (value > 0) {
       this.makeArrow(axis.clone().negate(), axis.clone().multiplyScalar(HALF + length + 0.18), length, color);
@@ -232,7 +263,7 @@ export class StressScene {
     const normal = AXES[normalName];
     const sign = Math.sign(value);
     const length = this.arrowLength(value) * 0.86;
-    const color = 0xc99aff;
+    const color = 0xcc79a7;
 
     const addOnFace = (faceNormal, tangent) => {
       const face = faceNormal.clone().multiplyScalar(HALF + 0.16);

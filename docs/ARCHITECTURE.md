@@ -2,13 +2,16 @@
 
 ## Design intent
 
-The project is structured so that a visual lesson is not hard-coded into the renderer. Stress definitions, qualitative deformation, Three.js rendering, and interface state are separate. That separation is the foundation for later strain, material, fracture, fault, and fold modules.
+Structural Visualizer is a curriculum platform, not a single stress-state tool. The project should support independent structural-geology modules that share a lesson shell, interaction vocabulary, accessibility system, presentation mode, and offline packaging while retaining topic-specific scientific models and visualizations.
+
+The current stress implementation is the first vertical slice. Force/stress calculations, stress definitions, qualitative deformation, Three.js rendering, and interface state are separated so they can inform—but not constrain—later modules for strain, kinematics, rheology, fractures, faults, folds, orientation data, maps, and cross-sections.
 
 ## Current layers
 
 ```text
 Interface (src/main.js)
     |
+    +-- force/stress foundations (src/domain/forceStress.js)
     +-- preset catalog (src/domain/stressStates.js)
     +-- qualitative model (src/domain/deformation.js)
     +-- lesson content (src/lessons/stressLesson.js)
@@ -17,7 +20,13 @@ Interface (src/main.js)
 
 ### Interface
 
-`src/main.js` owns the selected preset, displayed magnitude, customized tensor, and visibility preferences. It updates accessible HTML controls and passes only stress data to the scene.
+`src/main.js` owns lesson progress, force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, and visibility preferences. It coordinates accessible HTML controls with two topic scenes while keeping scientific calculations in the domain layer.
+
+### Force/stress foundations
+
+`src/domain/forceStress.js` converts newtons over square centimeters to megapascals and supplies normal/shear notation. The unit conversion and inverse area relationship are tested without the browser.
+
+It also calculates vector average traction and decomposes it into signed normal and in-plane shear components for an arbitrary surface normal.
 
 ### Domain catalog
 
@@ -37,11 +46,35 @@ The catalog contains no Three.js or DOM behavior.
 
 ### Renderer
 
-`src/visualization/StressScene.js` owns the camera, lights, block mesh, comparison outline, arrows, grid, and animation. It receives stress and display settings; it does not decide which lesson or preset is active.
+`src/visualization/ForceLabScene.js` owns the directly manipulated force vector, selectable block faces, contact patch, labeled axes, surface normal, and normal/shear component geometry. It reports force and surface changes to the interface without owning lesson progress.
+
+`src/visualization/StressScene.js` owns the stress-state camera, lights, deformable block, comparison outline, arrows, labeled axes, grid, and animation. It receives stress and display settings; it does not decide which lesson or preset is active.
 
 ### Lesson content
 
-`src/lessons/stressLesson.js` defines the guided sequence as data: loading preset, magnitude, visible references, explanatory copy, prompts, answer choices, and feedback. The interface renders this content, while the renderer remains unaware of lesson progress.
+`src/lessons/stressLesson.js` defines the guided sequence as data: visual kind, foundation controls or loading preset, magnitude, visible references, explanatory copy, prompts, answer choices, and feedback. The interface selects either the foundation illustration or the 3D scene, while the renderer remains unaware of lesson progress.
+
+## Planned curriculum architecture
+
+The target application should use a module registry above the current layers:
+
+```text
+Shared application shell
+    |
+    +-- curriculum and module registry
+    +-- guided-lesson runtime
+    +-- accessible control and interaction system
+    +-- presentation and offline-distribution systems
+    |
+    +-- topic module
+            +-- scientific model
+            +-- interactive scene or diagram
+            +-- presets and examples
+            +-- guided activities
+            +-- assessment and explanation rules
+```
+
+The stress scene is therefore one topic renderer, not the universal renderer for every future lesson. Fold geometry, stereonets, maps, cross-sections, and other topics may use different visualization approaches behind the same product shell.
 
 ## Proposed module contract
 
@@ -89,6 +122,8 @@ Vite handles development and bundling. `vite-plugin-singlefile` inlines applicat
 
 Current unit tests verify:
 
+- Force/area unit conversion and the inverse area relationship.
+- Normal and shear notation.
 - Catalog completeness and stable numbering.
 - Tensor scaling.
 - Expected extension under tension.
