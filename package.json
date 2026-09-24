@@ -1,0 +1,23 @@
+{
+  "name": "structural-visualizer",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "An interactive teaching tool for visualizing stress states and deformation.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "release:build": "npm run build && node scripts/package-release.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.1.7",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^5.0.1"
+  }
+}
