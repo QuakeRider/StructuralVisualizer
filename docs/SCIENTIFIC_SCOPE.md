@@ -1,14 +1,28 @@
 # Scientific Scope
 
+This document states what each current visualization calculates exactly and what it only illustrates. Every lesson build updates it (see the build-session protocol in [curriculum/README.md](curriculum/README.md)).
+
 ## What the prototype represents
 
-The opening laboratory calculates vector average traction from a resultant force divided by the selected contact area:
+### Vectors and force on a surface (lessons M1, S2, S3)
+
+The force laboratory draws one vector acting at the center of a selected face of a schematic cube. In M1 the vector is unitless; in S2 and S3 it is a force in newtons (displayed in kN). Its magnitude is computed exactly:
+
+```text
+|v| = √(vx² + vy² + vz²)
+```
+
+The laboratory has no moments, supports, reactions, or internal resultants; engineering statics is outside the curriculum (see [curriculum/parked-and-expansions.md](curriculum/parked-and-expansions.md)).
+
+### Surface traction
+
+The laboratory calculates vector average traction from a resultant force divided by the selected contact area:
 
 ```text
 t̄ = F / A
 ```
 
-The units are converted explicitly from newtons and square centimeters to megapascals. The calculation assumes a uniformly distributed resultant over the highlighted patch. It is not a local boundary-condition solution or a claim that traction is spatially uniform in a real specimen.
+The units are converted explicitly from newtons and square centimeters to megapascals, and the conversion is shown on screen. The calculation assumes a uniformly distributed resultant over the highlighted patch. It is not a local boundary-condition solution or a claim that traction is spatially uniform in a real specimen. The small arrows over the patch are an illustration of that uniform distribution.
 
 For an outward unit surface normal `n`, the laboratory resolves traction into a signed normal projection and an in-plane shear vector:
 
@@ -17,39 +31,33 @@ tn = t̄ · n
 τ  = t̄ − tn n
 ```
 
-An inward compressive applied force therefore gives `tn < 0` in this surface-traction calculation. When the lesson introduces the compression-positive geological stress tensor `σ`, it states the corresponding mapping explicitly as `t(n) = −σn`. This prevents the traction sign and the chosen tensor sign convention from being silently mixed.
+An inward compressive applied force therefore gives `tn < 0` in this seed calculation. When the stress tensor `σ` is introduced (compression positive), the mapping is stated explicitly as `t(n) = −σn`, so the traction sign and the tensor sign convention are never mixed silently. **Open item:** lesson S4 fixes the single on-screen traction form for the rest of the course (recommended: `t = σn` with t as the compression-positive push on the face). S3's full build must adopt that form.
 
-The later application steps visualize a relationship between a selected stress tensor and a deliberately exaggerated block deformation. Together, the sequence is designed to help students connect:
+### Stress states (lessons S7, S10, and Explore)
 
-- Force magnitude, direction, and contact area.
-- Average traction and its signed normal and shear components on a surface.
-- Stress magnitude and direction.
-- Normal and shear components.
-- Tension, compression, and combined loading.
-- Shape change versus volume change.
+The stress-state scene displays a compression-positive stress tensor, its face arrows, and a deliberately exaggerated block deformation. The tensor values and arrows are exact representations of the chosen components. The deformation is not (see below). The scene does not solve a stress field from the force laboratory's boundary load; the lessons connect the two conceptually.
 
-The model uses a compression-positive sign convention.
+The model uses a compression-positive sign convention throughout.
 
 ## What the prototype does not claim
 
 The displayed deformation is not a prediction for rock, putty, metal, or any other specific material. The application currently has no:
 
-- Young’s modulus or stiffness tensor.
-- Calibrated Poisson’s ratio.
+- Young's modulus or stiffness tensor (planned in lesson R2).
+- Calibrated Poisson's ratio (planned in lesson R2).
 - Plastic or viscous flow law.
 - Temperature or strain-rate dependence.
 - Yield surface.
 - Fracture or damage model.
-- Boundary-condition solver.
-- Finite-element discretization.
+- Continuum boundary-value or finite-element solver.
 
 Consequently, the application must not present fracture orientation, failure, or permanent deformation as uniquely determined by the selected stress state.
 
-## Current qualitative mapping
+## Current qualitative response mapping
 
-Normal stress components create extension or shortening along their axes with a small illustrative lateral coupling. Shear components apply a volume-preserving upper-triangular deformation. The deformation is clamped to keep the block legible at large display values.
+In the stress-state scene, normal stress components create extension or shortening along their axes with a small illustrative lateral coupling. Shear components apply a volume-preserving upper-triangular deformation. The deformation is clamped to keep the block legible at large display values. Lesson R2 replaces this with exact linear elasticity shown with a stated exaggeration factor.
 
-This mapping is useful for conceptual comparison but should not be reused as a scientific calculation.
+This mapping is useful for conceptual comparison but must not be reused as a scientific calculation.
 
 ## Preset interpretation
 

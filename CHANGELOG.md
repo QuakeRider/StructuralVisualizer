@@ -2,6 +2,49 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.6.0 — 2026-09-24
+
+### Added
+
+- Curriculum plan in `docs/curriculum/`: 48 lessons in 7 units with a build spec for each.
+- Lesson registry and catalog for the full curriculum, with a unit-grouped lesson picker; planned lessons are listed but disabled.
+- Seed lessons M1 (vectors), S2 (force vs traction), S3 (normal and shear traction), S7 (stress tensor), and S10 (stress states), built from the reusable parts of the 0.5 module.
+- Equation–model binding panel: equation symbols highlight their scene objects and vice versa, with live values and a symbol key.
+- Present mode for lessons (entered from Guided), with arrow and PageUp/PageDown step navigation.
+- `vector.js` domain helpers with tests; registry tests, including a guard against statics content.
+
+### Removed
+
+- The engineering-statics content added in 0.5.0: application-point dragging, `r × F` moments, free-body motion, fixed support and reactions, section cut, and axial/shear/bending/torsion resultants and deformation (`loadResponse.js`). These topics are outside the structural-geology curriculum.
+
+### Changed
+
+- The single 14-step guided lesson is replaced by per-lesson files; step numbers now read as lesson.step (for example, S2.1).
+
+## 0.5.0 — 2026-09-24
+
+### Added
+
+- Draggable force application point on any selectable block face.
+- Exact resultant-moment calculation using `M = r × F`.
+- Free-body and ideal fixed-support conditions with visible force and moment reactions.
+- Continuous illustrative axial, shear, bending, and torsional block response.
+- Uniform distributed-load arrows tied to the selected contact patch.
+- Movable imaginary section cut with live axial force, shear force, bending moment, and torsion.
+- Tested domain model for moments, equilibrium reactions, load decomposition, and section resultants.
+
+### Changed
+
+- Expanded the guided opening module from ten to fourteen activities.
+- Reordered the curriculum so external loading, equilibrium, internal action, traction, and stress are established before stress states.
+- Made loading modes consequences of face, angle, magnitude, and application point rather than preset-only illustrations.
+- Clarified the boundary between exact statics calculations and qualitative deformation graphics.
+
+### Fixed
+
+- Reaction and internal-action arrows now render visibly over the translucent block.
+- Lesson resets now restore the current activity's intended mechanical setup.
+
 ## 0.4.0 — 2026-09-23
 
 ### Added

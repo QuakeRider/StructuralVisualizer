@@ -2,89 +2,44 @@
 
 ## Product goal
 
-Structural Visualizer is intended to become a university-level interactive learning environment for a full structural-geology curriculum. It is not a stress-state application with extra topics attached. Stress states are the first working module and the proving ground for the interaction, visualization, lesson, and scientific-model architecture that later modules will reuse.
+Structural Visualizer is a university-level interactive learning environment for an intro Structural Geology course (3000–4000 level). Its purpose is to make **the mathematics of structural geology understandable, visible, and interesting** for students whose math and physics are not fully solid. It builds intuition from math to geology: vectors → force → traction → the stress tensor → principal stresses → failure, strain, rheology, and folds.
 
-The finished product should help students move between physical intuition, three-dimensional geometry, mathematical representation, and geological interpretation. Every major topic should offer a guided learning path, an open laboratory, and an instructor-facing presentation view when those modes are pedagogically useful.
+The primary use is instructor projection in lecture (Present mode), with students following along. A structural-lab mode and a self-study/homework mode are planned expansions.
 
-## Curriculum map
+## Curriculum
 
-The exact course order remains subject to instructor review and classroom testing. The intended scope includes the following connected module families.
+The authoritative curriculum, with the lesson sequence, binding decisions, conventions, per-lesson specs, and build protocol, lives in **[docs/curriculum/README.md](curriculum/README.md)**.
 
-### 1. Mathematical and mechanical foundations
+Summary of the sequence:
 
-- Coordinate systems, vectors, components, and transformations.
-- Force, traction, stress, and stress tensors.
-- Displacement, velocity gradients, strain, and strain tensors.
-- Units, sign conventions, reference frames, and simplifying assumptions.
+| Unit | Lessons |
+|---|---|
+| 0 Math foundations | Vectors and components · Trigonometry of projection · Dot and cross products · Matrices as transformations |
+| 1 Orientation | Geographic (NED) frame and lines · Planes, strike/dip, and poles · Stereonets · Angles, intersections, and rake |
+| 2 Stress | Force · Force vs traction · Normal and shear traction · Stress at a point (2D) · Transformation and principal stresses (2D) · Mohr circle (2D) · Stress tensor (3D) · Principal stresses (3D) · 3D Mohr diagram · Mean, deviatoric, and Earth stress states |
+| 3 Brittle deformation | Fracture modes and deformation bands · Tensile failure · Coulomb failure and the composite envelope · Confining and pore-fluid pressure · Joints and veins · Friction and reactivation · Anderson's theory · Fault slip and kinematic axes · Fault anatomy and growth |
+| 4 Deformation and strain | Components of deformation · Homogeneous vs heterogeneous · Measuring strain · Strain ellipse and ellipsoid · Coaxial and non-coaxial (pure shear, uniaxial strain, simple shear) · Flow, ISA, apophyses, and vorticity · Progressive deformation · Strain measurement methods |
+| 5 Rheology | What rheology is · Elasticity · Viscous flow · Plastic and composite behavior · Stress in the crust (reference states) · Brittle–ductile transition |
+| 6 Folds and folding | Anatomy · Orientation and stereonets · Shape and classification · Mechanisms (incl. kink and chevron) · Boudinage · Fault-related folds · Superposed folding |
 
-### 2. Stress analysis
-
-- Normal and shear stress on a plane.
-- Three-dimensional stress states.
-- Principal stresses and principal directions.
-- Stress transformation and Mohr diagrams.
-- Mean and deviatoric stress, pressure, and invariants where appropriate.
-
-### 3. Kinematics and strain
-
-- Translation, rotation, distortion, and dilation.
-- Homogeneous and heterogeneous deformation.
-- Infinitesimal and finite strain.
-- Strain ellipse and strain ellipsoid.
-- Pure shear, simple shear, progressive deformation, and strain paths.
-- Coaxial and non-coaxial deformation.
-
-### 4. Material behavior and rheology
-
-- Elastic, viscous, plastic, and viscoelastic response.
-- Stiffness, Poisson effects, yield, and time dependence.
-- Temperature, pressure, strain-rate, and material controls.
-- Contrasting responses of layered or heterogeneous materials.
-
-### 5. Brittle deformation
-
-- Fractures, joints, faults, and fault-slip kinematics.
-- Confining pressure, friction, strength, and failure criteria.
-- Stress orientation versus predicted fracture or slip orientation.
-- Fault populations, linked structures, and geological interpretation.
-
-### 6. Ductile deformation and folds
-
-- Fold geometry, elements, classification, and three-dimensional form.
-- Buckling, bending, flexural slip, and flow concepts.
-- Foliations, lineations, shear zones, and kinematic indicators.
-- Relationships among stress, strain, rheology, and resulting structures.
-
-### 7. Structural data and spatial reasoning
-
-- Strike, dip, trend, plunge, and rake.
-- Stereographic projections and orientation statistics.
-- Geological maps, structure contours, and cross-sections.
-- Apparent dip, three-point problems, and outcrop-pattern interpretation.
-- Balanced sections and restoration where appropriate to the course level.
-
-### 8. Synthesis
-
-- Connecting observations at hand-sample, outcrop, map, and regional scales.
-- Reconstructing deformation histories from overprinting relationships.
-- Testing multiple interpretations against data and stated assumptions.
-- Integrative exercises that combine geometry, mechanics, and kinematics.
+Deliberately parked for now: the plastic regime (microstructures, flow laws), fabrics and shear zones, plate tectonics, paleostress inversion, fault-seal topics, and map/cross-section work. See [curriculum/parked-and-expansions.md](curriculum/parked-and-expansions.md). **Engineering statics** (moments, reactions, section cuts, bending, torsion) is permanently excluded.
 
 ## Experience principles
 
-Every module should follow the same product principles:
+Every lesson follows the same product principles. The full versions are in the curriculum README.
 
-1. **Manipulate before abstracting.** Students first interact with a visible object, plane, vector, or structure and then connect it to equations and notation.
-2. **One coherent laboratory.** Guided lessons and open exploration use the same high-quality interactive scene rather than separate simplified demonstrations.
-3. **University-level accuracy.** Equations, assumptions, coordinate systems, units, and model limitations are explicit. Qualitative illustrations are clearly distinguished from physical predictions.
-4. **Progressive disclosure.** Each step introduces only the controls and representations needed for its learning objective.
-5. **Active reasoning.** Students construct, predict, measure, compare, and explain instead of advancing through explanatory slides.
-6. **Accessible by more than color.** Direction, labels, shapes, line patterns, symbols, and text reinforce every color-coded distinction.
-7. **Instructor-ready.** Modules support projection, demonstration, discussion prompts, and offline classroom use.
-8. **Reusable architecture.** Topic-specific models and scenes plug into shared navigation, lesson, assessment, accessibility, and presentation systems.
+1. **Math is central, and it is bound to the model.** Every symbol in an on-screen equation has a visible, labeled counterpart in the scene, and the numbers update live as students manipulate it.
+2. **Components always visible.** Vectors, tractions, and matrices are shown with their components, so students see how things break down.
+3. **Manipulate → observe → formalize → apply to geology.** Every lesson ends with a geological payoff.
+4. **2D → 3D.** A topic may start in 2D but always makes the jump to 3D, and stays there unless 3D would exceed the course level.
+5. **Necessity test.** A topic is included only if later structural-geology lessons use it or it directly explains a geological structure or measurement.
+6. **University-level accuracy.** Equations, assumptions, coordinate frames (x/y/z for math, NED for geology), units, sign conventions (compression positive), and limitations are explicit. Illustrations are clearly distinguished from exact calculations.
+7. **Progressive disclosure** and **predict before reveal.**
+8. **One coherent laboratory per topic.** Guided lessons, open exploration, and presentation share the same interactive scenes.
+9. **Accessible by more than color.** Labels, line patterns, arrowheads, and text reinforce every color-coded distinction.
+10. **Present-first, expansion-ready.** Designed for lecture projection, without blocking Lab and Self-study modes.
+11. **Reusable architecture.** Topic-specific models and scenes plug into a shared lesson registry, equation panel, navigation, and presentation system.
 
-## Current vertical slice
+## Current state
 
-The current force-to-stress-state prototype is the first vertical slice. It is valuable because it exercises numerical controls, vector visualization, three-dimensional manipulation, guided instruction, free exploration, and classroom packaging. It should be judged as the first module of Structural Visualizer—not as the final scope of the application.
-
-The immediate design goal is to bring this first module up to the interaction and visual standard that later curriculum modules should inherit.
+The current build (v0.5.0) contains an early force-to-stress-state sequence. Part of it is the engineering-statics material the curriculum excludes. [Build 00](curriculum/build-00-rework.md) removes that material, introduces the multi-lesson registry, and moves the reusable pieces (force-vector lab, traction decomposition, stress-state scene) into seed versions of lessons M1, S1–S3, S7, and S10. After that, lessons are built one per session in curriculum order.

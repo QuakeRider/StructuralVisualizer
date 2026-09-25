@@ -1,12 +1,10 @@
 # Roadmap
 
-Structural Visualizer is planned as a modular learning environment for a full university structural-geology curriculum. The force-to-stress-state experience is the first vertical slice, not the product boundary. The broader topic map and experience principles are maintained in [CURRICULUM_VISION.md](CURRICULUM_VISION.md).
-
-This roadmap is deliberately iterative. Curriculum order should be reviewed with instructors, and each module should be tested with students before its interaction pattern is generalized.
+Structural Visualizer is a modular learning environment for an intro university Structural Geology course, built to make the mathematics of the subject clear and visible. The authoritative curriculum (lesson order, specs, conventions, and the build protocol) is in [curriculum/README.md](curriculum/README.md). This roadmap tracks milestones at a higher level.
 
 ## Platform milestone 1 — First vertical slice
 
-**Status: original prototype superseded by the 0.4 redesign**
+**Status: complete (v0.1–0.4)**
 
 - Force and area foundations.
 - Ten selectable three-dimensional stress states.
@@ -15,133 +13,57 @@ This roadmap is deliberately iterative. Curriculum order should be reviewed with
 - Offline single-file classroom build.
 - Separated domain, lesson, interface, and renderer layers.
 
-The prototype established technical feasibility. Its guided foundation steps, visual hierarchy, typography, accessibility, interaction depth, and mode-state handling require redesign before this becomes the pattern for the larger curriculum.
+## Platform milestone 2 — Build 00: rework into the curriculum structure
 
-Exit condition: the opening module functions as a coherent university-level interactive laboratory rather than a sequence of illustrated slides.
+**Status: complete (v0.6.0).** Spec: [curriculum/build-00-rework.md](curriculum/build-00-rework.md). Next: lesson M1.
 
-## Platform milestone 2 — Shared learning laboratory
+v0.5.0 added an engineering-statics sequence (moments, reactions, section cuts, bending, torsion), which the curriculum excludes. Build 00:
 
-**Status: implemented in prototype form; validation next**
+- Removes the statics lessons, the `loadResponse.js` domain module, and the related interface and renderer code.
+- Introduces a multi-lesson registry organized by unit, with a lesson picker.
+- Introduces the shared equation-binding panel (equation symbols ↔ scene objects).
+- Moves the force-vector lab, traction decomposition, and stress-state scene into seed lessons M1, S1–S3, S7, and S10.
+- Corrects `SCIENTIFIC_SCOPE.md`, `ARCHITECTURE.md`, `PROJECT_STATUS.md`, and `CHANGELOG.md`.
 
-- Replace the separate foundation SVG with a reusable interactive 3D force laboratory. **Implemented.**
-- Support direct manipulation and numerical entry for vectors, surfaces, and contact area.
-- Introduce average traction and normal/shear decomposition accurately before tensor notation.
-- Establish a minimal two-column guided layout with readable typography.
-- Replace persistent lesson navigation and redundant readouts with progressive disclosure.
-- Introduce a colorblind-safe semantic palette with labels, shapes, and line patterns.
-- Correct input continuity, mode transitions, keyboard operation, and responsive behavior.
-- Define shared control, scene, lesson-step, feedback, and presentation contracts.
+Exit condition: the app runs the seed lessons from the registry, with no statics content anywhere.
 
-Exit condition: classroom validation confirms that later modules can reuse the shell and interaction system without inheriting stress-specific assumptions.
+## Curriculum units
+
+Each lesson is built in its own session, in order, following the build-session protocol. Shared infrastructure is built by the first lesson that needs it.
+
+| Unit | Lessons | Key shared infrastructure introduced | Exit condition |
+|---|---|---|---|
+| **0 Math foundations** | M1–M4 | Vector glyph with component box; rotatable axes; plane-with-normal widget; matrix-transform view; `vector.js`, `matrix.js` | Students can compute with and visualize vectors, projections, dot/cross products, and matrices acting on vectors, including eigenvectors |
+| **1 Orientation** | O1–O4 | NED outcrop block; orientation inputs; stereonet renderer; `orientation.js`, `stereonet.js` | Students move fluently between field measurements, vectors, 3D geometry, and stereonets |
+| **2 Stress** | S1–S10 | 2D-slice view; Mohr plot renderer; plane-through-a-point widget; `stress.js` | Students move between force, traction on a plane, the tensor, transformed planes, principal stresses, Mohr diagrams, and Earth stress states |
+| **3 Brittle deformation** | B1–B9 | Failure envelopes (incl. composite) on the Mohr plot; fracture/fault/deformation-band glyphs; layered-block view; rose diagram; slip-tendency, P/T, and beach-ball stereonet layers; fault-surface displacement map; `failure.js`, `faults.js` | Failure and slip visuals are driven by explicit criteria, and students distinguish stress, strength, and resulting structure |
+| **4 Deformation and strain** | D1–D8 | Marker-grid deformation view; strain-ellipse/ellipsoid overlay; Flinn plot; time scrubber; flow-field overlay (ISA, apophyses); `strain.js` | Students distinguish stress from strain and explain how measured geometry records a deformation history |
+| **5 Rheology** | R1–R6 | Rheology element builder; time controls; depth-profile plot (crustal stress and strength); exact elastic deformation in the stress scene; `rheology.js` | Students explain why the same loading produces different responses under different material laws and conditions |
+| **6 Folds and folding** | F1–F7 | Parametric fold-surface renderer; surface measurement tools; profile-section view; fault-fold cross-section with trishear; `folds.js`, `faultFolds.js` | Students describe, measure, classify, and explain folds and boudins in 3D, including fault-related and superposed folding |
 
 ## Platform milestone 3 — Classroom validation
 
-**Status: follows redesign**
+**Status: after the first units are built (target: after Unit 2)**
 
 - Test the standalone file on the intended Windows classroom computer.
-- Run the opening module with students and instructors.
-- Record misconceptions, interaction failures, accessibility barriers, and actual lesson duration.
-- Verify that construction and prediction tasks improve explanation rather than merely add clicks.
-- Revise the shared design system before building several additional modules.
+- Teach the built lessons in lecture in Present mode, with students following along.
+- Record misconceptions, interaction failures, accessibility barriers, and actual pacing.
+- Check that the equation–model binding actually improves students' mathematical understanding.
+- Revise the shared design system and lesson template before building further units.
 
-Exit condition: the platform pattern has evidence from realistic classroom use.
+## Parked and future expansions
 
-## Curriculum track A — Stress analysis
+See [curriculum/parked-and-expansions.md](curriculum/parked-and-expansions.md):
 
-**Status: first module in progress**
-
-- Force vectors, surfaces, contact area, and average traction.
-- Normal and shear traction components.
-- Three-dimensional stress tensor and sign convention.
-- Principal stresses and principal directions.
-- Stress transformation and Mohr diagrams.
-- Mean and deviatoric stress and relevant invariants.
-
-Exit condition: students can move between force on a plane, tensor representation, transformed planes, and common stress states.
-
-## Curriculum track B — Strain and deformation kinematics
-
-**Status: planned**
-
-- Displacement, rotation, distortion, and dilation.
-- Normal and shear strain.
-- Homogeneous and heterogeneous deformation.
-- Infinitesimal and finite strain.
-- Strain ellipse and strain ellipsoid.
-- Pure shear, simple shear, progressive deformation, and strain paths.
-- Coaxial and non-coaxial deformation.
-
-Exit condition: students can distinguish stress from strain and explain how measured geometry records a deformation history.
-
-## Curriculum track C — Material behavior and rheology
-
-**Status: planned**
-
-- Elastic, viscous, plastic, and viscoelastic behavior.
-- Stiffness, Poisson coupling, yield, and time dependence.
-- Temperature, pressure, strain-rate, and material controls.
-- Layered and heterogeneous material response.
-
-Exit condition: students can explain why the same loading may produce different responses under different stated material assumptions.
-
-## Curriculum track D — Brittle structures
-
-**Status: planned**
-
-- Fractures, joints, faults, and fault-slip kinematics.
-- Confining pressure, friction, strength, and failure criteria.
-- Stress orientation versus fracture or slip orientation.
-- Linked structures and geological interpretation.
-
-Exit condition: failure and slip visuals are driven by explicit criteria and students can distinguish stress, strength, and resulting structure.
-
-## Curriculum track E — Ductile structures and folds
-
-**Status: planned**
-
-- Fold geometry, elements, classification, and three-dimensional form.
-- Buckling, bending, flexural slip, and flow concepts.
-- Foliations, lineations, shear zones, and kinematic indicators.
-- Relationships among stress, strain, rheology, and structures.
-
-Exit condition: students can describe, classify, manipulate, and interpret common ductile structures in three dimensions.
-
-## Curriculum track F — Structural data and spatial reasoning
-
-**Status: planned**
-
-- Strike, dip, trend, plunge, and rake.
-- Stereographic projections and orientation statistics.
-- Geological maps, structure contours, and cross-sections.
-- Apparent dip, three-point problems, and outcrop patterns.
-- Balanced sections and restoration where appropriate.
-
-Exit condition: students can move confidently among field measurements, three-dimensional geometry, projections, maps, and sections.
-
-## Curriculum track G — Synthesis
-
-**Status: exploratory**
-
-- Connect hand-sample, outcrop, map, and regional scales.
-- Reconstruct deformation histories and overprinting relationships.
-- Compare multiple interpretations against observations and assumptions.
-- Integrate geometry, mechanics, kinematics, and geological context.
-
-## Course-platform capabilities
-
-**Status: exploratory**
-
-- Curriculum and lesson registry.
-- Student progress and resume behavior.
-- Instructor-authored activities and presentation sequences.
-- Accessible non-pointer and non-color alternatives.
-- Localization and unit preferences.
-- Hosted deployment and optional analytics.
+- **Parked topics:** the plastic regime (microstructures and flow laws), fabrics and shear zones, plate tectonics, paleostress inversion, fault-seal topics, map and cross-section work, and orientation statistics.
+- **Lab mode:** a structural lab with datasets, problem sets, maps, and sections.
+- **Self-study / homework mode:** hints, checks, progress tracking, and randomized problems.
+- **Platform:** instructor-authored sequences, localization, hosted deployment, and optional analytics.
 
 ## Work-selection rules
 
-1. Treat every topic as a module within Structural Visualizer, not as an extension of the stress-state explorer.
-2. Prefer reusable interaction and teaching patterns, but do not force unrelated scientific topics into one renderer.
-3. Validate scientific scope and classroom value before expanding a module deeply.
-4. Prefer a few excellent interactive activities over broad but shallow slide-like coverage.
-5. Keep the full curriculum vision visible while implementing one bounded vertical slice at a time.
+1. Build lessons in curriculum order. Do not start a lesson whose prerequisites are not built.
+2. Every topic must pass the necessity test (curriculum README, design principle 6). Engineering statics is permanently excluded.
+3. Prefer reusable interaction and teaching patterns, but do not force unrelated topics into one renderer.
+4. Each lesson covers its topic completely at course level. There is no length cap, and no shallow coverage.
+5. Keep the specs as the source of truth. If building a lesson shows the spec is wrong, fix the spec in the same session.

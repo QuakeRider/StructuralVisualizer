@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { FORCE_LAB_SCENE_REFS } from './sceneRefs.js';
 
 const HALF = 1.25;
 const FORCE_COLOR = 0xf4f5f7;
 const NORMAL_COLOR = 0x56b4e9;
 const SHEAR_COLOR = 0xcc79a7;
 const SURFACE_COLOR = 0xe69f00;
+const DIMMED_OPACITY_FACTOR = 0.16;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -37,23 +39,60 @@ function makeTextSprite(text) {
   return sprite;
 }
 
+function configureArrow(arrow) {
+  for (const part of [arrow.line, arrow.cone]) {
+    part.material.depthTest = false;
+    part.material.depthWrite = false;
+    part.material.transparent = true;
+    part.material.opacity = 0.96;
+    part.renderOrder = 8;
+  }
+  return arrow;
+}
+
+function faceNormalFromPoint(point) {
+  const values = [Math.abs(point.x), Math.abs(point.y), Math.abs(point.z)];
+  const axis = values.indexOf(Math.max(...values));
+  const normal = new THREE.Vector3();
+  normal.setComponent(axis, Math.sign(point.getComponent(axis)) || 1);
+  return normal;
+}
+
+function faceBasis(normal) {
+  const reference = Math.abs(normal.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const u = new THREE.Vector3().crossVectors(normal, reference).normalize();
+  const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+  return { u, v };
+}
+
+/**
+ * Interactive vector / force-on-a-surface laboratory. The force always acts at
+ * the center of the selected face. Equation symbols can highlight scene
+ * objects by reference (see sceneRefs.js), and hovering an object reports
+ * its reference back through onHover.
+ */
 export class ForceLabScene {
-  constructor(container, { onForceChange, onSurfaceChange } = {}) {
+  constructor(container, { onForceChange, onSurfaceChange, onHover } = {}) {
     this.container = container;
     this.onForceChange = onForceChange;
     this.onSurfaceChange = onSurfaceChange;
+    this.onHover = onHover;
     this.force = new THREE.Vector3(0, -5_000, 0);
     this.surfaceNormal = new THREE.Vector3(0, 1, 0);
     this.area = 100;
-    this.options = {
+    this.defaultOptions = {
       showSurfaceNormal: false,
       showArea: false,
       showDecomposition: false,
+      showDistribution: false,
       allowSurfaceSelection: false,
       allowForceDrag: true,
     };
+    this.options = { ...this.defaultOptions };
     this.pointerStart = null;
     this.draggingForce = false;
+    this.highlightRef = null;
+    this.hoverRef = null;
 
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
@@ -67,7 +106,7 @@ export class ForceLabScene {
     this.renderer.domElement.setAttribute('role', 'application');
     this.renderer.domElement.setAttribute(
       'aria-label',
-      'Interactive three-dimensional force laboratory. Drag the round force handle, select block faces, orbit, or use the numerical controls.',
+      'Interactive three-dimensional vector laboratory. Drag the arrow handle, select faces, orbit the view, or use the numerical controls.',
     );
     container.append(this.renderer.domElement);
 
@@ -86,7 +125,8 @@ export class ForceLabScene {
     this.createLighting();
     this.createBlock();
     this.createReferenceObjects();
-    this.createForceObjects();
+    this.createLoadObjects();
+    this.highlightGroups = this.createHighlightGroups();
     this.bindPointerEvents();
     this.updateVisuals();
 
@@ -109,34 +149,22 @@ export class ForceLabScene {
   }
 
   createBlock() {
-    const geometry = new THREE.BoxGeometry(HALF * 2, HALF * 2, HALF * 2);
     const material = new THREE.MeshPhysicalMaterial({
       color: 0x8f99a6,
       roughness: 0.58,
       metalness: 0.01,
       clearcoat: 0.08,
     });
-    this.block = new THREE.Mesh(geometry, material);
+    this.block = new THREE.Mesh(new THREE.BoxGeometry(HALF * 2, HALF * 2, HALF * 2), material);
     this.block.castShadow = true;
     this.block.receiveShadow = true;
     this.scene.add(this.block);
 
-    const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geometry),
-      new THREE.LineBasicMaterial({ color: 0xe7eaee, transparent: true, opacity: 0.62 }),
-    );
-    this.scene.add(edges);
-
     this.patch = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
-      new THREE.MeshBasicMaterial({
-        color: SURFACE_COLOR,
-        transparent: true,
-        opacity: 0.68,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      }),
+      new THREE.MeshBasicMaterial({ color: SURFACE_COLOR, transparent: true, opacity: 0.68, side: THREE.DoubleSide, depthWrite: false }),
     );
+    this.patch.renderOrder = 3;
     this.scene.add(this.patch);
   }
 
@@ -158,34 +186,68 @@ export class ForceLabScene {
 
     const axisOrigin = new THREE.Vector3(-1.85, -1.45, 1.72);
     const axes = [
-      { label: 'X', direction: new THREE.Vector3(1, 0, 0), color: NORMAL_COLOR },
-      { label: 'Y', direction: new THREE.Vector3(0, 1, 0), color: SURFACE_COLOR },
-      { label: 'Z', direction: new THREE.Vector3(0, 0, 1), color: SHEAR_COLOR },
+      { key: 'x', label: 'X', direction: new THREE.Vector3(1, 0, 0), color: NORMAL_COLOR },
+      { key: 'y', label: 'Y', direction: new THREE.Vector3(0, 1, 0), color: SURFACE_COLOR },
+      { key: 'z', label: 'Z', direction: new THREE.Vector3(0, 0, 1), color: SHEAR_COLOR },
     ];
-    this.axesGroup = new THREE.Group();
+    this.axisObjects = {};
     for (const axis of axes) {
-      const arrow = new THREE.ArrowHelper(axis.direction, axisOrigin, 0.72, axis.color, 0.14, 0.08);
-      arrow.line.material.depthTest = false;
-      arrow.cone.material.depthTest = false;
-      arrow.renderOrder = 5;
+      const arrow = configureArrow(new THREE.ArrowHelper(axis.direction, axisOrigin, 0.72, axis.color, 0.14, 0.08));
       const label = makeTextSprite(axis.label);
       label.position.copy(axisOrigin).add(axis.direction.clone().multiplyScalar(0.9));
-      this.axesGroup.add(arrow, label);
+      const group = new THREE.Group();
+      group.add(arrow, label);
+      this.axisObjects[axis.key] = group;
+      this.scene.add(group);
     }
-    this.scene.add(this.axesGroup);
   }
 
-  createForceObjects() {
-    this.forceArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1.6, FORCE_COLOR, 0.3, 0.18);
-    this.normalArrow = new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 0.75, NORMAL_COLOR, 0.18, 0.1);
-    this.normalComponentArrow = new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, NORMAL_COLOR, 0.22, 0.12);
-    this.shearComponentArrow = new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, SHEAR_COLOR, 0.22, 0.12);
+  createLoadObjects() {
+    this.forceArrow = configureArrow(new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1.6, FORCE_COLOR, 0.3, 0.18));
+    this.normalArrow = configureArrow(new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(), 0.75, NORMAL_COLOR, 0.18, 0.1));
+    this.normalComponentArrow = configureArrow(new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 1, NORMAL_COLOR, 0.22, 0.12));
+    this.shearComponentArrow = configureArrow(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), new THREE.Vector3(), 1, SHEAR_COLOR, 0.22, 0.12));
     this.handle = new THREE.Mesh(
       new THREE.SphereGeometry(0.16, 24, 16),
-      new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.35, emissive: 0x2b3038, emissiveIntensity: 0.35 }),
+      new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.35, emissive: 0x2b3038, emissiveIntensity: 0.35, depthTest: false, transparent: true }),
     );
-    this.handle.scale.setScalar(1.05);
-    this.scene.add(this.forceArrow, this.normalArrow, this.normalComponentArrow, this.shearComponentArrow, this.handle);
+    this.handle.renderOrder = 10;
+    this.distributionGroup = new THREE.Group();
+    for (let index = 0; index < 9; index += 1) {
+      this.distributionGroup.add(configureArrow(new THREE.ArrowHelper(new THREE.Vector3(0, -1, 0), new THREE.Vector3(), 0.36, SURFACE_COLOR, 0.1, 0.055)));
+    }
+    this.scene.add(
+      this.forceArrow,
+      this.normalArrow,
+      this.normalComponentArrow,
+      this.shearComponentArrow,
+      this.handle,
+      this.distributionGroup,
+    );
+  }
+
+  createHighlightGroups() {
+    const groups = {
+      force: [this.forceArrow, this.handle],
+      'axis-x': [this.axisObjects.x],
+      'axis-y': [this.axisObjects.y],
+      'axis-z': [this.axisObjects.z],
+      'surface-normal': [this.normalArrow],
+      area: [this.patch],
+      traction: [this.distributionGroup],
+      normal: [this.normalComponentArrow],
+      shear: [this.shearComponentArrow],
+    };
+    const missing = FORCE_LAB_SCENE_REFS.filter((ref) => !groups[ref]);
+    if (missing.length) throw new Error(`Scene refs without objects: ${missing.join(', ')}`);
+    for (const objects of Object.values(groups)) {
+      for (const object of objects) {
+        object.traverse((child) => {
+          if (child.material) child.userData.baseOpacity = child.material.opacity;
+        });
+      }
+    }
+    return groups;
   }
 
   bindPointerEvents() {
@@ -194,27 +256,28 @@ export class ForceLabScene {
       this.updatePointer(event);
       this.raycaster.setFromCamera(this.pointer, this.camera);
       const handleHit = this.raycaster.intersectObject(this.handle, false)[0];
-      if (!handleHit || !this.options.allowForceDrag) return;
-
-      event.preventDefault();
-      event.stopPropagation();
-      this.draggingForce = true;
-      this.controls.enabled = false;
-      this.renderer.domElement.setPointerCapture(event.pointerId);
-      const cameraDirection = this.camera.getWorldDirection(new THREE.Vector3());
-      this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, this.handle.position);
-      this.renderer.domElement.classList.add('is-dragging-force');
+      if (handleHit && this.options.allowForceDrag) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.draggingForce = true;
+        this.controls.enabled = false;
+        this.renderer.domElement.setPointerCapture(event.pointerId);
+        const cameraDirection = this.camera.getWorldDirection(new THREE.Vector3());
+        this.dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, this.handle.position);
+        this.renderer.domElement.classList.add('is-dragging-force');
+      }
     };
 
     this.onPointerMove = (event) => {
-      if (!this.draggingForce) return;
-      event.preventDefault();
       this.updatePointer(event);
       this.raycaster.setFromCamera(this.pointer, this.camera);
+      if (!this.draggingForce) {
+        this.reportHover();
+        return;
+      }
+      event.preventDefault();
       if (!this.raycaster.ray.intersectPlane(this.dragPlane, this.dragIntersection)) return;
-
-      const contact = this.contactPoint();
-      const appliedDirection = contact.clone().sub(this.dragIntersection);
+      const appliedDirection = this.contactPoint().sub(this.dragIntersection);
       if (appliedDirection.lengthSq() < 0.04) return;
       const magnitude = clamp((appliedDirection.length() - 0.55) / 0.14, 1, 10) * 1_000;
       this.force.copy(appliedDirection.normalize().multiplyScalar(magnitude));
@@ -237,17 +300,45 @@ export class ForceLabScene {
       this.updatePointer(event);
       this.raycaster.setFromCamera(this.pointer, this.camera);
       const hit = this.raycaster.intersectObject(this.block, false)[0];
-      if (!hit?.face) return;
-      const normal = hit.face.normal.clone().transformDirection(this.block.matrixWorld);
-      normal.set(Math.round(normal.x), Math.round(normal.y), Math.round(normal.z)).normalize();
-      this.setSurfaceNormal(objectFromVector(normal));
+      if (!hit) return;
+      const normal = faceNormalFromPoint(this.block.worldToLocal(hit.point.clone()));
+      this.surfaceNormal.copy(normal);
+      this.updateVisuals();
       this.onSurfaceChange?.(objectFromVector(normal));
     };
+
+    this.onPointerLeave = () => this.setHoverRef(null);
 
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.addEventListener('pointerup', this.onPointerUp);
     this.renderer.domElement.addEventListener('pointercancel', this.onPointerUp);
+    this.renderer.domElement.addEventListener('pointerleave', this.onPointerLeave);
+  }
+
+  /** Raycast the pickable objects under the pointer and report their scene ref. */
+  reportHover() {
+    const candidates = [
+      ['force', this.handle],
+      ['force', this.forceArrow.cone],
+      ['normal', this.normalComponentArrow.cone],
+      ['shear', this.shearComponentArrow.cone],
+      ['surface-normal', this.normalArrow.cone],
+      ['area', this.patch],
+    ].filter(([, object]) => {
+      let visible = true;
+      object.traverseAncestors((ancestor) => { if (!ancestor.visible) visible = false; });
+      return visible && object.visible;
+    });
+    const hits = this.raycaster.intersectObjects(candidates.map(([, object]) => object), false);
+    const hitObject = hits[0]?.object;
+    this.setHoverRef(candidates.find(([, object]) => object === hitObject)?.[0] ?? null);
+  }
+
+  setHoverRef(ref) {
+    if (ref === this.hoverRef) return;
+    this.hoverRef = ref;
+    this.onHover?.(ref);
   }
 
   updatePointer(event) {
@@ -257,7 +348,7 @@ export class ForceLabScene {
   }
 
   contactPoint() {
-    return this.surfaceNormal.clone().multiplyScalar(HALF + 0.025);
+    return this.surfaceNormal.clone().multiplyScalar(HALF + 0.028);
   }
 
   displayLength() {
@@ -276,6 +367,7 @@ export class ForceLabScene {
     this.forceArrow.setDirection(forceDirection);
     this.forceArrow.setLength(length, Math.min(0.34, length * 0.23), Math.min(0.19, length * 0.13));
     this.handle.position.copy(tail);
+    this.handle.visible = this.options.allowForceDrag;
 
     this.normalArrow.position.copy(contact.clone().add(normal.clone().multiplyScalar(0.08)));
     this.normalArrow.setDirection(normal);
@@ -287,14 +379,14 @@ export class ForceLabScene {
     this.patch.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
     this.patch.scale.set(patchSize, patchSize, 1);
     this.patch.visible = this.options.showArea;
-    this.patch.material.opacity = 0.42 + (1 - clamp(this.area / 200, 0, 1)) * 0.38;
+    this.patch.userData.baseOpacity = 0.42 + (1 - clamp(this.area / 200, 0, 1)) * 0.38;
 
     const normalScalar = this.force.dot(normal);
     const normalForce = normal.clone().multiplyScalar(normalScalar);
     const shearForce = this.force.clone().sub(normalForce);
-    const scale = length / forceMagnitude;
-    const shearVisual = shearForce.clone().multiplyScalar(scale);
-    const normalVisual = normalForce.clone().multiplyScalar(scale);
+    const visualScale = length / forceMagnitude;
+    const shearVisual = shearForce.clone().multiplyScalar(visualScale);
+    const normalVisual = normalForce.clone().multiplyScalar(visualScale);
 
     this.shearComponentArrow.position.copy(tail);
     if (shearVisual.lengthSq() > 0.0001) {
@@ -303,13 +395,52 @@ export class ForceLabScene {
     }
     this.shearComponentArrow.visible = this.options.showDecomposition && shearVisual.lengthSq() > 0.0001;
 
-    const normalOrigin = tail.clone().add(shearVisual);
-    this.normalComponentArrow.position.copy(normalOrigin);
+    this.normalComponentArrow.position.copy(tail.clone().add(shearVisual));
     if (normalVisual.lengthSq() > 0.0001) {
       this.normalComponentArrow.setDirection(normalVisual.clone().normalize());
       this.normalComponentArrow.setLength(normalVisual.length(), 0.2, 0.11);
     }
     this.normalComponentArrow.visible = this.options.showDecomposition && normalVisual.lengthSq() > 0.0001;
+
+    this.updateDistributedLoad(normal, patchSize, forceDirection);
+    this.applyHighlight();
+  }
+
+  updateDistributedLoad(normal, patchSize, forceDirection) {
+    const { u, v } = faceBasis(normal);
+    const spacing = patchSize * 0.32;
+    this.distributionGroup.visible = this.options.showDistribution;
+    this.distributionGroup.children.forEach((arrow, index) => {
+      const row = Math.floor(index / 3) - 1;
+      const column = (index % 3) - 1;
+      const point = this.contactPoint()
+        .add(u.clone().multiplyScalar(column * spacing))
+        .add(v.clone().multiplyScalar(row * spacing));
+      const arrowLength = 0.34;
+      arrow.position.copy(point.clone().sub(forceDirection.clone().multiplyScalar(arrowLength)));
+      arrow.setDirection(forceDirection);
+      arrow.setLength(arrowLength, 0.1, 0.055);
+    });
+  }
+
+  /** Dim every bindable object except the highlighted one (equation–model binding). */
+  applyHighlight() {
+    const active = this.highlightRef && this.highlightGroups[this.highlightRef] ? this.highlightRef : null;
+    for (const [ref, objects] of Object.entries(this.highlightGroups)) {
+      const factor = active && ref !== active ? DIMMED_OPACITY_FACTOR : 1;
+      for (const object of objects) {
+        object.traverse((child) => {
+          if (!child.material) return;
+          child.material.transparent = true;
+          child.material.opacity = (child.userData.baseOpacity ?? 1) * factor;
+        });
+      }
+    }
+  }
+
+  highlight(ref) {
+    this.highlightRef = ref;
+    this.applyHighlight();
   }
 
   setForce(forceVectorNewtons) {
@@ -332,7 +463,7 @@ export class ForceLabScene {
   }
 
   setOptions(options) {
-    this.options = { ...this.options, ...options };
+    this.options = { ...this.defaultOptions, ...options };
     this.updateVisuals();
   }
 
@@ -363,6 +494,7 @@ export class ForceLabScene {
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
     this.renderer.domElement.removeEventListener('pointerup', this.onPointerUp);
     this.renderer.domElement.removeEventListener('pointercancel', this.onPointerUp);
+    this.renderer.domElement.removeEventListener('pointerleave', this.onPointerLeave);
     this.controls.dispose();
     this.renderer.dispose();
   }
