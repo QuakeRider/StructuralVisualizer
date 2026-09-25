@@ -2,15 +2,20 @@
 // docs/curriculum/unit-2-stress.md (S2) and adds the tilting plane and the
 // cos θ vs cos² θ derivation.
 
+import { abs, bound, frac, live, math, mi, mo, overbar, vec } from '../mathml.js';
+
 const TRACTION_SYMBOLS = [
-  { symbol: 't̄', sceneRef: 'traction', description: 'Grid of short arrows spread over the patch' },
-  { symbol: 'F', sceneRef: 'force', description: 'White arrow with a round drag handle' },
-  { symbol: 'A', sceneRef: 'area', description: 'Shaded patch on the selected face' },
+  { symbol: overbar(vec('t')), sceneRef: 'traction', description: 'Grid of short arrows spread over the patch' },
+  { symbol: vec('F'), sceneRef: 'force', description: 'White arrow with a round drag handle' },
+  { symbol: mi('A'), sceneRef: 'area', description: 'Shaded patch on the selected face' },
 ];
+
+const T_BAR = bound('traction', overbar(vec('t')));
 
 const TRACTION_EQUATION = {
   id: 'average-traction',
-  html: '<var data-scene-ref="traction">t̄</var> = <var data-scene-ref="force">F</var> / <var data-scene-ref="area">A</var> &nbsp;→&nbsp; |<var data-scene-ref="traction">t̄</var>| = <output data-live="tractionConversion"></output> = <output data-live="traction"></output>',
+  html: math(T_BAR, mo('='), frac(bound('force', vec('F')), bound('area', mi('A'))))
+    + math(abs(T_BAR), mo('='), live('tractionConversion'), mo('='), live('traction')),
   symbols: TRACTION_SYMBOLS,
 };
 

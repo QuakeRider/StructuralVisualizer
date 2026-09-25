@@ -4,13 +4,22 @@ This document states what each current visualization calculates exactly and what
 
 ## What the prototype represents
 
-### Vectors and force on a surface (lessons M1, S2, S3)
+### Vectors (lesson M1)
 
-The force laboratory draws one vector acting at the center of a selected face of a schematic cube. In M1 the vector is unitless; in S2 and S3 it is a force in newtons (displayed in kN). Its magnitude is computed exactly:
+The vector laboratory draws vectors from the origin in an abstract right-handed x, y, z frame, with z drawn up. Everything it calculates is exact:
 
 ```text
-|v| = √(vx² + vy² + vz²)
+|v| = √(vx² + vy² + vz²)        (via d² = vx² + vy², then |v|² = d² + vz²)
+v̂ = v / |v|
+a + b = (ax + bx, ay + by, az + bz)
+c v = (c vx, c vy, c vz),  |c v| = |c| |v|
 ```
+
+Dragged vectors snap to half-unit components within ±6; typed components are not snapped. The unit sphere is drawn at true radius 1. The rock block, fault plane, and fold surface in the last step are illustrative sketches placed around exact vectors, and the lesson says so. The frame is not geological: north, east, and down arrive in lesson O1.
+
+### Force on a surface (lessons S2, S3)
+
+The force laboratory draws one force acting at the center of a selected face of a schematic cube. It is a force in newtons (displayed in kN), and its magnitude is computed exactly as above.
 
 The laboratory has no moments, supports, reactions, or internal resultants; engineering statics is outside the curriculum (see [curriculum/parked-and-expansions.md](curriculum/parked-and-expansions.md)).
 

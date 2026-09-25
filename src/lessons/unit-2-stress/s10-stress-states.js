@@ -2,9 +2,11 @@
 // docs/curriculum/unit-2-stress.md (S10) and adds mean/deviatoric
 // decomposition, Mohr views of each state, and lithostatic stress.
 
+import { math, mo, vec } from '../mathml.js';
+
 const TENSOR_EQUATION = {
   id: 'state-tensor',
-  html: 'σ = <output class="equation-matrix" data-live-html="tensor"></output><small>MPa · compression positive, tension negative</small>',
+  html: `${math(vec('σ'), mo('='))}<output class="equation-matrix" data-live-html="tensor"></output><small>MPa · compression positive, tension negative</small>`,
   symbols: [],
 };
 

@@ -2,6 +2,40 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.7.0 — 2026-09-24
+
+### Added
+
+- Lesson M1, Vectors and components, fully built (nine steps). It starts in 2D and jumps to 3D, then covers magnitude from components with one right triangle in 2D and two stacked ones in 3D, negative components, unit vectors, vector addition done tip to tail and by components, scaling, and three geological examples of vectors.
+- A new vector laboratory scene (`VectorScene.js`). It shows x, y, z axes with z up, a draggable vector with a component box, labeled component arrows, and the stacked right triangles of the 3D magnitude. It also draws unit and scaled vectors, tip-to-tail addition with component stacks on each axis, and sketched geological examples. A plain drag moves the tip across the floor, and Shift-drag moves it up or down. The camera animates between the 2D and 3D views.
+- Arrows and their equation symbols use line patterns (solid, dashed, dotted) as well as color. Scene labels keep a constant size on screen.
+- Numeric-answer prompts that give targeted feedback on common mistakes, such as adding the components instead of using Pythagoras.
+- Construction goals checked live against the scene, for example "point the vector toward −x, +y, −z".
+- Live values can stay hidden until the prediction is answered.
+- Live substitution of each component in equations, for example `√(3² + (−4)²)`, with each number highlighting its component in the scene.
+- A step navigator in the header above the scene, in Guided and Present. Numbered step buttons open any step directly, and hovering or focusing one previews its name. In Present mode, 1–9 open a step and Home / End go to the first / last step.
+- A lesson badge in the top left of the scene header. It shows the unit letter stacked over lesson.step (for example M over 1.1), boxed in its unit's color.
+
+- Formal math typesetting. Equations are native MathML set in a math font (STIX Two Math or Cambria Math), with no library.
+  - Vectors are bold (𝐯), and scalars and components are italic (v_x).
+  - Unit vectors carry hats.
+  - Magnitudes, square roots, and fractions are typeset properly, and a sum can be written as a column vector.
+  - Units are upright.
+  - Symbols in the lesson text, the symbol key, the scene legend, and the in-scene labels use the same notation.
+  - Built with `src/lessons/mathml.js`, which has tests.
+
+### Changed (layout)
+
+- The lesson picker moved from the lesson panel to the scene header, next to the step navigator.
+- "Lesson · Step n of N" now sits above the step title in the scene header. The lesson panel no longer has its own header (unit line, lesson line, and progress bar).
+- The "Interactive laboratory" label above the scene title and the step badge in the lesson card were removed.
+- A `format.js` number formatter (true minus signs, bracketed negative squares) and new vector helpers, both with tests.
+
+### Changed
+
+- M1 no longer uses the force laboratory; the force laboratory is kept for the stress lessons.
+- Lesson steps that do not show the stress scene no longer need stress-preset fields.
+
 ## 0.6.0 — 2026-09-24
 
 ### Added
