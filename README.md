@@ -6,12 +6,14 @@ The curriculum runs from vectors and matrices through orientation, stress, britt
 
 ## Current release
 
-**Status:** curriculum-structured prototype (`0.6.0`)
+**Status:** curriculum-structured prototype (`0.7.0`)
 
-Five lessons exist as early *seed* versions (M1, S2, S3, S7, S10); the other 43 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
+Lesson M1 (vectors and components) is fully built. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 43 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
 
 Implemented:
 
+- A vector laboratory for the math unit: 2D-to-3D camera jump, component box, stacked right triangles for the 3D magnitude, unit vectors, scaling, and tip-to-tail addition with component stacks.
+- Numeric-answer predictions with feedback on common mistakes, and construction goals checked live.
 - A lesson registry covering the full 48-lesson curriculum, with a unit-grouped lesson picker and lesson-to-lesson navigation.
 - An equation–model binding panel: hovering or focusing a symbol highlights its object in the 3D scene (and hovering the object highlights the symbol), with live values and a key describing each symbol's scene object.
 - Present mode that projects the current lesson (large type, arrow/PageUp/PageDown step keys) when entered from Guided, or the stress laboratory when entered from Explore.
@@ -105,10 +107,12 @@ src/
 │   ├── stressStates.js       Preset catalog and tensor helpers
 │   ├── forceStress.js        Force/area conversion and stress notation
 │   ├── vector.js             Vector helpers (add, dot, cross, normalize, …)
+│   ├── format.js             Number formatting for live equations
 │   ├── deformation.js        Qualitative deformation mapping
 │   └── *.test.js             Domain tests
 ├── visualization/
-│   ├── ForceLabScene.js      Vector/force-on-a-surface laboratory with symbol highlighting
+│   ├── VectorScene.js        Vector laboratory for the math unit (lesson M1)
+│   ├── ForceLabScene.js      Force-on-a-surface laboratory with symbol highlighting
 │   ├── StressScene.js        Stress tensors, vectors, deformation, and camera
 │   └── sceneRefs.js          Scene objects that equation symbols may bind to
 ├── lessons/
@@ -129,7 +133,7 @@ docs/
 
 ## GitHub distribution
 
-The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.6.0` is pushed, the same file is attached to the matching GitHub Release.
+The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.7.0` is pushed, the same file is attached to the matching GitHub Release.
 
 Students should download `Structural-Visualizer.html`, not the development `index.html` at the repository root.
 

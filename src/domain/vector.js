@@ -35,3 +35,27 @@ export function normalize(vector) {
   }
   return scale(vector, 1 / length);
 }
+
+export function negate(vector) {
+  return scale(vector, -1);
+}
+
+/** Length of the vector's shadow on the x–y plane: the first triangle of the 3D magnitude. */
+export function xyMagnitude(vector) {
+  return Math.hypot(vector.x, vector.y);
+}
+
+/** Round each component to the nearest multiple of `step` (avoids −0). */
+export function snapVector(vector, step) {
+  const snap = (value) => Math.round(value / step) * step + 0;
+  return { x: snap(vector.x), y: snap(vector.y), z: snap(vector.z) };
+}
+
+export function clampVector(vector, limit) {
+  const clamp = (value) => Math.min(limit, Math.max(-limit, value));
+  return { x: clamp(vector.x), y: clamp(vector.y), z: clamp(vector.z) };
+}
+
+export function isUnitVector(vector, tolerance = 1e-6) {
+  return Math.abs(magnitude(vector) - 1) <= tolerance;
+}

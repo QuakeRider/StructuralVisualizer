@@ -1,46 +1,330 @@
-// Seed version (Build 00). The full lesson is specified in
-// docs/curriculum/unit-0-math.md (M1) and adds the component box, the
-// 2D-first sequence, vector addition, and scaling.
+// M1 — Vectors and components. Spec: docs/curriculum/unit-0-math.md (M1).
+// Frame: abstract right-handed x, y, z with z drawn up. The geological frame
+// (north, east, down) arrives in O1.
 
-const VECTOR_SYMBOLS = [
-  { symbol: 'v', sceneRef: 'force', description: 'White arrow with a round drag handle' },
-  { symbol: 'vₓ', sceneRef: 'axis-x', description: 'Direction of the X axis arrow' },
-  { symbol: 'vᵧ', sceneRef: 'axis-y', description: 'Direction of the Y axis arrow' },
-  { symbol: 'v_z', sceneRef: 'axis-z', description: 'Direction of the Z axis arrow' },
-];
+const SYMBOL = {
+  v: { symbol: 'v', sceneRef: 'vector', description: 'White solid arrow from the origin, with a round handle at its tip' },
+  vx: { symbol: 'v<sub>x</sub>', sceneRef: 'comp-x', description: 'Blue arrow along x: the first leg of the component box' },
+  vy: { symbol: 'v<sub>y</sub>', sceneRef: 'comp-y', description: 'Orange arrow parallel to y: the second leg of the component box' },
+  vz: { symbol: 'v<sub>z</sub>', sceneRef: 'comp-z', description: 'Pink arrow parallel to z: the vertical leg of the component box' },
+  i: { symbol: 'î', sceneRef: 'axis-x', description: 'One unit step along the blue x axis' },
+  j: { symbol: 'ĵ', sceneRef: 'axis-y', description: 'One unit step along the orange y axis' },
+  k: { symbol: 'k̂', sceneRef: 'axis-z', description: 'One unit step along the pink z axis' },
+  d: { symbol: 'd', sceneRef: 'xy-diagonal', description: 'Gray dashed line on the floor, from the origin to the point under the tip' },
+  unit: { symbol: 'v̂', sceneRef: 'unit-vector', description: 'Green dotted arrow ending on the ring (sphere) of radius 1' },
+  scaled: { symbol: 'c v', sceneRef: 'scaled-vector', description: 'Green dotted arrow along the same line as v' },
+  a: { symbol: 'a', sceneRef: 'vector-a', description: 'White solid arrow from the origin' },
+  b: { symbol: 'b', sceneRef: 'vector-b', description: 'Yellow dashed arrow that starts at the tip of a' },
+  sum: { symbol: 'a + b', sceneRef: 'vector-sum', description: 'Green dotted arrow from the origin to the tip of b' },
+  stackX: { symbol: 'a<sub>x</sub> + b<sub>x</sub>', sceneRef: 'stack-x', description: 'Bars on the x axis: a’s part (solid), then b’s part (dashed)' },
+  stackY: { symbol: 'a<sub>y</sub> + b<sub>y</sub>', sceneRef: 'stack-y', description: 'Bars on the y axis: a’s part (solid), then b’s part (dashed)' },
+  stackZ: { symbol: 'a<sub>z</sub> + b<sub>z</sub>', sceneRef: 'stack-z', description: 'Bars on the z axis: a’s part (solid), then b’s part (dashed)' },
+};
+
+const v = '<var data-scene-ref="vector">v</var>';
+const vx = '<var data-scene-ref="comp-x">v<sub>x</sub></var>';
+const vy = '<var data-scene-ref="comp-y">v<sub>y</sub></var>';
+const vz = '<var data-scene-ref="comp-z">v<sub>z</sub></var>';
+const live = (key, ref) => `<output data-live="${key}"${ref ? ` data-scene-ref="${ref}"` : ''}></output>`;
+
+const MAGNITUDE_3D = {
+  id: 'magnitude-3d',
+  html: `|${v}| = √(${vx}² + ${vy}² + ${vz}²)<br>= √(${live('vx2', 'comp-x')} + ${live('vy2', 'comp-y')} + ${live('vz2', 'comp-z')}) = ${live('magnitude', 'vector')}`,
+  symbols: [SYMBOL.v, SYMBOL.vx, SYMBOL.vy, SYMBOL.vz],
+};
+
+const COMPONENTS_3D = {
+  id: 'components-3d',
+  html: `${v} = (${vx}, ${vy}, ${vz}) = ${live('v', 'vector')}`,
+  symbols: [SYMBOL.v, SYMBOL.vx, SYMBOL.vy, SYMBOL.vz],
+};
+
+/** Vectors used by the geology-context buttons in the last step. */
+const CONTEXTS = Object.freeze([
+  { id: 'rock-face', label: 'Force on a rock face', usedIn: 'S1', vector: { x: 0.5, y: 1, z: -3 } },
+  { id: 'fault', label: 'Fault slip', usedIn: 'B8', vector: { x: 2, y: -2, z: -2.5 } },
+  { id: 'fold-hinge', label: 'Fold hinge', usedIn: 'O1', vector: { x: 4, y: 2.5, z: -1.5 } },
+]);
+
+const SINGLE = { layout: 'single', showComponents: true, draggable: ['v'] };
 
 export default {
   id: 'M1',
-  status: 'seed',
+  status: 'built',
   steps: [
     {
-      id: 'build-a-vector',
-      label: 'Build a vector',
-      title: 'Build a vector in three dimensions',
-      activeLabel: 'Vector laboratory',
-      body: 'A vector has a magnitude and a direction. Drag the white handle or type the x, y, and z components; the arrow and the numbers always describe the same vector.',
-      task: 'Set v = (3, −4, 0) and find its magnitude.',
-      visualKind: 'force-lab',
-      quantity: 'vector',
-      controls: ['magnitude', 'components'],
-      labOptions: { allowForceDrag: true },
-      initialLabState: { forceVector: { x: 3_000, y: -4_000, z: 0 }, surfaceNormal: { x: 0, y: 1, z: 0 } },
-      presetId: 'uniaxial-compression', magnitude: 0, vectors: false, outline: false, grid: false,
-      spotlight: 'force',
+      id: 'drag-in-2d',
+      label: 'A vector in 2D',
+      title: 'A vector is an arrow you can describe with numbers',
+      activeLabel: 'Vectors in the x–y plane',
+      body: 'The white arrow starts at the origin and ends at its tip. Its components say how far the tip is along x and along y: walk along the blue arrow, then the orange one, and you arrive at the same tip. The components are not extra arrows pushing on anything. They are two numbers that describe the one arrow v in this frame.',
+      task: 'Drag the round handle at the tip. Watch v<sub>x</sub> and v<sub>y</sub> change in the scene and in the equation at the same time.',
+      visualKind: 'vector-lab',
+      dimension: 2,
+      controls: ['components'],
+      labOptions: SINGLE,
+      initialLabState: { v: { x: 3, y: 2, z: 0 } },
       equations: [
         {
-          id: 'vector-magnitude',
-          html: '|<var data-scene-ref="force">v</var>| = √(<var data-scene-ref="axis-x">v<sub>x</sub></var>² + <var data-scene-ref="axis-y">v<sub>y</sub></var>² + <var data-scene-ref="axis-z">v<sub>z</sub></var>²) = <output data-live="magnitude"></output>',
-          symbols: VECTOR_SYMBOLS,
+          id: 'components-2d',
+          html: `${v} = (${vx}, ${vy}) = ${live('v', 'vector')}`,
+          symbols: [SYMBOL.v, SYMBOL.vx, SYMBOL.vy],
+        },
+        {
+          id: 'basis-2d',
+          html: `${v} = ${vx} <var data-scene-ref="axis-x">î</var> + ${vy} <var data-scene-ref="axis-y">ĵ</var> = ${live('basisForm', 'vector')}<small>î and ĵ are one-unit steps along x and y. The components say how many steps of each.</small>`,
+          symbols: [SYMBOL.i, SYMBOL.j],
         },
       ],
-      prompt: 'What is the magnitude of v = (3, −4, 0)?',
+      prompt: 'You drag the tip straight up the screen, parallel to the y axis. What happens to v<sub>x</sub>?',
       choices: [
-        { id: 'three', label: '3', correct: false, feedback: 'That is only the x-component. The magnitude uses all three components.' },
-        { id: 'five', label: '5', correct: true, feedback: 'Correct. √(3² + (−4)² + 0²) = √25 = 5.' },
-        { id: 'seven', label: '7', correct: false, feedback: 'Magnitude is not the sum of the component sizes; the components are perpendicular, so use Pythagoras.' },
+        { id: 'same', label: 'v<sub>x</sub> stays the same', correct: true, feedback: 'Right. Moving parallel to y changes only v<sub>y</sub>. Each component follows motion along its own axis.' },
+        { id: 'grows', label: 'v<sub>x</sub> grows', correct: false, feedback: 'Try it: while you drag straight up, the blue arrow keeps its length. Only motion along x changes v<sub>x</sub>.' },
+        { id: 'zero', label: 'v<sub>x</sub> becomes zero', correct: false, feedback: 'v<sub>x</sub> is zero only when the tip sits on the y axis. Moving parallel to y keeps the tip at the same x.' },
       ],
-      responseOverride: 'Components and magnitude-with-direction are two descriptions of the same vector.',
+    },
+    {
+      id: 'magnitude-2d',
+      label: 'Length in 2D',
+      title: 'The length of a vector comes from a right triangle',
+      activeLabel: 'Magnitude from components',
+      body: 'The two components meet at a right angle (the small square marker), so the vector is the long side of a right triangle. Pythagoras gives its length, called the magnitude |v|. The magnitude is always positive, whatever the signs of the components.',
+      task: 'Work out |v| for v = (3, −4) before the scene shows it.',
+      visualKind: 'vector-lab',
+      dimension: 2,
+      controls: ['components'],
+      labOptions: { ...SINGLE, showTriangles: true },
+      initialLabState: { v: { x: 3, y: -4, z: 0 } },
+      revealAfterAnswer: ['magnitude'],
+      equations: [
+        {
+          id: 'magnitude-2d',
+          html: `|${v}| = √(${vx}² + ${vy}²)<br>= √(${live('vx2', 'comp-x')} + ${live('vy2', 'comp-y')}) = ${live('magnitude', 'vector')}`,
+          symbols: [SYMBOL.v, SYMBOL.vx, SYMBOL.vy],
+        },
+      ],
+      prompt: 'What is |v| for v = (3, −4)?',
+      answer: {
+        value: 5,
+        tolerance: 0.01,
+        correctFeedback: 'Correct: √(3² + (−4)²) = √(9 + 16) = √25 = 5. Squaring removes the sign, so direction never makes a vector shorter.',
+        wrong: [
+          { value: 7, feedback: 'That adds the sizes 3 + 4. The components are at right angles, so they combine by Pythagoras, not by adding.' },
+          { value: -1, feedback: '3 + (−4) adds the signed components. A length is never negative: square each component first.' },
+          { value: 1, feedback: 'Adding or subtracting components does not give the length. Square each one, add, then take the square root.' },
+          { value: 25, feedback: '25 is |v|², the sum of the squares. Take the square root.' },
+        ],
+        fallbackFeedback: 'Square each component, add the squares, then take the square root: √(3² + (−4)²).',
+      },
+    },
+    {
+      id: 'jump-to-3d',
+      label: 'Jump to 3D',
+      title: 'In 3D the length takes two right triangles',
+      activeLabel: 'Adding the z axis',
+      body: 'Add a third axis, z, pointing up out of the x–y plane. The tip now also has a height, v<sub>z</sub>. Its length takes two right triangles. The first lies on the floor, from the origin to the point under the tip; its long side is d. The second stands on d and climbs straight up by v<sub>z</sub>. Put them together and the 2D formula gains one more term.',
+      task: 'Press 3D to lift the vector off the page, and orbit to see both triangles. Then find |v| for v = (2, 3, 6).',
+      visualKind: 'vector-lab',
+      dimension: 2,
+      controls: ['dimension', 'components'],
+      labOptions: { ...SINGLE, showTriangles: true },
+      initialLabState: { v: { x: 2, y: 3, z: 6 } },
+      revealAfterAnswer: ['magnitude'],
+      equations: [
+        {
+          id: 'floor-diagonal',
+          html: `<var data-scene-ref="xy-diagonal">d</var>² = ${vx}² + ${vy}² = ${live('dSquared', 'xy-diagonal')}`,
+          symbols: [SYMBOL.d, SYMBOL.vx, SYMBOL.vy],
+        },
+        {
+          id: 'stacked-triangles',
+          html: `|${v}|² = <var data-scene-ref="xy-diagonal">d</var>² + ${vz}² = ${vx}² + ${vy}² + ${vz}²`,
+          symbols: [SYMBOL.v, SYMBOL.d, SYMBOL.vz],
+        },
+        MAGNITUDE_3D,
+      ],
+      prompt: 'What is |v| for v = (2, 3, 6)?',
+      answer: {
+        value: 7,
+        tolerance: 0.01,
+        correctFeedback: 'Correct: d² = 4 + 9 = 13, then |v|² = 13 + 36 = 49, so |v| = 7. The same rule works in 2D and 3D; 3D just has one more square.',
+        wrong: [
+          { value: 11, feedback: 'That adds the components 2 + 3 + 6. Use Pythagoras twice: square, add, square root.' },
+          { value: Math.sqrt(13), tolerance: 0.02, feedback: 'That is d, the floor diagonal: you have the first triangle. Now climb v<sub>z</sub> = 6 with the second one.' },
+          { value: 49, feedback: '49 is |v|². Take the square root.' },
+        ],
+        fallbackFeedback: 'First the floor: d² = 2² + 3². Then climb: |v|² = d² + 6². Take the square root at the end.',
+      },
+    },
+    {
+      id: 'negative-components',
+      label: 'Negative components',
+      title: 'A sign gives a direction, not a size',
+      activeLabel: 'Reading signs from the picture',
+      body: 'A negative component means the tip lies on the negative side of that axis, where the axis is drawn dashed. For z, negative means below the floor. In the magnitude every component is squared, so a sign never makes a vector shorter.',
+      task: 'Point the vector toward −x, +y, and −z. A plain drag moves the tip across the floor. Hold Shift while dragging to move it up or down, or type the components.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['components'],
+      labOptions: SINGLE,
+      initialLabState: { v: { x: 3, y: 2, z: 4 } },
+      goal: {
+        text: 'v points toward −x, +y, and −z (every component nonzero).',
+        check: ({ v: vector }) => vector.x < 0 && vector.y > 0 && vector.z < 0,
+      },
+      equations: [COMPONENTS_3D, MAGNITUDE_3D],
+      prompt: 'Which vector is longer: p = (−4, 0, 0) or q = (3, 0, 0)?',
+      choices: [
+        { id: 'p', label: 'p is longer', correct: true, feedback: 'Right. |p| = 4 and |q| = 3. The minus sign says only that p points along −x.' },
+        { id: 'q', label: 'q is longer', correct: false, feedback: 'A negative component is not a small one. |p| = √((−4)²) = 4, which is more than 3.' },
+        { id: 'same', label: 'They are the same length', correct: false, feedback: 'Their lengths are 4 and 3. Signs change the direction, not the length.' },
+      ],
+    },
+    {
+      id: 'unit-vector',
+      label: 'Unit vectors',
+      title: 'A unit vector keeps only the direction',
+      activeLabel: 'Unit vector v̂ = v / |v|',
+      body: 'Divide a vector by its own length and you get a vector of length 1 that points the same way: the unit vector v̂ (read "v hat"). Its tip always lands on the sphere of radius 1 around the origin. Structural geology uses unit vectors for pure directions such as plane normals, lineations, and fold hinges, where only the direction matters.',
+      task: 'Drag v anywhere. v̂ follows its direction but never leaves the unit sphere.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['components'],
+      labOptions: { ...SINGLE, showUnit: true, view: 'close' },
+      initialLabState: { v: { x: 2, y: -1, z: 2 } },
+      equations: [
+        {
+          id: 'unit-definition',
+          html: `<var data-scene-ref="unit-vector">v̂</var> = ${v} / |${v}| = (${vx}, ${vy}, ${vz}) / ${live('magnitude', 'vector')}<br>= ${live('unit', 'unit-vector')}`,
+          symbols: [SYMBOL.unit, SYMBOL.v, SYMBOL.vx, SYMBOL.vy, SYMBOL.vz],
+        },
+        {
+          id: 'unit-length',
+          html: `|<var data-scene-ref="unit-vector">v̂</var>| = ${live('unitMagnitude', 'unit-vector')}`,
+          symbols: [SYMBOL.unit],
+        },
+      ],
+      prompt: 'Which of these could be a unit vector?',
+      choices: [
+        { id: 'ones', label: '(1, 1, 0)', correct: false, feedback: 'Its length is √(1 + 1) = √2 ≈ 1.41, not 1.' },
+        { id: 'six-eight', label: '(0.6, 0, −0.8)', correct: true, feedback: 'Right. 0.6² + 0² + (−0.8)² = 0.36 + 0.64 = 1. Each component of a unit vector lies between −1 and 1, and their squares add to exactly 1.' },
+        { id: 'halves', label: '(0.5, 0.5, 0.5)', correct: false, feedback: 'Its length is √0.75 ≈ 0.87. Small components are not enough: the squares must add to exactly 1.' },
+      ],
+    },
+    {
+      id: 'add-vectors',
+      label: 'Adding vectors',
+      title: 'Add vectors tip to tail, or component by component',
+      activeLabel: 'Vector addition',
+      body: 'To add b to a, start b where a ends. The sum a + b runs from the origin to the final tip. Now look along the axes: on each one, a’s part (solid bar) and b’s part (dashed bar) stack end to end, and the green dot marks their total. The two constructions always land on the same tip, because adding arrows tip to tail is the same as adding their matching components.',
+      task: 'Predict a + b, then drag either round handle and check that each stack ends at a corner of the sum’s dashed box.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['components-a', 'components-b'],
+      labOptions: { layout: 'sum', showComponents: false, showStacks: true, draggable: ['v', 'b'] },
+      initialLabState: { v: { x: 4, y: 1, z: 1 }, b: { x: -1, y: 3, z: 2 } },
+      revealAfterAnswer: ['sum', 'stackX', 'stackY', 'stackZ'],
+      equations: [
+        {
+          id: 'sum-components',
+          html: '<var data-scene-ref="vector-sum">a + b</var> = (<var data-scene-ref="stack-x">a<sub>x</sub> + b<sub>x</sub></var>, <var data-scene-ref="stack-y">a<sub>y</sub> + b<sub>y</sub></var>, <var data-scene-ref="stack-z">a<sub>z</sub> + b<sub>z</sub></var>)',
+          symbols: [SYMBOL.sum, SYMBOL.stackX, SYMBOL.stackY, SYMBOL.stackZ],
+        },
+        {
+          id: 'sum-live',
+          html: `x: ${live('stackX', 'stack-x')}<br>y: ${live('stackY', 'stack-y')}<br>z: ${live('stackZ', 'stack-z')}<br><var data-scene-ref="vector-a">a</var> + <var data-scene-ref="vector-b">b</var> = ${live('sum', 'vector-sum')}`,
+          symbols: [SYMBOL.a, SYMBOL.b],
+        },
+      ],
+      prompt: 'a = (4, 1, 1) and b = (−1, 3, 2). What is a + b?',
+      choices: [
+        { id: 'right', label: '(3, 4, 3)', correct: true, feedback: 'Right: (4 + (−1), 1 + 3, 1 + 2) = (3, 4, 3). Check it against the stacks on each axis.' },
+        { id: 'sign', label: '(5, 4, 3)', correct: false, feedback: 'Watch the sign of b<sub>x</sub>: 4 + (−1) = 3. On the x axis, b’s dashed bar runs back toward zero.' },
+        { id: 'multiply', label: '(−4, 3, 2)', correct: false, feedback: 'That multiplies matching components. Addition adds them: (4 + (−1), 1 + 3, 1 + 2).' },
+      ],
+    },
+    {
+      id: 'aim-the-sum',
+      label: 'Aim the sum',
+      title: 'Use components to steer a sum',
+      activeLabel: 'Steering a + b',
+      body: 'Component thinking turns a geometric puzzle into arithmetic. For a + b to lie along the x axis, its y and z components must be zero. So b must cancel a’s y and z parts exactly, and anything left in x survives.',
+      task: 'Drag b’s yellow handle (or type b’s components) until a + b lies along the x axis.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['components-a', 'components-b'],
+      labOptions: { layout: 'sum', showComponents: false, showStacks: true, draggable: ['b'] },
+      initialLabState: { v: { x: 3, y: 2, z: 2 }, b: { x: 1, y: 1, z: 1 } },
+      goal: {
+        text: 'a + b lies along the x axis (y and z components zero, x not zero).',
+        check: ({ sum }) => sum.y === 0 && sum.z === 0 && sum.x !== 0,
+      },
+      equations: [
+        {
+          id: 'sum-live',
+          html: `x: ${live('stackX', 'stack-x')}<br>y: ${live('stackY', 'stack-y')}<br>z: ${live('stackZ', 'stack-z')}<br><var data-scene-ref="vector-a">a</var> + <var data-scene-ref="vector-b">b</var> = ${live('sum', 'vector-sum')}`,
+          symbols: [SYMBOL.a, SYMBOL.b, SYMBOL.stackX, SYMBOL.stackY, SYMBOL.stackZ],
+        },
+      ],
+      prompt: 'With a = (3, 2, 2), which b makes a + b lie along the x axis?',
+      choices: [
+        { id: 'cancel', label: 'b = (1, −2, −2)', correct: true, feedback: 'Right: a + b = (4, 0, 0). Now build it in the scene.' },
+        { id: 'copy', label: 'b = (1, 2, 2)', correct: false, feedback: 'That doubles a’s y and z parts instead of canceling them: a + b = (4, 4, 4).' },
+        { id: 'cancel-x', label: 'b = (−3, 0, 0)', correct: false, feedback: 'That cancels the x part and leaves (0, 2, 2), which is off the x axis.' },
+      ],
+    },
+    {
+      id: 'scale-vector',
+      label: 'Scaling',
+      title: 'Scaling stretches, shrinks, or reverses a vector',
+      activeLabel: 'Scalar multiple c v',
+      body: 'Multiplying a vector by a number c multiplies every component by c. The arrow stays on the same line through the origin. It grows when c is greater than 1, shrinks when c is between 0 and 1, and flips to point the opposite way when c is negative. Its length is |c| times the original length.',
+      task: 'Slide c through 1, 0.5, 0, and −1. Watch the green arrow and its components.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['scalar', 'components'],
+      labOptions: { ...SINGLE, showScaled: true },
+      initialLabState: { v: { x: 2, y: 1, z: 2 }, scalar: 2 },
+      equations: [
+        {
+          id: 'scaled-components',
+          html: `<var data-scene-ref="scaled-vector">c v</var> = (c ${vx}, c ${vy}, c ${vz}) = ${live('scaled', 'scaled-vector')}`,
+          symbols: [SYMBOL.scaled, SYMBOL.vx, SYMBOL.vy, SYMBOL.vz],
+        },
+        {
+          id: 'scaled-length',
+          html: `|<var data-scene-ref="scaled-vector">c v</var>| = |c| |${v}| = ${live('absC')} × ${live('magnitude', 'vector')} = ${live('scaledMagnitude', 'scaled-vector')}`,
+          symbols: [SYMBOL.scaled, SYMBOL.v],
+        },
+      ],
+      prompt: 'What does multiplying by c = −1 do to a vector?',
+      choices: [
+        { id: 'reverse', label: 'Reverses its direction and keeps its length', correct: true, feedback: 'Right. −v has the same length and points the opposite way. Later this is how a push becomes a pull, or how a fault’s slip sense is reversed.' },
+        { id: 'shorter', label: 'Makes it shorter', correct: false, feedback: 'Slide c to −1: the length stays |−1| × |v| = |v|. Only the direction flips.' },
+        { id: 'zero', label: 'Makes it zero', correct: false, feedback: 'Only c = 0 gives the zero vector. c = −1 flips the vector without shrinking it.' },
+      ],
+    },
+    {
+      id: 'where-vectors-show-up',
+      label: 'Vectors in geology',
+      title: 'Where this shows up: three vectors from geology',
+      activeLabel: 'Vectors in structural geology',
+      body: 'Every directional quantity in structural geology is a vector: the force pushing on a rock face, the slip of one fault block past another, the line along a fold’s hinge. Each is an arrow with components, exactly like the vectors you just built. Here z still points up; lesson O1 moves to the geological frame of north, east, and down.',
+      task: 'Pick each example. The components and the magnitude work the same way every time.',
+      visualKind: 'vector-lab',
+      dimension: 3,
+      controls: ['context', 'components'],
+      labOptions: { ...SINGLE, context: 'rock-face' },
+      initialLabState: { v: { x: 0.5, y: 1, z: -3 }, context: 'rock-face' },
+      contexts: CONTEXTS,
+      equations: [
+        {
+          ...COMPONENTS_3D,
+          html: `${COMPONENTS_3D.html}<small>The rock, fault, and fold are illustrative sketches. The vector and its components are exact.</small>`,
+        },
+        MAGNITUDE_3D,
+      ],
     },
   ],
 };
+

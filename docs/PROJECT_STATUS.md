@@ -6,9 +6,9 @@ Last updated: 2026-09-24
 
 Structural Visualizer is an interactive 3D learning environment for an intro university Structural Geology course, built to make the mathematics of the subject clear and visible. The full curriculum (48 lessons in 7 units) is specified in [curriculum/README.md](curriculum/README.md).
 
-The current release (`0.6.0`) completes **Build 00**. It removes the engineering-statics sequence added in 0.5.0, introduces the lesson registry and the equation–model binding panel, and moves the reusable parts of the old module into five seed lessons: M1, S2, S3, S7, and S10. The remaining 43 lessons are planned, and each has a build spec.
+The current release (`0.7.0`) contains the first fully built lesson, **M1 Vectors and components**, and the vector laboratory it runs in. Build 00 (0.6.0) removed the engineering-statics sequence and introduced the lesson registry and the equation–model binding panel. S2, S3, S7, and S10 are still early seed versions. The remaining 43 lessons are planned, and each has a build spec.
 
-**Next:** build lesson M1 in full, following the build-session protocol in the curriculum README.
+**Next:** build lesson M2 (trigonometry of projection), following the build-session protocol in the curriculum README.
 
 ## Completed
 
@@ -21,10 +21,15 @@ The current release (`0.6.0`) completes **Build 00**. It removes the engineering
 - [x] Lesson-to-lesson navigation ("Next lesson") and step numbers of the form lesson.step.
 - [x] Equation–model binding panel: symbol ↔ scene-object highlighting in both directions, live values, and a symbol key that does not rely on color.
 - [x] Present mode for lessons (entered from Guided) with larger type and arrow/PageUp/PageDown step keys; Present from Explore keeps the stress-laboratory toolbar.
+- [x] Numeric-answer prompts with targeted feedback, live construction goals, and values hidden until a prediction is answered.
+- [x] Vector laboratory (`VectorScene`): 2D ↔ 3D camera jump, component box, stacked magnitude triangles, unit sphere, scaling, tip-to-tail addition with component stacks, and illustrative geology contexts.
+
+### Built lessons
+
+- [x] M1 (built, 0.7.0): vectors and components in nine steps, from 2D to 3D: magnitude, negative components, unit vectors, addition, scaling, and geological examples.
 
 ### Seed lessons
 
-- [x] M1 (seed): build a 3D vector, and its magnitude from components.
 - [x] S2 (seed): resultant vs distributed load, and average traction `t̄ = F/A` with the unit conversion shown.
 - [x] S3 (seed): normal and shear traction on a selectable face.
 - [x] S7 (seed): why stress needs a tensor, and combined normal + shear states, with the tensor shown in the equation panel.
@@ -69,12 +74,14 @@ Manual verification for each release:
 7. Open `release/Structural-Visualizer.html` from disk without a development server.
 8. Check desktop and phone-width layouts for overflow.
 
-The 0.6.0 build was verified this way in a headless Chromium with software WebGL. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
+The 0.7.0 build was verified this way in a headless Chromium with software WebGL. That check covered every M1 step, the numeric answers (including Enter to submit), goal checks, mouse drags in 2D and 3D (including Shift-drag), highlighting in both directions, and phone-width framing. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
 
 ## Known limitations
 
-- Seed lessons are short carry-overs from 0.5; none yet meets its full spec (component box, 2D-first sequences, derivations, and so on).
-- The equation binding covers the force laboratory only; `StressScene` does not yet support symbol highlighting.
+- The seed lessons (S2, S3, S7, S10) are short carry-overs from 0.5, and none yet meets its full spec.
+- The force laboratory used by the S2 and S3 seeds still draws y up; it adopts the z-up math frame of M1 when S1–S3 are built.
+- Dragging a vector tip needs a mouse or touch; keyboard users set components with the number fields, which cover every drag.
+- The equation binding covers the vector and force laboratories; `StressScene` does not yet support symbol highlighting.
 - S3 still shows the signed traction projection `tn = t̄ · n` (outward normal); the course-wide traction sign form is decided in S4.
 - The stress-state deformation is qualitative and exaggerated until lesson R2 introduces linear elasticity.
 - Preset values are illustrative and not calibrated to a particular rock.

@@ -18,7 +18,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 
 | Unit | ID | Lesson | Frame | Status |
 |---|---|---|---|---|
-| **0 Math foundations** — [spec](unit-0-math.md) | M1 | Vectors and components | x/y/z | Seed (0.6.0) |
+| **0 Math foundations** — [spec](unit-0-math.md) | M1 | Vectors and components | x/y/z | Built (0.7.0) |
 | | M2 | Trigonometry of projection | x/y/z | Planned |
 | | M3 | Dot and cross products | x/y/z | Planned |
 | | M4 | Matrices as transformations | x/y/z | Planned |
@@ -91,7 +91,7 @@ These were set with the course instructor. Do not change them without asking.
 
 | Item | Convention |
 |---|---|
-| Math and stress construction frame | Abstract right-handed **x, y, z**. Used in Unit 0 and while building the stress tensor (S1–S6), because the principal-stress transformation is a pure-math operation. |
+| Math and stress construction frame | Abstract right-handed **x, y, z**, drawn with **z up** (2D views show the x–y plane with x right and y up). Used in Unit 0 and while building the stress tensor (S1–S6), because the principal-stress transformation is a pure-math operation. |
 | Geological frame | **NED**: x = North, y = East, z = Down (right-handed). Used from O1 onward whenever a topic is discussed in geological terms. The change of frame is **taught as an explicit step**, never done silently (O1 first, then S7 and elsewhere as needed). |
 | Renderer frame | Three.js is y-up. The renderer converts internally. Students never see renderer coordinates. |
 | Stress sign | **Compression positive**, tension negative. σ1 ≥ σ2 ≥ σ3. |

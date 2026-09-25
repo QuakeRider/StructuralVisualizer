@@ -2,6 +2,24 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.7.0 — 2026-09-24
+
+### Added
+
+- Lesson M1, Vectors and components, fully built (nine steps). It starts in 2D and jumps to 3D, then covers magnitude from components with one right triangle in 2D and two stacked ones in 3D, negative components, unit vectors, vector addition done tip to tail and by components, scaling, and three geological examples of vectors.
+- A new vector laboratory scene (`VectorScene.js`). It shows x, y, z axes with z up, a draggable vector with a component box, labeled component arrows, and the stacked right triangles of the 3D magnitude. It also draws unit and scaled vectors, tip-to-tail addition with component stacks on each axis, and sketched geological examples. A plain drag moves the tip across the floor, and Shift-drag moves it up or down. The camera animates between the 2D and 3D views.
+- Arrows and their equation symbols use line patterns (solid, dashed, dotted) as well as color. Scene labels keep a constant size on screen.
+- Numeric-answer prompts that give targeted feedback on common mistakes, such as adding the components instead of using Pythagoras.
+- Construction goals checked live against the scene, for example "point the vector toward −x, +y, −z".
+- Live values can stay hidden until the prediction is answered.
+- Live substitution of each component in equations, for example `√(3² + (−4)²)`, with each number highlighting its component in the scene.
+- A `format.js` number formatter (true minus signs, bracketed negative squares) and new vector helpers, both with tests.
+
+### Changed
+
+- M1 no longer uses the force laboratory; the force laboratory is kept for the stress lessons.
+- Lesson steps that do not show the stress scene no longer need stress-preset fields.
+
 ## 0.6.0 — 2026-09-24
 
 ### Added

@@ -34,28 +34,41 @@
 - The student drags the arrow tip, or types components. Every symbol in `|v| = …` substitutes live.
 - In the addition steps, `a`, `b`, and `a + b` each have distinct line patterns. The component-wise sums are shown as stacked component segments along each axis.
 
-**Step outline**
-1. *2D first:* a vector in the x–y plane. Drag the tip; the component arrows track it. Prompt: "What happens to vx when you drag straight up?"
-2. Magnitude in 2D as a right triangle. Numeric prompt: vector (3, −4) → |v|?
-3. *Jump to 3D:* add z. Show the magnitude as two stacked right triangles (the floor diagonal, then up). Numeric prompt: (2, 3, 6) → 7.
-4. Negative components: direction along negative axes, reading signs from the picture.
-5. Unit vectors: shrink any vector to length 1 and keep its direction. Prompt: which component values are possible for a unit vector?
-6. Vector addition tip-to-tail, then by components. The two constructions overlap exactly. Prediction: drag `b` to make `a + b` point along x only.
-7. Scaling, and negation (reversing direction).
-8. *Where this shows up:* a preview strip with force on a rock face (S1), a fault-slip direction (B8), and a plunging fold hinge (O1). All three are "just vectors."
+**Step outline** (as built in 0.7.0)
+1. *2D first:* a vector in the x–y plane. Drag the tip, and the component arrows track it. The body text says the components describe one vector, not separate forces. Prompt: "What happens to vₓ when you drag straight up?"
+2. Magnitude in 2D as a right triangle, with the right-angle marker. Numeric prompt: (3, −4) → 5. The live result stays hidden until the answer is right. Targeted feedback covers 7 (sum of sizes), −1 and 1 (signed sums), and 25 (forgot the root).
+3. *Jump to 3D:* the step opens in 2D, and the student presses **3D**. The camera tilts the page back and z rises. The two stacked right triangles (floor diagonal d, then the climb vz) are drawn with right-angle markers. Numeric prompt: (2, 3, 6) → 7, with feedback for 11, √13 (stopped at d), and 49.
+4. Negative components. Goal: point v toward −x, +y, −z, which introduces Shift-drag for height. Prompt: which is longer, (−4, 0, 0) or (3, 0, 0)?
+5. Unit vectors, in a close-up view with the unit sphere drawn. Prompt: which of (1, 1, 0), (0.6, 0, −0.8), (0.5, 0.5, 0.5) is a unit vector?
+6. Addition tip to tail and by components. Component stacks on each axis end at the corners of the sum's dashed box. Prompt: a = (4, 1, 1), b = (−1, 3, 2) → a + b (the sum stays hidden until answered).
+7. Steering a sum. Prompt: which b puts a + b on the x axis? Goal: build it by dragging b.
+8. Scaling and negation, with a c slider from −2 to 3 and the live |c v| = |c| |v|. Prompt: what does c = −1 do?
+9. *Where this shows up:* buttons load a force on a rock face (S1), a fault-slip vector (B8), and a plunging fold hinge (O1), each with an illustrative sketch. The body notes that z is still up here and that O1 switches to north, east, and down.
 
 **Geological payoff:** Every directional quantity in structural geology is a vector: force, traction, displacement, slip, lineation, pole.
 
 **Misconceptions to target**
-- Magnitude is the sum of the components. (Step 2 distractor: 7 instead of 5.)
-- A negative component means a "smaller" vector.
-- Components are separate forces rather than one vector described in a frame.
+- Magnitude is the sum of the components (step 2: targeted feedback for 7).
+- A negative component means a "smaller" vector (step 4 prompt).
+- Components are separate forces rather than one vector described in a frame (step 1 text and feedback).
 
-**Exact vs illustrative:** all exact.
+**Exact vs illustrative:** vectors, components, magnitudes, unit vectors, sums, and scaled vectors are exact. The rock block, fault plane, and fold surface in step 9 are illustrative sketches, and the lesson says so.
 
-**Domain / scenes / tests**
-- New `src/domain/vector.js`: `add`, `scale`, `magnitude`, `normalize`, `dot`, `cross` (dot and cross are used in M3; put them here now), with unit tests.
-- Extend the seed force lab (from Build 00) into a generic vector lab: no force units, component box, 2D-lock toggle.
+**Domain / scenes / tests** (as built)
+- `src/domain/vector.js`: `add`, `subtract`, `scale`, `negate`, `dot`, `cross`, `magnitude`, `xyMagnitude`, `normalize`, `snapVector`, `clampVector`, `isUnitVector`, all tested.
+- `src/domain/format.js`: the equation number format (true minus sign, bracketed negative squares).
+- `src/visualization/VectorScene.js`: a new vector laboratory, used instead of extending the force lab, because M1 needs vectors drawn from the origin in a z-up math frame rather than a force on a block face. It contains:
+  - patterned 3D arrows and constant-size labels
+  - the component box and stacked triangles
+  - the unit sphere, scaled vectors, and tip-to-tail addition with axis stacks
+  - illustrative context props
+  - the 2D ↔ 3D camera animation (instant under reduced motion) and a close-up view
+  - drag on the floor plane, and Shift-drag vertically
+- Lesson-runtime features first built here, reusable by every later lesson:
+  - numeric answers (`step.answer`), with targeted feedback for known wrong values
+  - construction goals (`step.goal.check(labState)`)
+  - `revealAfterAnswer`, which hides live values until the prediction is right
+  - live outputs bound to scene refs, which get per-component highlighting
 
 **Out of scope:** force and units (S1), and any geological angles (O1).
 
