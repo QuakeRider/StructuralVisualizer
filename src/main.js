@@ -3,6 +3,8 @@ import { COMPONENTS, STRESS_STATES, formatStress, getStressState, scalePreset } 
 import { computeDeformation, tensorToMatrix, volumeChangePercent } from './domain/deformation.js';
 import { decomposeTraction } from './domain/forceStress.js';
 import { formatNumber } from './domain/format.js';
+import { ANDERSON_REGIMES, andersonFaults } from './domain/anderson.js';
+import { coulombAngles } from './domain/failure.js';
 import { basis, frac, hat, inline, mi, mn, mo, mtext, num, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
 import { add, magnitude, scale, xyMagnitude } from './domain/vector.js';
 import {
@@ -18,7 +20,9 @@ import {
   isLessonAvailable,
   isLessonChoiceCorrect,
 } from './lessons/registry.js';
+import { AndersonScene } from './visualization/AndersonScene.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
+import { MohrPlot } from './visualization/MohrPlot.js';
 import { StressScene } from './visualization/StressScene.js';
 import { VectorScene } from './visualization/VectorScene.js';
 
@@ -29,6 +33,7 @@ const DEFAULT_FORCE = { x: 0, y: -5_000, z: 0 };
 const DEFAULT_NORMAL = { x: 0, y: 1, z: 0 };
 const DEFAULT_AREA = 100;
 const DEFAULT_VECTOR_LAB = { v: { x: 3, y: 2, z: 0 }, b: { x: 1, y: 2, z: 0 }, scalar: 2, context: null, dimension: 3 };
+const DEFAULT_ANDERSON = { regime: 'normal', mu: 0.6, slipped: false, setting: null };
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
 
@@ -98,6 +103,10 @@ app.innerHTML = `
         <div class="viewport-shell">
           <div id="force-lab-viewport" class="viewport force-lab-viewport"></div>
           <div id="vector-lab-viewport" class="viewport vector-lab-viewport"></div>
+          <div id="anderson-viewport" class="viewport anderson-viewport" data-mohr="true">
+            <div id="anderson-scene" class="anderson-scene"></div>
+            <div id="mohr-panel" class="mohr-panel"></div>
+          </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
           <div class="scene-legend" aria-label="Scene color and symbol key"></div>
@@ -197,6 +206,9 @@ const elements = {
   presentationExitButton: document.querySelector('#presentation-exit-button'),
   forceLabViewport: document.querySelector('#force-lab-viewport'),
   vectorLabViewport: document.querySelector('#vector-lab-viewport'),
+  andersonViewport: document.querySelector('#anderson-viewport'),
+  andersonScene: document.querySelector('#anderson-scene'),
+  mohrPanel: document.querySelector('#mohr-panel'),
   stressViewport: document.querySelector('#stress-viewport'),
 };
 
@@ -219,6 +231,7 @@ const state = {
   surfaceNormal: { ...DEFAULT_NORMAL },
   contactArea: DEFAULT_AREA,
   vectorLab: structuredClone(DEFAULT_VECTOR_LAB),
+  anderson: { ...DEFAULT_ANDERSON },
 };
 
 function currentLesson() {
@@ -246,8 +259,12 @@ function isVectorLabStep() {
   return isLessonView() && currentStep().visualKind === 'vector-lab';
 }
 
+function isAndersonStep() {
+  return isLessonView() && currentStep().visualKind === 'anderson';
+}
+
 function isLabStep() {
-  return isForceLabStep() || isVectorLabStep();
+  return isForceLabStep() || isVectorLabStep() || isAndersonStep();
 }
 
 function quantityFor(step) {
@@ -292,6 +309,16 @@ const vectorLabScene = new VectorScene(elements.vectorLabViewport, {
     markEquationRefs(ref);
   },
 });
+
+function andersonHover(ref) {
+  if (!isAndersonStep()) return;
+  andersonScene.highlight(ref);
+  mohrPlot.highlight(ref);
+  markEquationRefs(ref);
+}
+
+const andersonScene = new AndersonScene(elements.andersonScene, { onHover: andersonHover });
+const mohrPlot = new MohrPlot(elements.mohrPanel, { onHover: andersonHover });
 
 /** The vectors the student currently sees: z is hidden (zero) in the 2D view. */
 function vectorLabVectors() {
@@ -439,6 +466,8 @@ function markEquationRefs(ref) {
 function setSceneHighlight(ref) {
   forceLabScene.highlight(isForceLabStep() ? ref : null);
   vectorLabScene.highlight(isVectorLabStep() ? ref : null);
+  andersonScene.highlight(isAndersonStep() ? ref : null);
+  mohrPlot.highlight(isAndersonStep() ? ref : null);
   markEquationRefs(ref);
 }
 
@@ -499,8 +528,33 @@ function vectorLabLiveValues() {
   };
 }
 
+const degrees = (value, decimals = 1) => mn(`${formatNumber(value, decimals)}°`);
+const sigmaSymbol = (key) => sub(mi('σ'), mn(key.slice(-1)));
+const azimuth = (value) => String(Math.round(value) % 360).padStart(3, '0');
+
+function andersonLiveValues() {
+  const { regime, mu } = state.anderson;
+  const angles = coulombAngles(mu);
+  const result = andersonFaults(regime, mu);
+  const strikes = result.faults.map((plane) => `${azimuth(plane.strike)}°`);
+  return {
+    mu: num(mu),
+    phi: degrees(angles.phi),
+    twoTheta: degrees(angles.twoTheta),
+    beta: degrees(angles.beta),
+    acute: degrees(2 * angles.beta),
+    dip: degrees(result.dip),
+    dipNormal: degrees(90 - angles.beta),
+    dipThrust: degrees(angles.beta),
+    strikes: row(mn(strikes[0]), mtext(' and '), mn(strikes[1])),
+    verticalName: sigmaSymbol(ANDERSON_REGIMES[regime].vertical),
+    faultType: mtext(ANDERSON_REGIMES[regime].faultType),
+  };
+}
+
 function liveValues() {
   if (isVectorLabStep()) return vectorLabLiveValues();
+  if (isAndersonStep()) return andersonLiveValues();
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
@@ -696,6 +750,123 @@ function resetVectorLab() {
   syncAll();
 }
 
+/* ---------- Anderson lab (B7) ---------- */
+
+const REGIME_BUTTONS = [
+  ['normal', 'sigma1'],
+  ['strike-slip', 'sigma2'],
+  ['thrust', 'sigma3'],
+];
+
+function andersonControlsMarkup(step) {
+  const controls = new Set(step.controls ?? []);
+  const lab = state.anderson;
+  const parts = [];
+  if (controls.has('regime')) {
+    parts.push(`
+      <div class="direction-control"><span>Vertical principal stress</span><div class="segmented-control" role="group" aria-label="Which principal stress is vertical">
+        ${REGIME_BUTTONS.map(([regime, key]) => `<button type="button" data-regime="${regime}" aria-pressed="${lab.regime === regime}">${inline(sigmaSymbol(key))} vertical</button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('setting')) {
+    parts.push(`
+      <div class="direction-control"><span>Tectonic setting</span><div class="segmented-control context-control" role="group" aria-label="Tectonic setting">
+        ${step.settings.map((setting) => `<button type="button" data-setting="${setting.id}" aria-pressed="${lab.setting === setting.id}">${setting.label}<small>${setting.examples}</small></button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('mu')) {
+    parts.push(`<label class="lab-control" for="mu-input"><span>Friction coefficient ${inline(mi('μ'))} <output id="mu-output">${formatNumber(lab.mu)}</output></span><input id="mu-input" class="range" type="range" min="0" max="1" step="0.05" value="${lab.mu}" /></label>`);
+  }
+  if (controls.has('slip')) {
+    parts.push(`<button id="slip-button" class="button secondary slip-button" type="button" aria-pressed="${lab.slipped}">${lab.slipped ? 'Undo slip' : 'Slip ▸'}</button>`);
+  }
+  return parts.length ? `<div class="lab-controls">${parts.join('')}</div>` : '';
+}
+
+function bindAndersonControls() {
+  for (const button of elements.lessonCard.querySelectorAll('[data-regime]')) {
+    button.addEventListener('click', () => {
+      state.anderson.regime = button.dataset.regime;
+      state.anderson.slipped = false;
+      syncAnderson();
+      syncAll();
+    });
+  }
+  for (const button of elements.lessonCard.querySelectorAll('[data-setting]')) {
+    button.addEventListener('click', () => {
+      const setting = currentStep().settings.find((candidate) => candidate.id === button.dataset.setting);
+      state.anderson.setting = setting.id;
+      state.anderson.regime = setting.regime;
+      state.anderson.slipped = false;
+      syncAnderson();
+      syncAll();
+    });
+  }
+  elements.lessonCard.querySelector('#mu-input')?.addEventListener('input', (event) => {
+    state.anderson.mu = Number(event.target.value);
+    syncAnderson();
+  });
+  elements.lessonCard.querySelector('#slip-button')?.addEventListener('click', () => {
+    state.anderson.slipped = !state.anderson.slipped;
+    andersonScene.setSlipped(state.anderson.slipped);
+    syncAnderson();
+  });
+}
+
+function initAnderson(step) {
+  const initial = step.initialLabState ?? {};
+  state.anderson = {
+    regime: initial.regime ?? DEFAULT_ANDERSON.regime,
+    mu: initial.mu ?? DEFAULT_ANDERSON.mu,
+    slipped: false,
+    setting: initial.setting ?? null,
+  };
+}
+
+/** Scene options for the current step; some objects appear only after the prediction is right. */
+function andersonOptions(step) {
+  const options = step.labOptions;
+  const answered = state.lessonChoiceCorrect;
+  return {
+    showAxes: options.showAxes !== false && (!options.axesAfterAnswer || answered),
+    showFaults: options.showFaults !== false && (!options.faultsAfterAnswer || answered),
+    showConjugate: options.showConjugate !== false,
+    showAngles: options.showAngles !== false,
+    showSlip: Boolean(options.showSlip),
+  };
+}
+
+function syncAnderson() {
+  if (!isAndersonStep()) return;
+  const step = currentStep();
+  const lab = state.anderson;
+  const options = andersonOptions(step);
+  elements.andersonViewport.dataset.mohr = String(Boolean(step.labOptions.showMohr));
+  andersonScene.setState({ regime: lab.regime, mu: lab.mu, options });
+  if (!options.showFaults && lab.slipped) lab.slipped = false;
+  andersonScene.setSlipped(lab.slipped);
+  mohrPlot.setState({ mu: lab.mu });
+  for (const button of elements.lessonCard.querySelectorAll('[data-regime]')) button.setAttribute('aria-pressed', String(button.dataset.regime === lab.regime));
+  for (const button of elements.lessonCard.querySelectorAll('[data-setting]')) button.setAttribute('aria-pressed', String(button.dataset.setting === lab.setting));
+  const muInput = elements.lessonCard.querySelector('#mu-input');
+  if (muInput && document.activeElement !== muInput) muInput.value = String(lab.mu);
+  setText('#mu-output', formatNumber(lab.mu));
+  const slipButton = elements.lessonCard.querySelector('#slip-button');
+  if (slipButton) {
+    slipButton.textContent = lab.slipped ? 'Undo slip' : 'Slip ▸';
+    slipButton.setAttribute('aria-pressed', String(lab.slipped));
+    slipButton.disabled = !options.showFaults;
+  }
+  syncEquationValues();
+}
+
+function resetAnderson() {
+  initAnderson(currentStep());
+  andersonScene.setSlipped(false, { animate: false });
+  renderLessonPanel();
+  syncAll();
+}
+
 function predictionMarkup(step) {
   if (step.choices?.length) {
     return `
@@ -745,6 +916,7 @@ function renderLessonPanel() {
   const labContent = {
     'force-lab': () => `${forceControlsMarkup(step)}${forceReadoutsMarkup(step)}`,
     'vector-lab': () => `${vectorLabControlsMarkup(step)}${goalMarkup(step)}`,
+    anderson: () => andersonControlsMarkup(step),
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
@@ -762,11 +934,15 @@ function renderLessonPanel() {
   elements.lessonCard.querySelector('#lesson-next-button').addEventListener('click', () => next.run());
   forceLabScene.highlight(null);
   vectorLabScene.highlight(null);
+  andersonScene.highlight(null);
+  mohrPlot.highlight(null);
   bindEquationPanel();
   bindForceLabControls();
   bindVectorLabControls();
+  bindAndersonControls();
   syncForceLabReadouts();
   syncVectorLab();
+  syncAnderson();
   syncEquationValues();
 }
 
@@ -905,6 +1081,10 @@ function applyLessonStep(index) {
     const labOnScreen = elements.appShell.dataset.visualKind === 'vector-lab' && isLessonView();
     initVectorLab(step);
     vectorLabScene.setDimension(state.vectorLab.dimension, { animate: labOnScreen, close: step.labOptions.view === 'close' });
+  }
+  if (step.visualKind === 'anderson') {
+    initAnderson(step);
+    andersonScene.setSlipped(false, { animate: false });
   }
   if (step.visualKind === 'stress-state') stressScene.replay();
   renderLessonView();
@@ -1066,6 +1246,37 @@ function syncVectorLabChrome(step) {
   elements.sceneLegend.innerHTML = legend.join('');
 }
 
+const ANDERSON_SWATCHES = {
+  sigma1: ['#f07a3c', 'solid'],
+  sigma2: ['#f0e442', 'dashed'],
+  sigma3: ['#56b4e9', 'dotted'],
+  fault: ['#f4f5f7', 'solid'],
+  conjugate: ['#a7aeb8', 'dashed'],
+  slip: ['#3fd0a0', 'solid'],
+  beta: ['#cc79a7', 'solid'],
+  dip: ['#9a8cff', 'solid'],
+};
+
+function syncAndersonChrome(step) {
+  const options = andersonOptions(step);
+  elements.interactionHint.textContent = 'Drag: orbit the block · scroll: zoom · hover a symbol or an object to link them';
+  const item = (key, label) => {
+    const [color, pattern] = ANDERSON_SWATCHES[key];
+    return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
+  };
+  const legend = [];
+  if (options.showAxes) legend.push(item('sigma1', inline(sigmaSymbol('sigma1'))), item('sigma2', inline(sigmaSymbol('sigma2'))), item('sigma3', inline(sigmaSymbol('sigma3'))));
+  if (options.showFaults) {
+    legend.push(item('fault', 'fault'));
+    if (options.showConjugate) legend.push(item('conjugate', 'conjugate'));
+    if (options.showAngles) legend.push(item('beta', inline(mi('β'))));
+    if (options.showAngles && state.anderson.regime !== 'strike-slip') legend.push(item('dip', inline(mi('δ'))));
+    if (options.showSlip) legend.push(item('slip', 'slip'));
+  }
+  elements.sceneLegend.hidden = legend.length === 0;
+  elements.sceneLegend.innerHTML = legend.join('');
+}
+
 function syncAll() {
   const preset = getStressState(state.selectedId);
   const lessonView = isLessonView();
@@ -1096,11 +1307,14 @@ function syncAll() {
 
   const forceLabActive = isForceLabStep();
   const vectorLabActive = isVectorLabStep();
+  const andersonActive = isAndersonStep();
   if (forceLabActive) {
     syncForceLabChrome(step);
     syncForceLabReadouts();
   } else if (vectorLabActive) {
     syncVectorLabChrome(step);
+  } else if (andersonActive) {
+    syncAndersonChrome(step);
   } else {
     elements.sceneLegend.hidden = true;
     elements.interactionHint.textContent = 'Drag to orbit · scroll to zoom';
@@ -1114,8 +1328,10 @@ function syncAll() {
   }
   forceLabScene.renderer.domElement.setAttribute('aria-hidden', String(!forceLabActive));
   vectorLabScene.renderer.domElement.setAttribute('aria-hidden', String(!vectorLabActive));
-  stressScene.renderer.domElement.setAttribute('aria-hidden', String(forceLabActive || vectorLabActive));
-  elements.replayButton.innerHTML = forceLabActive || vectorLabActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
+  andersonScene.renderer.domElement.setAttribute('aria-hidden', String(!andersonActive));
+  elements.mohrPanel.setAttribute('aria-hidden', String(!andersonActive));
+  stressScene.renderer.domElement.setAttribute('aria-hidden', String(forceLabActive || vectorLabActive || andersonActive));
+  elements.replayButton.innerHTML = forceLabActive || vectorLabActive || andersonActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
   for (const button of elements.presetGrid.querySelectorAll('.preset-card')) {
     const active = button.dataset.stateId === state.selectedId;
     button.classList.toggle('is-active', active);
@@ -1161,11 +1377,13 @@ elements.exaggerationInput.addEventListener('input', (event) => {
 elements.replayButton.addEventListener('click', () => {
   if (isForceLabStep()) resetForceLab();
   else if (isVectorLabStep()) resetVectorLab();
+  else if (isAndersonStep()) resetAnderson();
   else stressScene.replay();
 });
 elements.resetViewButton.addEventListener('click', () => {
   if (isForceLabStep()) forceLabScene.resetCamera();
   else if (isVectorLabStep()) vectorLabScene.resetCamera();
+  else if (isAndersonStep()) andersonScene.resetCamera();
   else stressScene.resetCamera();
 });
 elements.resetAllButton.addEventListener('click', resetAll);

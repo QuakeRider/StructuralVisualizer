@@ -10,7 +10,7 @@
 
 **Shared infrastructure first built here:**
 - **2D-slice view** (S4): a square element shown as a slice through the 3D cube, so the jump to 3D is a reveal rather than a new scene.
-- **Mohr plot renderer** (S5/S6): σn–τ axes; circles, points, envelopes, and shaded regions; linked selection with the scene. B3–B6 extend it.
+- **Mohr plot renderer** (S5/S6): σn–τ axes; circles, points, envelopes, and shaded regions; linked selection with the scene. B3–B6 extend it. *An early SVG version, `src/visualization/MohrPlot.js`, was built by B7 (0.8.0, built early). It draws one σ1–σ3 circle at Coulomb failure with fixed teaching values, the fault points at ±2θ, and φ. It binds to equations through `data-ref`. S5/S6 should generalize it (any σ, interactive points) instead of starting over.*
 - **Plane-through-a-point widget in a stressed cube** (S7): an arbitrary plane (by normal, or by strike/dip in NED) with traction, normal, and shear arrows.
 
 ---
@@ -210,7 +210,7 @@
 
 **Exact vs illustrative:** exact.
 
-**Domain / scenes / tests:** `transform2D(σ, θ)`, `principal2D(σ)`, and `normalShearAtAngle(σ1, σ3, θ)` in `stress.js`, with tests that cross-check the eigen results from `matrix.js`. **Build the Mohr plot renderer here** (S6 uses it immediately), starting with the θ-sweep plot.
+**Domain / scenes / tests:** `transform2D(σ, θ)`, `principal2D(σ)`, and `normalShearAtAngle(σ1, σ3, θ)` in `stress.js`, with tests that cross-check the eigen results from `matrix.js`. **Generalize the Mohr plot renderer here** (S6 uses it immediately), starting with the θ-sweep plot. The B7 version (`MohrPlot.js`) is the starting point.
 
 **Out of scope:** 3D (S8), and the pole method on the Mohr circle (optional aside in S6 at most).
 

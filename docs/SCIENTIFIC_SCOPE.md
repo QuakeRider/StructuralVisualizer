@@ -17,6 +17,23 @@ c v = (c vx, c vy, c vz),  |c v| = |c| |v|
 
 Dragged vectors snap to half-unit components within ±6; typed components are not snapped. The unit sphere is drawn at true radius 1. The rock block, fault plane, and fold surface in the last step are illustrative sketches placed around exact vectors, and the lesson says so. The frame is not geological: north, east, and down arrive in lesson O1.
 
+### Anderson's theory of faulting (lesson B7)
+
+The Earth block uses the geological frame: x north, y east, z down, compression positive, σ1 ≥ σ2 ≥ σ3. Exact within the Coulomb and Anderson assumptions:
+
+```text
+φ = tan⁻¹ μ
+θ = 45° + φ/2        (σ1 to the fault normal; the fault plots at 2θ = 90° + φ)
+β = 45° − φ/2        (σ1 to the fault plane)
+dip: normal δ = 90° − β, thrust δ = β, strike-slip δ = 90° with strikes at σ1 trend ± β
+```
+
+- **Fault planes.** The conjugate planes both contain σ2. They are drawn through the block center at those exact orientations.
+- **Slip direction.** The sense and direction of slip come from the shear part of the traction 𝐭 = −σ𝐦 on each plane. Here 𝐦 is the upward (hanging-wall) normal, and σ is built from the regime's principal axes with illustrative magnitudes (100, 60, 20 MPa). For these Andersonian planes the direction is pure dip-slip or pure strike-slip whatever the magnitudes are.
+- **Illustrative parts.** The size of the hanging wall's offset, the block's layers, and the length of the stress arrows are illustrative. The arrows rank σ1 > σ2 > σ3 by thickness, length, and line pattern, not to scale.
+- **Mohr diagram.** It uses fixed teaching values σ3 = 20 MPa and C = 10 MPa, with σ1 set to just reach the Coulomb line: σ1 = σ3(1 + sin φ)/(1 − sin φ) + 2C cos φ/(1 − sin φ). Its magnitudes are illustrative, but its angles (φ, 2θ) are exact, and the diagram says so.
+- **Deliberately left out.** The lesson does not model pre-existing weaknesses, pore pressure, fault rotation, or tilted stress axes. Step 7 names these as the reasons real faults depart from the prediction.
+
 ### Force on a surface (lessons S2, S3)
 
 The force laboratory draws one force acting at the center of a selected face of a schematic cube. It is a force in newtons (displayed in kN), and its magnitude is computed exactly as above.

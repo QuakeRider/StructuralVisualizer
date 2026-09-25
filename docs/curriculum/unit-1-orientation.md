@@ -47,7 +47,7 @@
 
 **Exact vs illustrative:** exact.
 
-**Domain / scenes / tests:** new `src/domain/orientation.js` with `lineToVector`, `vectorToLine`, `toLowerHemisphere`, and `frameMatrix('xyz'→'NED')`, plus round-trip tests. Build the outcrop block and compass.
+**Domain / scenes / tests:** `src/domain/orientation.js` (it already exists from B7 with `lineVector(trend, plunge)`, `planeFromDipDirection`, `planeFromStrike`, `planePole`, `planeUpwardNormal`, `strikeVector`, and `dipVector`; extend it rather than duplicating these) with `vectorToLine`, `toLowerHemisphere`, and `frameMatrix('xyz'→'NED')`, plus round-trip tests. Build the outcrop block and compass.
 
 **Out of scope:** planes (O2), stereonets (O3), and magnetic declination (mentioned in one sentence at most).
 

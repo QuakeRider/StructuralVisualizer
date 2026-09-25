@@ -289,6 +289,29 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .vector-lab-viewport { opacity: 1; pointer-events: auto; }
 .app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .stress-viewport { opacity: 0; pointer-events: none; }
 .viewport canvas.is-dragging-force { cursor: grabbing; }
+.app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .anderson-viewport { opacity: 1; pointer-events: auto; }
+.app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .stress-viewport { opacity: 0; pointer-events: none; }
+
+/* Anderson lab: the 3D block beside the Mohr diagram (the diagram hides when a step does not use it). */
+.anderson-viewport { display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); }
+.anderson-viewport[data-mohr='false'] { grid-template-columns: minmax(0, 1fr); }
+.anderson-viewport[data-mohr='false'] .mohr-panel { display: none; }
+.anderson-scene { position: relative; min-width: 0; min-height: 0; }
+.anderson-scene canvas { position: absolute; inset: 0; }
+.mohr-panel { min-width: 0; min-height: 0; padding: 12px 10px 56px; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border-soft); background: rgba(15, 17, 21, 0.35); }
+.mohr-svg { width: 100%; height: 100%; max-height: 100%; overflow: visible; }
+.mohr-svg text { font-family: var(--math-font); font-size: 22px; }
+.mohr-svg .mohr-title { fill: var(--text); font-family: inherit; font-size: 20px; font-weight: 600; }
+.mohr-svg .mohr-ticks text { font-family: 'DM Mono', ui-monospace, monospace; font-size: 15px; }
+.mohr-svg .mohr-ticks .mohr-axis-label { font-family: var(--math-font); font-size: 22px; }
+.mohr-svg .mohr-label { font-size: 26px; }
+.mohr-svg .mohr-small { font-family: inherit; font-size: 15px; }
+.mohr-svg .mohr-caption { font-family: inherit; font-size: 14px; }
+.mohr-svg [data-ref] { transition: opacity 150ms ease; cursor: default; }
+.mohr-svg.has-highlight [data-ref]:not(.is-highlighted) { opacity: 0.16; }
+.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .scene-legend { right: calc(40% + 14px); }
+.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .interaction-hint { max-width: calc(60% - 32px); }
+.slip-button { justify-self: start; min-width: 132px; }
 
 .interaction-hint {
   position: absolute;
@@ -333,7 +356,7 @@ h3 { font-size: 17px; font-weight: 650; }
 .scene-legend .legend-line[data-pattern='dashed']::before { border-top-style: dashed; }
 .scene-legend .legend-line[data-pattern='dotted']::before { border-top-style: dotted; border-top-width: 4px; }
 .scene-legend .legend-line { color: var(--text); font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
-.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']) .scene-legend { display: none; }
+.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']):not([data-visual-kind='anderson']) .scene-legend { display: none; }
 
 .response-strip { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(125px, 0.55fr)); border-top: 1px solid var(--border-soft); background: #15191f; }
 .response-copy, .metric { min-height: 82px; padding: 15px 17px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }
@@ -398,6 +421,17 @@ h3 { font-size: 17px; font-weight: 650; }
 [data-scene-ref='stack-x'] { --ref-color: var(--tension); --ref-line: dotted; }
 [data-scene-ref='stack-y'] { --ref-color: var(--compression); --ref-line: dotted; }
 [data-scene-ref='stack-z'] { --ref-color: var(--shear); --ref-line: dotted; }
+/* Anderson lab (B7): the same colors and line patterns as the block and the Mohr diagram. */
+[data-scene-ref='sigma-1'] { --ref-color: #f07a3c; --ref-line: solid; }
+[data-scene-ref='sigma-2'] { --ref-color: #f0e442; --ref-line: dashed; }
+[data-scene-ref='sigma-3'] { --ref-color: #56b4e9; --ref-line: dotted; }
+[data-scene-ref='vertical-axis'] { --ref-color: #f4f5f7; --ref-line: double; }
+[data-scene-ref='free-surface'] { --ref-color: #a9c48a; --ref-line: solid; }
+[data-scene-ref='fault'] { --ref-color: #f4f5f7; --ref-line: solid; }
+[data-scene-ref='beta'] { --ref-color: #cc79a7; --ref-line: solid; }
+[data-scene-ref='dip'] { --ref-color: #9a8cff; --ref-line: solid; }
+[data-scene-ref='envelope'], [data-scene-ref='phi'] { --ref-color: #3fd0a0; --ref-line: solid; }
+[data-scene-ref='two-theta'] { --ref-color: #e69f00; --ref-line: dashed; }
 
 .equation-panel [data-sym], .equation-key dt math { color: var(--ref-color, inherit); }
 .equation-panel [data-sym] { padding: 0 1px 1px; border-bottom: 2px var(--ref-line, solid) var(--ref-color, currentColor); border-radius: 2px; cursor: help; transition: background 120ms ease, opacity 120ms ease; }
@@ -409,7 +443,12 @@ h3 { font-size: 17px; font-weight: 650; }
 .equation-panel.has-highlight .equation-line [data-sym]:not(.is-highlighted),
 .equation-panel.has-highlight .equation-line [data-live][data-scene-ref]:not(.is-highlighted) { opacity: 0.4; }
 .equation-key { margin: 0; padding-top: 10px; display: grid; gap: 4px; border-top: 1px solid var(--border-soft); color: var(--muted); font-size: 12px; line-height: 1.4; }
-.equation-key div { padding: 4px 6px; display: grid; grid-template-columns: 52px 1fr; align-items: baseline; gap: 8px; border-radius: 6px; }
+.equation-key div { padding: 4px 6px; display: grid; grid-template-columns: minmax(52px, max-content) 1fr; align-items: baseline; gap: 8px; border-radius: 6px; }
+/* Line the descriptions up even when one symbol (such as a whole equation) is wide. */
+@supports (grid-template-columns: subgrid) {
+  .equation-key { grid-template-columns: minmax(52px, max-content) 1fr; column-gap: 8px; }
+  .equation-key div { grid-column: 1 / -1; grid-template-columns: subgrid; }
+}
 .equation-key dt { font-size: 17px; }
 .equation-key dd { margin: 0; }
 
@@ -551,7 +590,8 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'] .inspector-panel,
 .app-shell[data-lesson-view='true'] .response-strip { display: none; }
 .app-shell[data-lesson-view='true'][data-visual-kind='force-lab'] .replay-button,
-.app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .replay-button { display: inline-flex; }
+.app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .replay-button,
+.app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .replay-button { display: inline-flex; }
 
 .app-shell[data-mode='explore'] .lesson-panel { display: none; }
 
@@ -575,7 +615,7 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .lesson-heading h2 { font-size: clamp(28px, 2.4vw, 38px); }
 .app-shell[data-mode='present'][data-lesson-view='true'] .lesson-heading p,
 .app-shell[data-mode='present'][data-lesson-view='true'] .task-card p { font-size: 18px; }
-.app-shell[data-mode='present'][data-lesson-view='true'] .equation-line { font-size: 26px; }
+.app-shell[data-mode='present'][data-lesson-view='true'] .equation-line { font-size: clamp(22px, 1.8vw, 26px); }
 .app-shell[data-mode='present'][data-lesson-view='true'] .equation-key { font-size: 14px; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .prediction-group legend,
 .app-shell[data-mode='present'][data-lesson-view='true'] .prediction-button { font-size: 17px; }
@@ -622,6 +662,12 @@ h3 { font-size: 17px; font-weight: 650; }
   .visual-header .lesson-picker { width: 100%; }
   .viewport-shell { min-height: 420px; }
   .scene-legend { left: 10px; right: 10px; justify-content: flex-start; }
+  .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .viewport-shell { min-height: 720px; }
+  .anderson-viewport, .anderson-viewport[data-mohr='true'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 58fr) minmax(0, 42fr); }
+  .anderson-viewport[data-mohr='false'] { grid-template-rows: minmax(0, 1fr); }
+  .mohr-panel { padding: 8px 6px 10px; border-left: 0; border-top: 1px solid var(--border-soft); }
+  .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .scene-legend { right: 10px; }
+  .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .interaction-hint { display: none; }
   .interaction-hint { font-size: 11px; }
   .response-strip { grid-template-columns: 1fr; }
   .response-copy, .metric { min-height: 70px; border-top: 1px solid var(--border-soft); border-left: 0; }

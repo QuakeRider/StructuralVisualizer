@@ -2,6 +2,34 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.8.0 — 2026-09-25
+
+### Added
+
+- Lesson B7, Anderson's theory of faulting, built ahead of the curriculum order for classroom use (nine steps). It covers:
+  - why a free surface makes one principal stress vertical
+  - the three regimes: σ1 vertical gives normal faults, σ2 vertical strike-slip faults, and σ3 vertical thrusts
+  - the Coulomb angle β = 45° − φ/2 and the dips it predicts (about 60° for normal faults and 30° for thrusts at μ = 0.6)
+  - dextral and sinistral conjugate strike-slip faults
+  - how friction changes the dips, the limits of the theory, inferring stress from a mapped fault pair, and tectonic settings
+- An Earth-block scene in the geological frame (north, east, down) (`AndersonScene.js`). It has a compass labeled N (x), E (y), D (z) and a layered block. It shows:
+  - σ1, σ2, σ3 as inward arrows that differ in thickness and line pattern
+  - the conjugate fault pair cut through the block
+  - β and dip arcs
+  - slip arrows, with a hanging wall that slides along the fault in the direction of the resolved shear stress
+- A Mohr diagram (`MohrPlot.js`), drawn as SVG beside the block. It shows the σ1–σ3 circle just touching the Coulomb line τ = C + μσn, the fault and conjugate points at ±2θ, and the friction angle φ. Its parts highlight together with the equations and the block.
+- New tested domain modules: `orientation.js` (trend and plunge, strike and dip, poles and normals in north, east, down), `failure.js` (friction angle, the Coulomb failure angles, and the Mohr circle at failure), and `anderson.js` (regime axes, the conjugate fault planes, the stress tensor from its principal axes, and the slip direction and sense on a plane).
+
+### Changed
+
+- Arrows and labels shared by the scenes moved to `sceneKit.js`. Labels gained an upright numeric subscript style (σ₁).
+- The symbol key under the equations lines up its descriptions even when one symbol is a whole equation.
+- In Present mode, equation text scales from 22 to 26 px with the window, so long lines fit at projector sizes such as 1280×720.
+
+### Fixed
+
+- M1: the 3D magnitude now puts its result on a separate line, so the longest substitution (the fault example in step 9) no longer overflows the panel.
+
 ## 0.7.0 — 2026-09-24
 
 ### Added

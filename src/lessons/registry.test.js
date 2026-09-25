@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ANDERSON_REGIMES, andersonFaults } from '../domain/anderson.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
 import { magnitude } from '../domain/vector.js';
 import { SCENE_REFS } from '../visualization/sceneRefs.js';
@@ -48,8 +49,9 @@ describe('curriculum catalog', () => {
 });
 
 describe('lesson content', () => {
-  it('starts the curriculum at M1 and seeds the Build 00 lessons', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'S2', 'S3', 'S7', 'S10']);
+  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B7 (built early)', () => {
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'S2', 'S3', 'S7', 'S10', 'B7']);
+    expect(getLesson('B7').status).toBe('built');
     expect(getLesson('M1').status).toBe('built');
     expect(getLesson('S1').status).toBe('planned');
   });
@@ -122,7 +124,7 @@ describe('lesson content', () => {
   });
 
   it('gives every lab step at least one bound equation', () => {
-    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab'].includes(candidate.visualKind))) {
+    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson'].includes(candidate.visualKind))) {
       expect(step.equations?.some((equation) => equation.symbols.length > 0), `${lesson.id}/${step.id}`).toBe(true);
     }
   });
@@ -140,7 +142,8 @@ describe('lesson navigation helpers', () => {
   it('finds the next lesson that has content', () => {
     expect(getNextAvailableLesson('M1').id).toBe('S2');
     expect(getNextAvailableLesson('S3').id).toBe('S7');
-    expect(getNextAvailableLesson('S10')).toBeNull();
+    expect(getNextAvailableLesson('S10').id).toBe('B7');
+    expect(getNextAvailableLesson('B7')).toBeNull();
   });
 });
 
@@ -192,5 +195,52 @@ describe('numeric answers and goals', () => {
     expect(jump).toBeGreaterThan(0);
     expect(dimensions.slice(0, jump + 1).every((dimension) => dimension === 2)).toBe(true);
     expect(dimensions.slice(jump + 1).every((dimension) => dimension === 3)).toBe(true);
+  });
+});
+
+describe('B7 Anderson lesson', () => {
+  const steps = getLesson('B7').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+
+  it('starts every lab step in a known regime with a friction coefficient', () => {
+    for (const candidate of steps) {
+      expect(Object.keys(ANDERSON_REGIMES), candidate.id).toContain(candidate.initialLabState.regime);
+      expect(candidate.initialLabState.mu, candidate.id).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('accepts the normal-fault dip that the domain predicts for the step’s μ', () => {
+    const normal = step('normal-regime');
+    const { dip } = andersonFaults('normal', normal.initialLabState.mu);
+    expect(checkNumericAnswer(normal, dip.toFixed(1)).correct).toBe(true);
+    expect(checkNumericAnswer(normal, '60').correct).toBe(true);
+    expect(checkNumericAnswer(normal, '29.5').feedback).toMatch(/β/);
+    expect(checkNumericAnswer(normal, '45').correct).toBe(false);
+  });
+
+  it('opens each single-regime step in the regime it teaches', () => {
+    expect(step('normal-regime').initialLabState.regime).toBe('normal');
+    expect(step('thrust-regime').initialLabState.regime).toBe('thrust');
+    expect(step('strike-slip-regime').initialLabState.regime).toBe('strike-slip');
+    // The field-inference step shows thrusts with the stress axes hidden until the answer.
+    expect(step('infer-regime').initialLabState.regime).toBe('thrust');
+    expect(step('infer-regime').labOptions.axesAfterAnswer).toBe(true);
+  });
+
+  it('matches the strike-slip prompt to the domain: the fault clockwise of σ1 is at about 030°', () => {
+    const { faults } = andersonFaults('strike-slip', step('strike-slip-regime').initialLabState.mu);
+    expect(Math.round(faults[0].strike / 10) * 10).toBe(30);
+  });
+
+  it('hides scene objects only in steps that ask for a prediction', () => {
+    for (const candidate of steps.filter(({ labOptions }) => labOptions.faultsAfterAnswer || labOptions.axesAfterAnswer)) {
+      expect(hasPrediction(candidate), candidate.id).toBe(true);
+    }
+  });
+
+  it('offers one tectonic setting per regime in the final step', () => {
+    const settings = step('tectonic-settings').settings;
+    expect(settings.map((setting) => setting.regime).sort()).toEqual(Object.keys(ANDERSON_REGIMES).sort());
+    expect(step('tectonic-settings').final).toBe(true);
   });
 });

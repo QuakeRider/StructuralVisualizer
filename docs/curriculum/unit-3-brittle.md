@@ -77,7 +77,7 @@
 
 **Exact vs illustrative:** the envelopes and cutoff are exact within the stated criteria; the flaw stress concentration is illustrative.
 
-**Domain / scenes / tests:** `griffithEnvelope(T₀, σn)` and `tensileFailure(σ3, T₀)` in a new `src/domain/failure.js`, with tests. Envelope layers on the Mohr renderer.
+**Domain / scenes / tests:** `griffithEnvelope(T₀, σn)` and `tensileFailure(σ3, T₀)` in `src/domain/failure.js` (it already exists from B7 with `frictionAngle`, `coulombAngles`, `coulombShearStrength`, `sigma1AtFailure`, `mohrCircle`, and `mohrPoint`), with tests. Envelope layers on the Mohr renderer.
 
 **Out of scope:** fracture toughness and linear elastic fracture mechanics. Joint patterns and veins are covered in B5.
 
@@ -274,6 +274,15 @@
 **Out of scope:** oblique regimes and transtension/transpression (can be mentioned), and non-Andersonian faulting.
 
 **Acceptance criteria:** all three regimes are correct; the dips match the formula; the stereonet agrees with the 3D view.
+
+**As built (0.8.0, built early).** Built ahead of B3 and B6 for classroom use, so it stands alone:
+- **Coulomb angle restated.** Step 3 states β = 45° − φ/2 from the Mohr diagram instead of pointing back to B3.
+- **Stereonet deferred.** There is no stereonet view yet; it waits for the O3 renderer. That acceptance criterion is still open.
+- **Scene and Mohr diagram.** The scene is an NED Earth block with the σ axes, the conjugate pair clipped through the block, and β and δ arcs. The hanging wall slides along the resolved shear direction (`faultSlip` computes the direction from 𝐭 = −σ𝐦). A Mohr diagram beside it is fixed at failure (σ3 = 20 MPa, C = 10 MPa; illustrative magnitudes, exact angles).
+- **Domain modules.** `andersonAxes`, `andersonFaults(regime, μ, shmaxTrend)`, `principalStressTensor`, `faultSlip`, and `slipSense` are in `anderson.js`; the Coulomb and Mohr helpers are in `failure.js`, and the NED plane and line helpers in `orientation.js`.
+- **Steps.** 1 the free surface; 2 which stress is vertical; 3 normal regime, with a numeric dip answer; 4 thrust regime; 5 strike-slip regime, with the sense of slip; 6 varying μ; 7 the limits of the theory; 8 inferring stress from a mapped pair (stress arrows hidden until the answer); 9 tectonic settings.
+
+When B3 and B6 are built, revisit B7: point steps 2–3 back to B3, add the stereonet, and link step 7 to B6's reactivation.
 
 ---
 

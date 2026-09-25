@@ -6,13 +6,14 @@ The curriculum runs from vectors and matrices through orientation, stress, britt
 
 ## Current release
 
-**Status:** curriculum-structured prototype (`0.7.0`)
+**Status:** curriculum-structured prototype (`0.8.0`)
 
-Lesson M1 (vectors and components) is fully built. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 43 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
+Lessons M1 (vectors and components) and B7 (Anderson's theory of faulting, built ahead of its prerequisites for classroom use) are fully built. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 42 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
 
 Implemented:
 
 - A vector laboratory for the math unit: 2D-to-3D camera jump, component box, stacked right triangles for the 3D magnitude, unit vectors, scaling, and tip-to-tail addition with component stacks.
+- An Anderson faulting laboratory: an Earth block in north–east–down coordinates with principal-stress arrows, the predicted conjugate faults, β and dip angles, and a sliding hanging wall. A Mohr diagram beside it shows the circle touching the Coulomb line.
 - Numeric-answer predictions with feedback on common mistakes, and construction goals checked live.
 - A lesson registry covering the full 48-lesson curriculum, with a unit-grouped lesson picker and lesson-to-lesson navigation.
 - An equation–model binding panel: hovering or focusing a symbol highlights its object in the 3D scene (and hovering the object highlights the symbol), with live values and a key describing each symbol's scene object.
@@ -108,10 +109,16 @@ src/
 │   ├── forceStress.js        Force/area conversion and stress notation
 │   ├── vector.js             Vector helpers (add, dot, cross, normalize, …)
 │   ├── format.js             Number formatting for live equations
+│   ├── orientation.js        Trend/plunge and strike/dip ↔ vectors (north, east, down)
+│   ├── failure.js            Coulomb failure angles and the Mohr circle at failure
+│   ├── anderson.js           Anderson regimes, conjugate faults, slip sense
 │   ├── deformation.js        Qualitative deformation mapping
 │   └── *.test.js             Domain tests
 ├── visualization/
 │   ├── VectorScene.js        Vector laboratory for the math unit (lesson M1)
+│   ├── AndersonScene.js      Earth block with stress axes and faults (lesson B7)
+│   ├── MohrPlot.js           SVG Mohr diagram with the Coulomb line
+│   ├── sceneKit.js           Shared arrows and labels
 │   ├── ForceLabScene.js      Force-on-a-surface laboratory with symbol highlighting
 │   ├── StressScene.js        Stress tensors, vectors, deformation, and camera
 │   └── sceneRefs.js          Scene objects that equation symbols may bind to
@@ -119,7 +126,8 @@ src/
 │   ├── catalog.js            All 48 lessons: units, titles, prerequisites
 │   ├── registry.js           Merges the catalog with lesson content; navigation helpers
 │   ├── unit-0-math/          One file per lesson (m1-vectors.js, …)
-│   └── unit-2-stress/        s2-…, s3-…, s7-…, s10-…
+│   ├── unit-2-stress/        s2-…, s3-…, s7-…, s10-…
+│   └── unit-3-brittle/       b7-anderson.js
 ├── main.js                       Application interface and state coordination
 └── styles.css                    Responsive visual design
 docs/

@@ -4,7 +4,7 @@
 
 Structural Visualizer is a curriculum platform, not a single stress-state tool. The project should support independent structural-geology modules that share a lesson shell, interaction vocabulary, accessibility system, presentation mode, and offline packaging while retaining topic-specific scientific models and visualizations.
 
-The curriculum is defined in `docs/curriculum/`; the current code contains the lesson registry, one fully built lesson (M1), and four seed lessons. Force/stress calculations, stress definitions, qualitative deformation, Three.js rendering, and interface state are separated so they can inform—but not constrain—later modules for strain, kinematics, rheology, fractures, faults, folds, orientation data, maps, and cross-sections.
+The curriculum is defined in `docs/curriculum/`; the current code contains the lesson registry, two fully built lessons (M1, and B7 built early), and four seed lessons. Force/stress calculations, stress definitions, qualitative deformation, Three.js rendering, and interface state are separated so they can inform—but not constrain—later modules for strain, kinematics, rheology, fractures, faults, folds, orientation data, maps, and cross-sections.
 
 ## Current layers
 
@@ -16,16 +16,18 @@ Interface (src/main.js)
     |       +-- one data file per lesson (src/lessons/unit-*/<id>-*.js)
     +-- vector helpers (src/domain/vector.js)
     +-- equation number formatting (src/domain/format.js)
+    +-- orientation, failure, Anderson faulting (src/domain/orientation.js, failure.js, anderson.js)
     +-- force/stress foundations (src/domain/forceStress.js)
     +-- preset catalog (src/domain/stressStates.js)
     +-- qualitative model (src/domain/deformation.js)
-    +-- renderers (src/visualization/VectorScene.js, ForceLabScene.js, StressScene.js)
+    +-- renderers (src/visualization/VectorScene.js, AndersonScene.js, MohrPlot.js, ForceLabScene.js, StressScene.js)
+    |       +-- shared arrows and labels (src/visualization/sceneKit.js)
     +-- scene references (src/visualization/sceneRefs.js)
 ```
 
 ### Interface
 
-`src/main.js` owns the selected lesson and step, the prediction state, vector-laboratory and force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, visibility preferences, and the three modes. It coordinates accessible HTML controls with three topic scenes while keeping scientific calculations in the domain layer. The shell's `data-visual-kind` (`vector-lab`, `force-lab`, or `stress-state`) decides which scene is visible.
+`src/main.js` owns the selected lesson and step, the prediction state, vector-laboratory and force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, visibility preferences, and the three modes. It coordinates accessible HTML controls with three topic scenes while keeping scientific calculations in the domain layer. The shell's `data-visual-kind` (`vector-lab`, `anderson`, `force-lab`, or `stress-state`) decides which scene is visible.
 
 **Modes.** Guided runs the selected lesson. Explore is the open stress-state laboratory. Present projects whichever of the two it was entered from: from Guided it shows the current lesson with larger type and arrow/PageUp/PageDown, 1–9, and Home/End step keys; from Explore it shows the stress laboratory with its presentation toolbar. The shell element carries `data-mode` and `data-lesson-view` (true in Guided and in Present-from-Guided), and layout CSS keys off `data-lesson-view`.
 
@@ -67,6 +69,14 @@ To add a lesson: create its file under `src/lessons/unit-*/`, import it in `regi
 
 `src/domain/forceStress.js` converts newtons over square centimeters to megapascals, calculates vector average traction, and decomposes it into signed normal and in-plane shear components for an arbitrary surface normal. The unit conversion and inverse area relationship are tested without the browser.
 
+### Orientation, failure, and faulting
+
+`src/domain/orientation.js` converts between trend/plunge or strike/dip (right-hand rule) and unit vectors in the NED frame (x north, y east, z down): `lineVector`, `planeFromDipDirection`, `planeFromStrike`, `planePole` (downward), `planeUpwardNormal` (into the hanging wall), `strikeVector`, and `dipVector`. Lessons O1–O4 extend it.
+
+`src/domain/failure.js` holds the Coulomb failure relations: `frictionAngle`, `coulombAngles` (φ, θ, β, 2θ), `coulombShearStrength`, `sigma1AtFailure`, `mohrCircle`, and `mohrPoint`. Lessons B2–B6 add the other envelopes, effective stress, and slip tendency.
+
+`src/domain/anderson.js` (lesson B7) gives each regime's principal axes (`andersonAxes`) and its conjugate fault planes (`andersonFaults`). It also builds a tensor from principal axes and magnitudes (`principalStressTensor`), finds the slip direction of the hanging wall from the shear part of 𝐭 = −σ𝐦 (`faultSlip`), and names the sense of slip (`slipSense`).
+
 ### Domain catalog
 
 `src/domain/stressStates.js` is the authoritative list of opening stress cases. Each case contains:
@@ -93,6 +103,15 @@ The catalog contains no Three.js or DOM behavior.
 - illustrative context props
 
 Its camera has a 2D top view, a 3D view, and a 3D close-up. It animates between them (instantly under reduced motion) and pulls back on portrait viewports. A plain drag moves a tip across the floor, and Shift-drag moves it vertically. It reports vector and hover changes and exposes `highlight(ref)`.
+
+`src/visualization/AndersonScene.js` is the lesson-B7 Earth block in the NED frame, converted to Three.js internally (north −z, east +x, down −y). It draws:
+- a layered block, drawn as two copies clipped by the active fault plane so the hanging wall can slide
+- the σ1/σ2/σ3 glyph pairs
+- the conjugate fault polygons, cut from the block by a plane–box intersection
+- the β and dip arcs in the σ1–σ3 plane
+- the slip arrows and an N/E/D compass
+
+It reframes itself on resize until the student orbits. `src/visualization/MohrPlot.js` is an SVG Mohr diagram next to it: the σ1–σ3 circle at Coulomb failure, the envelope, ±2θ points, and φ. Its groups carry `data-ref`, so it takes part in the same highlighting as the 3D scenes. Both expose `highlight(ref)` and report hover through `onHover`. `src/visualization/sceneKit.js` holds the patterned `Arrow3D`, the constant-size `Label`, and line helpers shared by the scenes.
 
 `src/visualization/ForceLabScene.js` owns the directly manipulated vector (acting at the center of the selected face), selectable block faces, contact patch, distributed-load arrows, labeled axes, surface normal, and normal/shear component geometry. It reports vector, surface, and hover changes to the interface and exposes `highlight(ref)` for equation binding. The refs each scene supports are listed per visual kind in `sceneRefs.js` (`SCENE_REFS`), which has no Three.js dependency so lesson tests can validate against it.
 
@@ -182,6 +201,11 @@ Current unit tests verify:
   - equation symbols bound to the refs of the step's scene
   - no engineering-statics spotlights, controls, or options
 - M1 specifics: magnitude answers match the step's starting vector, goal checks work, and the lesson stays 2D before the jump and 3D after it.
+- NED orientation helpers (right-hand rule, poles, normals), the Coulomb angles and Mohr circle at failure (tangency checked over all planes), and Anderson's regimes:
+  - normal ≈ 60°, thrust ≈ 30°, strike-slip vertical at ±β
+  - every fault contains σ2 and lies at β from σ1
+  - slip sense: normal, reverse, and sinistral/dextral for the strike-slip pair
+- B7 specifics: the numeric dip answer matches the domain prediction, each step opens in the regime it teaches, and the settings cover all three regimes.
 - Numeric-answer parsing and feedback.
 - Lesson navigation helpers.
 
