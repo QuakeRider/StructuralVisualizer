@@ -4,16 +4,18 @@ import { STRESS_LESSON, getLessonStep, isLessonChoiceCorrect } from './stressLes
 
 describe('guided stress lesson', () => {
   it('contains a coherent force-to-stress sequence', () => {
-    expect(STRESS_LESSON.steps).toHaveLength(10);
+    expect(STRESS_LESSON.steps).toHaveLength(14);
     expect(STRESS_LESSON.steps[0].id).toBe('construct-force-vector');
-    expect(STRESS_LESSON.steps[5].id).toBe('traction-to-tensor');
+    expect(STRESS_LESSON.steps[6].id).toBe('reveal-internal-cut');
+    expect(STRESS_LESSON.steps[10].id).toBe('why-stress-needs-a-tensor');
     expect(STRESS_LESSON.steps.at(-1).final).toBe(true);
   });
 
   it('uses the 3D force lab before transitioning to the stress-state scene', () => {
-    expect(STRESS_LESSON.steps.slice(0, 5).every((step) => step.visualKind === 'force-lab')).toBe(true);
-    expect(STRESS_LESSON.steps.slice(5).every((step) => step.visualKind === 'stress-state')).toBe(true);
-    expect(STRESS_LESSON.steps[3].controls).toEqual(['magnitude', 'area']);
+    expect(STRESS_LESSON.steps.slice(0, 10).every((step) => step.visualKind === 'force-lab')).toBe(true);
+    expect(STRESS_LESSON.steps.slice(10).every((step) => step.visualKind === 'stress-state')).toBe(true);
+    expect(STRESS_LESSON.steps[3].controls).toContain('constraint');
+    expect(STRESS_LESSON.steps[6].controls).toContain('cut');
   });
 
   it('references only existing stress-state presets', () => {
@@ -32,6 +34,6 @@ describe('guided stress lesson', () => {
   it('clamps step lookup and evaluates answers', () => {
     expect(getLessonStep(-10)).toBe(STRESS_LESSON.steps[0]);
     expect(getLessonStep(500)).toBe(STRESS_LESSON.steps.at(-1));
-    expect(isLessonChoiceCorrect(STRESS_LESSON.steps[3], 'point-five')).toBe(true);
+    expect(isLessonChoiceCorrect(STRESS_LESSON.steps[8], 'point-five')).toBe(true);
   });
 });

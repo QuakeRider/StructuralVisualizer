@@ -2,13 +2,13 @@
 
 Structural Visualizer is intended to become a university-level interactive learning environment for the full structural-geology curriculum. Its long-term scope includes mathematical and mechanical foundations, stress analysis, strain and kinematics, rheology, brittle and ductile deformation, folds, faults, structural data, maps, cross-sections, and integrative geological interpretation.
 
-The current force-to-stress-state experience is the first working module and architectural proving ground—not the product's final identity or scope. It begins with force magnitude and direction, introduces contact area and stress, and then moves into three-dimensional stress states on a deformable block. Its visual response is deliberately qualitative and does not imply a material-specific constitutive or failure model.
+The current loads-to-stress-state experience is the first working module and architectural proving ground—not the product's final identity or scope. It follows external force and moment through free-body motion, constraint reactions, internal section actions, distributed load, traction, and finally three-dimensional stress states. Its visual response is deliberately qualitative and does not imply a material-specific constitutive or failure model.
 
 The long-term curriculum and shared experience principles are defined in [docs/CURRICULUM_VISION.md](docs/CURRICULUM_VISION.md).
 
 ## Current release
 
-**Status:** interactive learning-laboratory prototype (`0.4.0`)
+**Status:** interactive mechanics learning-laboratory prototype (`0.5.0`)
 
 Implemented:
 
@@ -22,8 +22,12 @@ Implemented:
 - Approximate volume-change readout.
 - Responsive layout and reduced-motion support.
 - A single-file offline production build.
-- A ten-step university-level guided module connecting force vectors, surfaces, average traction, traction decomposition, and three-dimensional stress states.
-- A shared Three.js force laboratory with direct vector dragging, `Fx/Fy/Fz` entry, smooth magnitude control, selectable block faces, and resizable contact area.
+- A fourteen-step university-level guided module connecting external loads, equilibrium, internal actions, traction, stress, and three-dimensional stress states.
+- A shared Three.js load laboratory with direct vector dragging, movable application point, `Fx/Fy/Fz` entry, smooth magnitude control, selectable block faces, and resizable contact area.
+- Explicit free-body and fixed-support modes with resultant force, resultant moment, reaction force, and reaction moment.
+- Continuous illustrative block response to load face, direction, magnitude, and eccentricity, including axial, shear, bending, and torsional action.
+- A movable section cut with live internal axial force, shear force, bending moment, and torsion.
+- A visible uniform load distribution connected to its resultant force.
 - Live average-traction and normal/shear decomposition with explicit surface normals, units, assumptions, and sign conventions.
 - Prediction-and-feedback checkpoints integrated with construction and comparison tasks.
 - A minimal two-column guided layout with readable typography and progressive disclosure.
@@ -101,10 +105,11 @@ src/
 ├── domain/
 │   ├── stressStates.js       Preset catalog and tensor helpers
 │   ├── forceStress.js        Force/area conversion and stress notation
+│   ├── loadResponse.js       Resultants, reactions, and section equilibrium
 │   ├── deformation.js        Qualitative deformation mapping
 │   └── *.test.js             Domain tests
 ├── visualization/
-│   ├── ForceLabScene.js      Direct-manipulation force and traction laboratory
+│   ├── ForceLabScene.js      Direct-manipulation load, response, and traction laboratory
 │   └── StressScene.js        Stress tensors, vectors, deformation, and camera
 ├── lessons/
 │   └── stressLesson.js       Guided lesson content and answer keys
@@ -120,7 +125,7 @@ docs/
 
 ## GitHub distribution
 
-The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.4.0` is pushed, the same file is attached to the matching GitHub Release.
+The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.5.0` is pushed, the same file is attached to the matching GitHub Release.
 
 Students should download `Structural-Visualizer.html`, not the development `index.html` at the repository root.
 

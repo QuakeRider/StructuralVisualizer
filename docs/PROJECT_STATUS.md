@@ -1,20 +1,28 @@
 # Project Status
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 ## Summary
 
-Structural Visualizer is planned as a modular, university-level learning environment for the full structural-geology curriculum. The current release is the **interactive learning-laboratory prototype** (`0.4.0`): a redesigned force-to-stress-state vertical slice used to establish the interaction model, 3D visualization, guided lessons, free exploration, presentation mode, testing, and offline distribution.
+Structural Visualizer is planned as a modular, university-level learning environment for the full structural-geology curriculum. The current release is the **interactive mechanics learning-laboratory prototype** (`0.5.0`): a loads-to-stress-state vertical slice used to establish the interaction model, 3D visualization, guided lessons, free exploration, presentation mode, testing, and offline distribution.
 
 Stress states are one curriculum topic, not the identity or endpoint of the application. Planned scope includes stress and strain analysis, deformation kinematics, rheology, brittle and ductile structures, folds, faults, structural measurements, stereographic projection, maps, cross-sections, and synthesis. The complete product goal is documented in [CURRICULUM_VISION.md](CURRICULUM_VISION.md).
 
-The current version demonstrates the first reusable interaction pattern and separable domain, lesson-content, rendering, and interface layers. It is not yet a complete multi-topic course. The redesigned first module now provides the candidate visual and interaction standard that should be validated before later modules inherit it.
+The current version demonstrates the first reusable interaction pattern and separable domain, lesson-content, rendering, and interface layers. It is not yet a complete multi-topic course. The opening sequence now builds continuously from external load through equilibrium, internal action, traction, and stress before reaching named stress states.
 
 ## Completed
 
 ### Core interaction
 
 - [x] Direct 3D force-vector manipulation with a draggable handle.
+- [x] Draggable force application point on every selectable face.
+- [x] Resultant force and `r × F` moment calculation.
+- [x] Free-body translation and rotation tendency.
+- [x] Ideal fixed-opposite-face support with force and moment reactions.
+- [x] Continuous illustrative axial, shear, bending, and torsional response.
+- [x] Movable imaginary section cut with internal force and moment.
+- [x] Live axial-force, shear-force, bending-moment, and torsion readouts.
+- [x] Visible uniform distributed-load arrows tied to the contact area.
 - [x] Synchronized force magnitude and `Fx/Fy/Fz` numerical controls.
 - [x] Clickable block faces and explicit surface-normal selection.
 - [x] Resizable contact patch and average-traction calculation.
@@ -35,7 +43,8 @@ The current version demonstrates the first reusable interaction pattern and sepa
 - [x] Preset definitions separated from visualization code.
 - [x] Deformation calculation separated from rendering code.
 - [x] Reusable Three.js stress-scene class.
-- [x] Unit tests for catalog integrity and core deformation behavior.
+- [x] Reusable Three.js load-response scene class.
+- [x] Unit tests for statics, traction, catalog integrity, and core deformation behavior.
 - [x] Responsive desktop, tablet, and mobile layouts.
 - [x] Reduced-motion behavior.
 - [x] Single-file production build for offline use.
@@ -51,11 +60,11 @@ The current version demonstrates the first reusable interaction pattern and sepa
 
 ### Teaching and distribution
 
-- [x] Five-step 3D force-and-traction laboratory sequence.
-- [x] Explicit distinction between resultant force, average traction, signed normal traction, and the stress tensor.
+- [x] Ten-step 3D loads-to-stress foundation sequence before tensor presets.
+- [x] Explicit distinction among external force, resultant moment, reactions, internal resultants, average traction, signed normal traction, and the stress tensor.
 - [x] Live vector traction calculation with newton, square-centimeter, and megapascal units.
 - [x] Transition from normal and shear stress into the 3D stress-state sequence.
-- [x] Ten-step guided opening module.
+- [x] Fourteen-step guided opening module.
 - [x] Prediction questions with immediate feedback.
 - [x] Progressive reveal of tension, compression, shear, and combined loading.
 - [x] Free Explore mode retained as the full sandbox.
@@ -90,13 +99,19 @@ Manual verification should cover:
 12. Switching among normal, oblique, and tangential loading.
 13. Completing every guided lesson step, including incorrect and correct predictions.
 14. Entering and exiting Explore and Present without carrying invalid zero-magnitude foundation state.
+15. Moving the application point and confirming that `r × F` updates without changing force.
+16. Switching between free and fixed conditions and confirming reaction activation.
+17. Constructing axial, shear, bending, and torsional actions from load geometry.
+18. Moving the section cut and confirming constant internal force with changing bending moment for a single end force.
 
 ## Known limitations
 
 - The current navigation and state model still need extraction into a curriculum-level module registry.
-- The deformation mapping is qualitative and intentionally exaggerated.
+- Both deformation mappings are qualitative and intentionally exaggerated; the statics resultants are quantitative under the documented ideal assumptions.
 - Preset values are illustrative and are not calibrated to a particular rock or laboratory material.
-- The block does not yet support constitutive material models, yield, fracture, or damage.
+- The block does not yet solve continuum displacements or stresses and has no constitutive material model, yield, fracture, or damage.
+- The free-body ghost is a direction cue, not a rigid-body dynamics simulation.
+- The fixed support and section resultants represent one idealized single-force model.
 - Stress arrows are placed relative to the original block faces rather than following the deformed faces.
 - The application has no saved student progress, assessment, or instructor-authoring interface.
 - The production HTML uses system-font fallbacks when offline; preferred fonts are not yet vendored.
@@ -105,7 +120,7 @@ Manual verification should cover:
 
 ## Next recommended milestone
 
-Validate the redesigned force-to-stress module with instructors and students. Record scientific misconceptions, drag and face-selection failures, accessibility barriers, and lesson duration. Use that evidence to refine the shared scene, lesson shell, control, typography, color, and interaction patterns before building the next curriculum module.
+Validate the redesigned loads-to-stress module with instructors and students. Record misconceptions about free bodies, reactions, internal resultants, traction, and tensors alongside interaction failures, accessibility barriers, and lesson duration. Use that evidence to refine the shared laboratory before building the next curriculum module.
 
 ## Decisions intentionally deferred
 

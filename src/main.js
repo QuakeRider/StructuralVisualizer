@@ -2,6 +2,7 @@ import './styles.css';
 import { COMPONENTS, STRESS_STATES, formatStress, getStressState, scalePreset } from './domain/stressStates.js';
 import { computeDeformation, tensorToMatrix, volumeChangePercent } from './domain/deformation.js';
 import { decomposeTraction } from './domain/forceStress.js';
+import { calculateLoadResponse, pointOnFace } from './domain/loadResponse.js';
 import { STRESS_LESSON, getLessonStep, isLessonChoiceCorrect } from './lessons/stressLesson.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
 import { StressScene } from './visualization/StressScene.js';
@@ -11,6 +12,7 @@ const DEFAULT_MAGNITUDE = 28;
 const DEFAULT_EXAGGERATION = 1.2;
 const DEFAULT_FORCE = { x: 0, y: -5_000, z: 0 };
 const DEFAULT_NORMAL = { x: 0, y: 1, z: 0 };
+const DEFAULT_APPLICATION_POINT = { x: 0, y: 1.25, z: 0 };
 
 const app = document.querySelector('#app');
 
@@ -182,7 +184,10 @@ const state = {
   lessonChoiceCorrect: false,
   forceVector: { ...DEFAULT_FORCE },
   surfaceNormal: { ...DEFAULT_NORMAL },
+  applicationPoint: { ...DEFAULT_APPLICATION_POINT },
   contactArea: 100,
+  constraintMode: 'free',
+  cutPosition: 0,
 };
 
 function isForceLabStep() {
@@ -207,6 +212,10 @@ const forceLabScene = new ForceLabScene(elements.forceLabViewport, {
     state.surfaceNormal = surfaceNormal;
     syncForceLabReadouts();
   },
+  onApplicationPointChange: (applicationPoint) => {
+    state.applicationPoint = applicationPoint;
+    syncForceLabReadouts();
+  },
 });
 
 function forceMagnitude() {
@@ -226,6 +235,30 @@ function getTangent(normal) {
   };
   const length = Math.hypot(tangent.x, tangent.y, tangent.z) || 1;
   return { x: tangent.x / length, y: tangent.y / length, z: tangent.z / length };
+}
+
+function getSecondTangent(normal, tangent) {
+  const second = {
+    x: normal.y * tangent.z - normal.z * tangent.y,
+    y: normal.z * tangent.x - normal.x * tangent.z,
+    z: normal.x * tangent.y - normal.y * tangent.x,
+  };
+  const length = Math.hypot(second.x, second.y, second.z) || 1;
+  return { x: second.x / length, y: second.y / length, z: second.z / length };
+}
+
+function loadResponse() {
+  return calculateLoadResponse({
+    forceVector: state.forceVector,
+    applicationPoint: state.applicationPoint,
+    surfaceNormal: state.surfaceNormal,
+    constraintMode: state.constraintMode,
+    cutPosition: state.cutPosition,
+  });
+}
+
+function formatMoment(vector) {
+  return `${vectorText(vector, 1_000)} kN·m`;
 }
 
 function renderPresets() {
@@ -274,26 +307,61 @@ function forceControlsMarkup(step) {
     <label class="lab-control" for="force-magnitude-input"><span>Force magnitude <output id="force-magnitude-output">${magnitude.toFixed(2)} kN</output></span><input id="force-magnitude-input" class="range" type="range" min="1000" max="10000" step="100" value="${forceMagnitude()}" /></label>` : '';
   const areaControl = controls.has('area') ? `
     <label class="lab-control" for="contact-area-input"><span>Contact area <output id="contact-area-output">${state.contactArea} cm²</output></span><input id="contact-area-input" class="range" type="range" min="25" max="200" step="5" value="${state.contactArea}" /></label>` : '';
-  const presets = controls.has('presets') ? `
-    <div class="direction-control"><span>Quick directions</span><div class="segmented-control" role="group" aria-label="Force direction relative to selected surface">
-      <button type="button" data-force-preset="normal">Normal</button><button type="button" data-force-preset="oblique">Oblique</button><button type="button" data-force-preset="tangential">Tangential</button>
+  const constraintControl = controls.has('constraint') ? `
+    <div class="direction-control"><span>Body condition</span><div class="segmented-control two-up" role="group" aria-label="Body constraint">
+      <button type="button" data-constraint-mode="free" aria-pressed="${state.constraintMode === 'free'}">Free body</button>
+      <button type="button" data-constraint-mode="fixed" aria-pressed="${state.constraintMode === 'fixed'}">Fixed opposite face</button>
     </div></div>` : '';
-  return `<div class="lab-controls">${magnitudeControl}${componentFields}${areaControl}${presets}</div>`;
+  const applicationControl = controls.has('application') ? `
+    <div class="direction-control"><span>Application point</span><div class="segmented-control" role="group" aria-label="Force application point">
+      <button type="button" data-application-preset="center">Center</button><button type="button" data-application-preset="edge">Edge</button><button type="button" data-application-preset="corner">Corner</button>
+    </div><small>Or drag the orange ring directly on the selected face.</small></div>` : '';
+  const cutControl = controls.has('cut') ? `
+    <label class="lab-control" for="cut-position-input"><span>Section-cut position <output id="cut-position-output">${state.cutPosition.toFixed(2)}</output></span><input id="cut-position-input" class="range" type="range" min="-0.8" max="0.8" step="0.05" value="${state.cutPosition}" /><span class="control-scale"><small>Near support</small><small>Near load</small></span></label>` : '';
+  const presets = controls.has('presets') ? `
+    <div class="direction-control"><span>Quick directions</span><div class="segmented-control four-up" role="group" aria-label="Force direction relative to selected surface">
+      <button type="button" data-force-preset="compression">Compression</button><button type="button" data-force-preset="tension">Tension</button><button type="button" data-force-preset="tangential">Tangential</button><button type="button" data-force-preset="oblique">Oblique</button>
+    </div></div>` : '';
+  return `<div class="lab-controls">${constraintControl}${magnitudeControl}${componentFields}${applicationControl}${areaControl}${cutControl}${presets}</div>`;
 }
 
 function forceFormulaMarkup(step) {
   const decomposition = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
+  const response = loadResponse();
   if (step.spotlight === 'force') return `<strong>|F| = √(F<sub>x</sub>² + F<sub>y</sub>² + F<sub>z</sub>²)</strong><span id="formula-value">${(forceMagnitude() / 1_000).toFixed(2)} kN</span>`;
-  if (step.spotlight === 'surface') return `<strong>cos θ = |F · n| / |F|</strong><span id="formula-value">θ = ${surfaceAngleDegrees().toFixed(1)}°</span>`;
+  if (step.spotlight === 'moment') return `<strong>M<sub>O</sub> = r × F</strong><span id="formula-value">|M<sub>O</sub>| = ${(response.resultantMomentMagnitude / 1_000).toFixed(2)} kN·m</span>`;
+  if (step.spotlight === 'free-body') return `<strong>ΣF = ma &nbsp; · &nbsp; ΣM<sub>O</sub> = Iα</strong><span id="formula-value">${response.resultantMomentMagnitude > 10 ? 'Translation + rotation' : 'Translation'}</span>`;
+  if (step.spotlight === 'equilibrium') return `<strong>ΣF = 0 &nbsp; · &nbsp; ΣM = 0</strong><span id="formula-value">${response.isEquilibrated ? 'Reactions active' : 'Unbalanced body'}</span>`;
+  if (step.spotlight === 'actions') return `<strong>External geometry → internal action</strong><span id="formula-value">${response.actionLabel}</span>`;
   if (step.spotlight === 'area' || step.spotlight === 'traction') return `<strong>t̄ = F / A</strong><span id="formula-value">|t̄| = ${decomposition.tractionMagnitude.toFixed(3)} MPa</span>`;
+  if (step.spotlight === 'cut') return `<strong>F<sub>int</sub> + F<sub>ext</sub> = 0</strong><strong>M<sub>int</sub> + M<sub>ext</sub> = 0</strong><span id="formula-value">Cut ξ = ${state.cutPosition.toFixed(2)}</span>`;
+  if (step.spotlight === 'internal-actions') return `<strong>F<sub>int</sub> = Nn + V</strong><strong>M<sub>int</sub> = M<sub>b</sub> + Tn</strong><span id="formula-value">${response.actionLabel}</span>`;
   return `<strong>t<sub>n</sub> = t̄ · n</strong><strong>τ = t̄ − t<sub>n</sub>n</strong>`;
 }
 
 function forceReadoutsMarkup(step) {
+  const response = loadResponse();
   const cards = [
     `<div><span>Force vector, F</span><strong id="force-vector-readout">${vectorText(state.forceVector, 1_000)} kN</strong></div>`,
   ];
-  if (step.spotlight !== 'force') cards.push(`<div><span>Surface normal, n</span><strong id="surface-normal-readout">${vectorText(state.surfaceNormal, 1, 0)}</strong></div>`);
+  if (['moment', 'free-body', 'actions', 'cut', 'internal-actions'].includes(step.spotlight)) {
+    cards.push(`<div><span>Application point, r</span><strong id="application-point-readout">${vectorText(state.applicationPoint, 1, 2)} m</strong></div>`);
+  }
+  if (step.spotlight === 'moment' || step.spotlight === 'free-body') {
+    cards.push(`<div><span>Resultant moment, M<sub>O</sub></span><strong id="resultant-moment-readout">${formatMoment(response.resultantMoment)}</strong></div>`);
+  }
+  if (step.spotlight === 'equilibrium') {
+    cards.push(`<div class="reaction-readout"><span>Reaction force, R</span><strong id="reaction-force-readout">${vectorText(response.reactionForce, 1_000)} kN</strong></div>`);
+    cards.push(`<div class="reaction-readout"><span>Reaction moment, M<sub>R</sub></span><strong id="reaction-moment-readout">${formatMoment(response.reactionMoment)}</strong></div>`);
+  }
+  if (step.spotlight === 'actions') cards.push(`<div class="action-readout"><span>Resulting action</span><strong id="action-label-readout">${response.actionLabel}</strong></div>`);
+  if (step.spotlight !== 'force' && !['moment', 'free-body', 'equilibrium'].includes(step.spotlight)) cards.push(`<div><span>Surface normal, n</span><strong id="surface-normal-readout">${vectorText(state.surfaceNormal, 1, 0)}</strong></div>`);
+  if (['cut', 'internal-actions'].includes(step.spotlight)) {
+    cards.push(`<div class="normal-readout"><span>Axial force, N</span><strong id="axial-force-readout">${(response.normalForce / 1_000).toFixed(2)} kN</strong></div>`);
+    cards.push(`<div class="shear-readout"><span>Shear force, |V|</span><strong id="section-shear-readout">${(response.shearForce / 1_000).toFixed(2)} kN</strong></div>`);
+    cards.push(`<div><span>Bending moment, |M<sub>b</sub>|</span><strong id="bending-moment-readout">${(response.bendingMoment / 1_000).toFixed(2)} kN·m</strong></div>`);
+    cards.push(`<div><span>Torsion, T</span><strong id="torsion-readout">${(response.torsionalMoment / 1_000).toFixed(2)} kN·m</strong></div>`);
+  }
   if (['area', 'traction', 'decomposition'].includes(step.spotlight)) cards.push(`<div><span>Average traction, |t̄|</span><strong id="traction-readout">0.000 MPa</strong></div>`);
   if (step.spotlight === 'decomposition') {
     cards.push(`<div class="normal-readout"><span>Signed normal traction, t<sub>n</sub></span><strong id="normal-stress-readout">0.000 MPa</strong></div>`);
@@ -348,6 +416,20 @@ function bindForceLabControls() {
       syncForceLabReadouts();
     });
   }
+  const cutInput = elements.lessonCard.querySelector('#cut-position-input');
+  cutInput?.addEventListener('input', (event) => {
+    state.cutPosition = Number(event.target.value);
+    syncForceLabReadouts();
+  });
+  for (const button of elements.lessonCard.querySelectorAll('[data-constraint-mode]')) {
+    button.addEventListener('click', () => {
+      state.constraintMode = button.dataset.constraintMode;
+      syncForceLabReadouts();
+    });
+  }
+  for (const button of elements.lessonCard.querySelectorAll('[data-application-preset]')) {
+    button.addEventListener('click', () => setApplicationPreset(button.dataset.applicationPreset));
+  }
   for (const button of elements.lessonCard.querySelectorAll('[data-force-preset]')) button.addEventListener('click', () => setForcePreset(button.dataset.forcePreset));
 }
 
@@ -355,12 +437,27 @@ function setForcePreset(preset) {
   const magnitude = Math.max(forceMagnitude(), 5_000);
   const normal = state.surfaceNormal;
   const tangent = getTangent(normal);
-  if (preset === 'normal') state.forceVector = { x: -normal.x * magnitude, y: -normal.y * magnitude, z: -normal.z * magnitude };
+  if (preset === 'compression') state.forceVector = { x: -normal.x * magnitude, y: -normal.y * magnitude, z: -normal.z * magnitude };
+  if (preset === 'tension') state.forceVector = { x: normal.x * magnitude, y: normal.y * magnitude, z: normal.z * magnitude };
   if (preset === 'tangential') state.forceVector = { x: tangent.x * magnitude, y: tangent.y * magnitude, z: tangent.z * magnitude };
   if (preset === 'oblique') {
     const factor = magnitude / Math.sqrt(2);
     state.forceVector = { x: (tangent.x - normal.x) * factor, y: (tangent.y - normal.y) * factor, z: (tangent.z - normal.z) * factor };
   }
+  syncForceLabReadouts();
+}
+
+function setApplicationPreset(preset) {
+  const normal = state.surfaceNormal;
+  const tangent = getTangent(normal);
+  const secondTangent = getSecondTangent(normal, tangent);
+  const offset = { x: 0, y: 0, z: 0 };
+  const firstAmount = preset === 'center' ? 0 : 0.82;
+  const secondAmount = preset === 'corner' ? 0.82 : 0;
+  for (const axis of ['x', 'y', 'z']) {
+    offset[axis] = tangent[axis] * firstAmount + secondTangent[axis] * secondAmount;
+  }
+  state.applicationPoint = pointOnFace(normal, offset);
   syncForceLabReadouts();
 }
 
@@ -381,9 +478,13 @@ function syncForceLabReadouts() {
   if (!isForceLabStep()) return;
   const step = getLessonStep(state.lessonStepIndex);
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
+  const response = loadResponse();
   forceLabScene.setForce(state.forceVector);
   forceLabScene.setArea(state.contactArea);
   forceLabScene.setSurfaceNormal(state.surfaceNormal);
+  forceLabScene.setApplicationPoint(state.applicationPoint);
+  forceLabScene.setConstraintMode(state.constraintMode);
+  forceLabScene.setCutPosition(state.cutPosition);
   forceLabScene.setOptions(step.labOptions);
 
   const magnitudeInput = elements.lessonCard.querySelector('#force-magnitude-input');
@@ -392,18 +493,39 @@ function syncForceLabReadouts() {
   const areaInput = elements.lessonCard.querySelector('#contact-area-input');
   if (areaInput && document.activeElement !== areaInput) areaInput.value = String(state.contactArea);
   setText('#contact-area-output', `${state.contactArea} cm²`);
+  const cutInput = elements.lessonCard.querySelector('#cut-position-input');
+  if (cutInput && document.activeElement !== cutInput) cutInput.value = String(state.cutPosition);
+  setText('#cut-position-output', state.cutPosition.toFixed(2));
   for (const axis of ['x', 'y', 'z']) {
     const input = elements.lessonCard.querySelector(`#force-${axis}-input`);
     if (input && document.activeElement !== input) input.value = (state.forceVector[axis] / 1_000).toFixed(2);
   }
   setText('#force-vector-readout', `${vectorText(state.forceVector, 1_000)} kN`);
+  setText('#application-point-readout', `${vectorText(state.applicationPoint, 1, 2)} m`);
+  setText('#resultant-moment-readout', formatMoment(response.resultantMoment));
+  setText('#reaction-force-readout', `${vectorText(response.reactionForce, 1_000)} kN`);
+  setText('#reaction-moment-readout', formatMoment(response.reactionMoment));
+  setText('#action-label-readout', response.actionLabel);
   setText('#surface-normal-readout', vectorText(state.surfaceNormal, 1, 0));
+  setText('#axial-force-readout', `${(response.normalForce / 1_000).toFixed(2)} kN`);
+  setText('#section-shear-readout', `${(response.shearForce / 1_000).toFixed(2)} kN`);
+  setText('#bending-moment-readout', `${(response.bendingMoment / 1_000).toFixed(2)} kN·m`);
+  setText('#torsion-readout', `${(response.torsionalMoment / 1_000).toFixed(2)} kN·m`);
   setText('#traction-readout', `${result.tractionMagnitude.toFixed(3)} MPa`);
   setText('#normal-stress-readout', `${result.normalTraction.toFixed(3)} MPa`);
   setText('#shear-stress-readout', `${result.shearMagnitude.toFixed(3)} MPa`);
   if (step.spotlight === 'force') setText('#formula-value', `${(forceMagnitude() / 1_000).toFixed(2)} kN`);
-  if (step.spotlight === 'surface') setText('#formula-value', `θ = ${surfaceAngleDegrees().toFixed(1)}°`);
+  if (step.spotlight === 'moment') setText('#formula-value', `|Mᵒ| = ${(response.resultantMomentMagnitude / 1_000).toFixed(2)} kN·m`);
+  if (step.spotlight === 'free-body') setText('#formula-value', response.resultantMomentMagnitude > 10 ? 'Translation + rotation' : 'Translation');
+  if (step.spotlight === 'equilibrium') setText('#formula-value', response.isEquilibrated ? 'Reactions active' : 'Unbalanced body');
+  if (step.spotlight === 'actions' || step.spotlight === 'internal-actions') setText('#formula-value', response.actionLabel);
+  if (step.spotlight === 'cut') setText('#formula-value', `Cut ξ = ${state.cutPosition.toFixed(2)}`);
   if (step.spotlight === 'area' || step.spotlight === 'traction') setText('#formula-value', `|t̄| = ${result.tractionMagnitude.toFixed(3)} MPa`);
+  for (const button of elements.lessonCard.querySelectorAll('[data-constraint-mode]')) {
+    const active = button.dataset.constraintMode === state.constraintMode;
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
 }
 
 function chooseLessonAnswer(choiceId) {
@@ -424,6 +546,14 @@ function applyLessonStep(index) {
   state.magnitude = step.magnitude;
   state.stress = scalePreset(getStressState(step.presetId), step.magnitude);
   state.customized = false;
+  if (step.initialLabState) {
+    if (step.initialLabState.forceVector) state.forceVector = { ...step.initialLabState.forceVector };
+    if (step.initialLabState.surfaceNormal) state.surfaceNormal = { ...step.initialLabState.surfaceNormal };
+    if (step.initialLabState.applicationPoint) state.applicationPoint = { ...step.initialLabState.applicationPoint };
+    if (step.initialLabState.contactArea !== undefined) state.contactArea = step.initialLabState.contactArea;
+    if (step.initialLabState.constraintMode) state.constraintMode = step.initialLabState.constraintMode;
+    if (step.initialLabState.cutPosition !== undefined) state.cutPosition = step.initialLabState.cutPosition;
+  }
   elements.vectorsToggle.checked = step.vectors;
   elements.outlineToggle.checked = step.outline;
   elements.gridToggle.checked = step.grid;
@@ -514,9 +644,13 @@ function resetAll() {
 }
 
 function resetForceLab() {
-  state.forceVector = { ...DEFAULT_FORCE };
-  state.surfaceNormal = { ...DEFAULT_NORMAL };
-  state.contactArea = 100;
+  const initial = getLessonStep(state.lessonStepIndex).initialLabState ?? {};
+  state.forceVector = { ...(initial.forceVector ?? DEFAULT_FORCE) };
+  state.surfaceNormal = { ...(initial.surfaceNormal ?? DEFAULT_NORMAL) };
+  state.applicationPoint = { ...(initial.applicationPoint ?? DEFAULT_APPLICATION_POINT) };
+  state.contactArea = initial.contactArea ?? 100;
+  state.constraintMode = initial.constraintMode ?? 'free';
+  state.cutPosition = initial.cutPosition ?? 0;
   syncForceLabReadouts();
 }
 
@@ -543,16 +677,21 @@ function syncAll() {
 
   if (isForceLabStep()) {
     const step = getLessonStep(state.lessonStepIndex);
-    elements.interactionHint.textContent = step.labOptions.allowSurfaceSelection
-      ? 'Drag the white handle · click a face to select its normal · drag empty space to orbit'
-      : 'Drag the white handle to change force · drag empty space to orbit';
+    const hints = ['Drag white handle: force'];
+    if (step.labOptions.allowApplicationPoint) hints.push('drag orange ring: load point');
+    if (step.labOptions.allowSurfaceSelection) hints.push('click face: load surface');
+    hints.push('drag empty space: orbit');
+    elements.interactionHint.textContent = hints.join(' · ');
     if (step.spotlight === 'force') {
       elements.sceneLegend.hidden = true;
     } else {
       elements.sceneLegend.hidden = false;
-      elements.sceneLegend.innerHTML = step.spotlight === 'decomposition'
-        ? '<span class="legend-normal">Normal component</span><span class="legend-shear">Shear component</span><span class="legend-surface">Contact area</span>'
-        : `<span class="legend-normal">Surface normal</span>${step.labOptions.showArea ? '<span class="legend-surface">Contact area</span>' : ''}`;
+      const legend = [];
+      if (step.labOptions.showSurfaceNormal || step.labOptions.showInternalActions) legend.push('<span class="legend-normal">Normal / axial</span>');
+      if (step.labOptions.showDecomposition || step.labOptions.showInternalActions) legend.push('<span class="legend-shear">Shear / moment</span>');
+      if (step.labOptions.showArea || step.labOptions.showApplicationPoint) legend.push('<span class="legend-surface">Load area / point</span>');
+      if (step.labOptions.showSupport || step.labOptions.showReactions) legend.push('<span class="legend-reaction">Support / reaction</span>');
+      elements.sceneLegend.innerHTML = legend.join('');
     }
     syncForceLabReadouts();
   } else {

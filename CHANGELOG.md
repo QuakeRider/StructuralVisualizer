@@ -2,6 +2,30 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.5.0 — 2026-09-24
+
+### Added
+
+- Draggable force application point on any selectable block face.
+- Exact resultant-moment calculation using `M = r × F`.
+- Free-body and ideal fixed-support conditions with visible force and moment reactions.
+- Continuous illustrative axial, shear, bending, and torsional block response.
+- Uniform distributed-load arrows tied to the selected contact patch.
+- Movable imaginary section cut with live axial force, shear force, bending moment, and torsion.
+- Tested domain model for moments, equilibrium reactions, load decomposition, and section resultants.
+
+### Changed
+
+- Expanded the guided opening module from ten to fourteen activities.
+- Reordered the curriculum so external loading, equilibrium, internal action, traction, and stress are established before stress states.
+- Made loading modes consequences of face, angle, magnitude, and application point rather than preset-only illustrations.
+- Clarified the boundary between exact statics calculations and qualitative deformation graphics.
+
+### Fixed
+
+- Reaction and internal-action arrows now render visibly over the translucent block.
+- Lesson resets now restore the current activity's intended mechanical setup.
+
 ## 0.4.0 — 2026-09-23
 
 ### Added

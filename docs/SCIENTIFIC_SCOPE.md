@@ -2,6 +2,22 @@
 
 ## What the prototype represents
 
+### External loads and equilibrium
+
+The load laboratory treats the displayed body as a schematic 2.5 m cube so force application coordinates and moments have declared length units. It calculates the resultant moment about a reference point exactly from:
+
+```text
+M = r × F
+```
+
+In **Free body** mode, the application shows the directions of translational and rotational tendency produced by the nonzero resultants. The displaced wireframe is a motion cue, not a time-integrated rigid-body dynamics simulation.
+
+In **Fixed opposite face** mode, the face opposite the selected loaded face is an ideal fixed constraint. Reaction force and reaction moment are calculated from static equilibrium. For the single applied-force model, a section cut exposes the internal force and moment required to balance the portion of the body on the loaded side. These resultants are resolved into axial force, shear force, bending moment, and torsion.
+
+The statics calculations are quantitative within those stated assumptions. The visible deformed shape is not: it is a bounded teaching response that makes axial, shear, bending, and torsional tendencies legible without claiming a stiffness or displacement solution.
+
+### Surface traction
+
 The opening laboratory calculates vector average traction from a resultant force divided by the selected contact area:
 
 ```text
@@ -19,9 +35,12 @@ tn = t̄ · n
 
 An inward compressive applied force therefore gives `tn < 0` in this surface-traction calculation. When the lesson introduces the compression-positive geological stress tensor `σ`, it states the corresponding mapping explicitly as `t(n) = −σn`. This prevents the traction sign and the chosen tensor sign convention from being silently mixed.
 
-The later application steps visualize a relationship between a selected stress tensor and a deliberately exaggerated block deformation. Together, the sequence is designed to help students connect:
+The later application steps visualize a relationship between a selected stress tensor and a deliberately exaggerated block deformation. The load laboratory and stress-state renderer are connected conceptually by the guided lesson; the application does not solve a three-dimensional stress field from the applied boundary load. Together, the sequence is designed to help students connect:
 
-- Force magnitude, direction, and contact area.
+- Force magnitude, direction, location, and contact area.
+- Resultant force and moment.
+- Constraints, reactions, and static equilibrium.
+- Internal axial force, shear force, bending moment, and torsion.
 - Average traction and its signed normal and shear components on a surface.
 - Stress magnitude and direction.
 - Normal and shear components.
@@ -40,12 +59,14 @@ The displayed deformation is not a prediction for rock, putty, metal, or any oth
 - Temperature or strain-rate dependence.
 - Yield surface.
 - Fracture or damage model.
-- Boundary-condition solver.
+- Continuum boundary-value or finite-element solver.
 - Finite-element discretization.
 
 Consequently, the application must not present fracture orientation, failure, or permanent deformation as uniquely determined by the selected stress state.
 
-## Current qualitative mapping
+## Current qualitative response mappings
+
+In the load laboratory, an ideal fixed face remains stationary while a deliberately exaggerated shape function displays axial, shear, bending, and torsional tendencies. Magnitude is normalized for visibility rather than divided by material stiffness. The free-body ghost indicates a direction of motion and rotation rather than position at a stated time.
 
 Normal stress components create extension or shortening along their axes with a small illustrative lateral coupling. Shear components apply a volume-preserving upper-triangular deformation. The deformation is clamped to keep the block legible at large display values.
 

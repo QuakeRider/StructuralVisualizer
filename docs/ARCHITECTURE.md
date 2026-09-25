@@ -11,6 +11,7 @@ The current stress implementation is the first vertical slice. Force/stress calc
 ```text
 Interface (src/main.js)
     |
+    +-- statics/load response (src/domain/loadResponse.js)
     +-- force/stress foundations (src/domain/forceStress.js)
     +-- preset catalog (src/domain/stressStates.js)
     +-- qualitative model (src/domain/deformation.js)
@@ -27,6 +28,18 @@ Interface (src/main.js)
 `src/domain/forceStress.js` converts newtons over square centimeters to megapascals and supplies normal/shear notation. The unit conversion and inverse area relationship are tested without the browser.
 
 It also calculates vector average traction and decomposes it into signed normal and in-plane shear components for an arbitrary surface normal.
+
+### Statics and load response
+
+`src/domain/loadResponse.js` contains the browser-independent statics model used before stress is introduced. It calculates:
+
+- Resultant moment from `r × F`.
+- Force components normal and tangential to the loaded face.
+- Ideal fixed-support force and moment reactions.
+- Internal force and moment at a movable section cut.
+- Axial, shear, bending, and torsional resultants.
+
+These calculations enforce equilibrium for the stated single-force, ideal-support model. They are separate from the illustrative deformation rendering and are covered by unit tests.
 
 ### Domain catalog
 
@@ -46,13 +59,13 @@ The catalog contains no Three.js or DOM behavior.
 
 ### Renderer
 
-`src/visualization/ForceLabScene.js` owns the directly manipulated force vector, selectable block faces, contact patch, labeled axes, surface normal, and normal/shear component geometry. It reports force and surface changes to the interface without owning lesson progress.
+`src/visualization/ForceLabScene.js` owns the directly manipulated force vector, movable application point, selectable block faces, contact patch, ideal fixed support, reaction geometry, section cut, internal-action arrows, labeled axes, and normal/shear component geometry. It reports force, surface, and application-point changes to the interface without owning lesson progress. Its deformed block and free-body ghost are explanatory graphics driven by the statics result; they are not a finite-element solution.
 
 `src/visualization/StressScene.js` owns the stress-state camera, lights, deformable block, comparison outline, arrows, labeled axes, grid, and animation. It receives stress and display settings; it does not decide which lesson or preset is active.
 
 ### Lesson content
 
-`src/lessons/stressLesson.js` defines the guided sequence as data: visual kind, foundation controls or loading preset, magnitude, visible references, explanatory copy, prompts, answer choices, and feedback. The interface selects either the foundation illustration or the 3D scene, while the renderer remains unaware of lesson progress.
+`src/lessons/stressLesson.js` defines the fourteen-step guided sequence as data: visual kind, initial laboratory state, available controls, loading preset, magnitude, visible references, explanatory copy, prompts, answer choices, and feedback. The interface selects either the load laboratory or stress-state scene, while both renderers remain unaware of lesson progress.
 
 ## Planned curriculum architecture
 
@@ -122,6 +135,9 @@ Vite handles development and bundling. `vite-plugin-singlefile` inlines applicat
 
 Current unit tests verify:
 
+- Moment calculations and face-point projection.
+- Free-body versus fixed-support reactions.
+- Normal/shear load decomposition and eccentric bending.
 - Force/area unit conversion and the inverse area relationship.
 - Normal and shear notation.
 - Catalog completeness and stable numbering.
