@@ -2,9 +2,12 @@
 // docs/curriculum/unit-2-stress.md (S7) and adds the 2D-slice reveal, an
 // arbitrary plane through the point, t = σn in 3D, and the switch to NED.
 
+import { inline, math, mo, row, vec } from '../mathml.js';
+
 const TENSOR_EQUATION = {
   id: 'cauchy',
-  html: 't(n) = −σ n &nbsp;<small>(compression-positive σ, outward n)</small><output class="equation-matrix" data-live-html="tensor"></output>',
+  html: math(vec('t'), row(mo('('), vec('n'), mo(')')), mo('='), mo('−'), vec('σ'), vec('n'))
+    + `<small>(compression-positive ${inline(vec('σ'))}, outward ${inline(vec('n'))})</small><output class="equation-matrix" data-live-html="tensor"></output>`,
   symbols: [],
 };
 

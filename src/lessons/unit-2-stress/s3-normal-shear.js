@@ -3,6 +3,13 @@
 // form fixed in S4 (compression positive); this seed still shows the signed
 // projection onto the outward normal, as described in SCIENTIFIC_SCOPE.md.
 
+import { abs, bound, live, math, mi, mo, overbar, sub, vec } from '../mathml.js';
+
+const T_BAR = bound('force', overbar(vec('t')));
+const N = bound('surface-normal', vec('n'));
+const T_N = bound('normal', sub(mi('t'), mi('n')));
+const TAU = bound('shear', vec('τ'));
+
 export default {
   id: 'S3',
   status: 'seed',
@@ -30,18 +37,18 @@ export default {
       equations: [
         {
           id: 'normal-part',
-          html: '<var data-scene-ref="normal">t<sub>n</sub></var> = <var data-scene-ref="force">t̄</var> · <var data-scene-ref="surface-normal">n</var> = <output data-live="normalTraction"></output>',
+          html: math(T_N, mo('='), T_BAR, mo('·'), N, mo('='), live('normalTraction')),
           symbols: [
-            { symbol: 't̄', sceneRef: 'force', description: 'White arrow with a round drag handle (traction direction)' },
-            { symbol: 'n', sceneRef: 'surface-normal', description: 'Short arrow pointing straight out of the selected face' },
-            { symbol: 'tₙ', sceneRef: 'normal', description: 'Arrow parallel to n, drawn from the tip of the shear arrow' },
+            { symbol: overbar(vec('t')), sceneRef: 'force', description: 'White arrow with a round drag handle (traction direction)' },
+            { symbol: vec('n'), sceneRef: 'surface-normal', description: 'Short arrow pointing straight out of the selected face' },
+            { symbol: sub(mi('t'), mi('n')), sceneRef: 'normal', description: 'Arrow parallel to n, drawn from the tip of the shear arrow' },
           ],
         },
         {
           id: 'shear-part',
-          html: '<var data-scene-ref="shear">τ</var> = <var data-scene-ref="force">t̄</var> − <var data-scene-ref="normal">t<sub>n</sub></var><var data-scene-ref="surface-normal">n</var> &nbsp;→&nbsp; |<var data-scene-ref="shear">τ</var>| = <output data-live="shearMagnitude"></output>',
+          html: math(TAU, mo('='), T_BAR, mo('−'), T_N, N) + math(abs(TAU), mo('='), live('shearMagnitude')),
           symbols: [
-            { symbol: 'τ', sceneRef: 'shear', description: 'Arrow lying in the face, starting at the tail of the white arrow' },
+            { symbol: vec('τ'), sceneRef: 'shear', description: 'Arrow lying in the face, starting at the tail of the white arrow' },
           ],
         },
       ],

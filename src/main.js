@@ -2,7 +2,8 @@ import './styles.css';
 import { COMPONENTS, STRESS_STATES, formatStress, getStressState, scalePreset } from './domain/stressStates.js';
 import { computeDeformation, tensorToMatrix, volumeChangePercent } from './domain/deformation.js';
 import { decomposeTraction } from './domain/forceStress.js';
-import { formatNumber, formatSquared, formatVector } from './domain/format.js';
+import { formatNumber } from './domain/format.js';
+import { basis, frac, hat, inline, mi, mn, mo, mtext, num, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
 import { add, magnitude, scale, xyMagnitude } from './domain/vector.js';
 import {
   LESSONS,
@@ -72,7 +73,14 @@ app.innerHTML = `
         <div class="visual-header">
           <div class="active-title-row">
             <span id="active-number" class="state-number"></span>
-            <div><p class="section-kicker">Interactive laboratory</p><h2 id="active-state-name"></h2></div>
+            <div class="title-stack"><p id="lesson-progress-label" class="lesson-progress-label"></p><h2 id="active-state-name"></h2></div>
+          </div>
+          <div class="lesson-nav">
+            <label class="lesson-picker" for="lesson-select"><span class="visually-hidden">Lesson</span><select id="lesson-select"></select></label>
+            <nav class="step-navigator" aria-label="Jump to a step in this lesson">
+              <div id="step-strip" class="step-strip"></div>
+              <p id="step-strip-label" class="step-strip-label" aria-hidden="true"></p>
+            </nav>
           </div>
           <div class="view-actions">
             <button id="replay-button" class="button secondary replay-button" type="button"><span aria-hidden="true">↻</span> Replay</button>
@@ -103,11 +111,6 @@ app.innerHTML = `
       </section>
 
       <aside class="panel lesson-panel" aria-label="Guided lesson">
-        <div class="lesson-progress-header">
-          <label class="lesson-picker" for="lesson-select"><span>Lesson</span><select id="lesson-select"></select></label>
-          <div><p id="lesson-unit-label" class="section-kicker"></p><strong id="lesson-progress-label"></strong></div>
-          <div class="lesson-progress" role="progressbar" aria-label="Lesson progress" aria-valuemin="1"><span></span></div>
-        </div>
         <div id="lesson-card" class="lesson-card" aria-live="polite"></div>
         <details class="syllabus">
           <summary>View all steps in this lesson</summary>
@@ -158,13 +161,13 @@ const elements = {
   moduleChipValue: document.querySelector('#module-chip-value'),
   presetGrid: document.querySelector('#preset-grid'),
   lessonSelect: document.querySelector('#lesson-select'),
-  lessonUnitLabel: document.querySelector('#lesson-unit-label'),
   lessonStepList: document.querySelector('#lesson-step-list'),
+  stepStrip: document.querySelector('#step-strip'),
+  stepStripLabel: document.querySelector('#step-strip-label'),
   lessonCard: document.querySelector('#lesson-card'),
   lessonPanel: document.querySelector('.lesson-panel'),
   syllabus: document.querySelector('.syllabus'),
   lessonProgressLabel: document.querySelector('#lesson-progress-label'),
-  lessonProgress: document.querySelector('.lesson-progress'),
   activeName: document.querySelector('#active-state-name'),
   activeNumber: document.querySelector('#active-number'),
   interactionHint: document.querySelector('#interaction-hint'),
@@ -354,6 +357,36 @@ function renderLessonSidebar() {
       <span class="lesson-step-number">${index < state.maxLessonStepVisited ? '✓' : String(index + 1).padStart(2, '0')}</span><span>${step.label}</span>
     </button>`).join('');
   for (const button of elements.lessonStepList.querySelectorAll('.lesson-step')) button.addEventListener('click', () => applyLessonStep(Number(button.dataset.stepIndex)));
+  renderStepStrip();
+}
+
+/** Numbered step chips for Present mode: any step can be opened directly. */
+function renderStepStrip() {
+  const steps = currentLesson().steps;
+  elements.stepStrip.innerHTML = steps.map((step, index) => {
+    const current = index === state.lessonStepIndex;
+    const visited = !current && index <= state.maxLessonStepVisited;
+    return `<button class="step-chip${current ? ' is-current' : ''}${visited ? ' is-visited' : ''}" type="button" data-step-index="${index}" aria-current="${current ? 'step' : 'false'}" aria-label="Step ${index + 1}: ${step.label}">${index + 1}</button>`;
+  }).join('');
+  const showLabel = (index) => {
+    const hint = index === state.lessonStepIndex ? ' <span class="step-keys">· keys ← → 1–9 Home End</span>' : ' <span>(click to open)</span>';
+    elements.stepStripLabel.innerHTML = `<strong>${index + 1}</strong> ${steps[index].label}${hint}`;
+  };
+  showLabel(state.lessonStepIndex);
+  for (const chip of elements.stepStrip.querySelectorAll('.step-chip')) {
+    const index = Number(chip.dataset.stepIndex);
+    chip.addEventListener('click', () => jumpToStep(index));
+    chip.addEventListener('pointerenter', () => showLabel(index));
+    chip.addEventListener('focus', () => showLabel(index));
+    chip.addEventListener('pointerleave', () => showLabel(state.lessonStepIndex));
+    chip.addEventListener('blur', () => showLabel(state.lessonStepIndex));
+  }
+}
+
+function jumpToStep(index) {
+  const last = currentLesson().steps.length - 1;
+  const target = Math.min(Math.max(index, 0), last);
+  if (target !== state.lessonStepIndex) applyLessonStep(target);
 }
 
 function renderComponentControls() {
@@ -374,9 +407,6 @@ function renderPresentationOptions() {
   elements.presentationStateSelect.innerHTML = STRESS_STATES.map((preset) => `<option value="${preset.id}">${String(preset.number).padStart(2, '0')} · ${preset.name}</option>`).join('');
 }
 
-function stepNumber(index = state.lessonStepIndex) {
-  return `${state.lessonId}.${index + 1}`;
-}
 
 /* ---------- Equation–model binding panel ---------- */
 
@@ -390,7 +420,7 @@ function equationPanelMarkup(step) {
   }
   const key = symbols.length ? `
     <dl class="equation-key" aria-label="What each symbol is in the scene">
-      ${symbols.map((symbol) => `<div data-scene-ref="${symbol.sceneRef}"><dt><var>${symbol.symbol}</var></dt><dd>${symbol.description}</dd></div>`).join('')}
+      ${symbols.map((symbol) => `<div data-scene-ref="${symbol.sceneRef}"><dt><math>${symbol.symbol}</math></dt><dd>${symbol.description}</dd></div>`).join('')}
     </dl>` : '';
   return `
     <section class="equation-panel" aria-label="Equations">
@@ -414,8 +444,8 @@ function setSceneHighlight(ref) {
 
 function bindEquationPanel() {
   for (const element of elements.lessonCard.querySelectorAll('.equation-panel [data-scene-ref]')) {
-    if (element.tagName === 'VAR') {
-      element.tabIndex = 0;
+    if (element.hasAttribute('data-sym')) {
+      element.setAttribute('tabindex', '0');
       const symbol = currentStep().equations.flatMap((equation) => equation.symbols).find((candidate) => candidate.sceneRef === element.dataset.sceneRef);
       if (symbol) element.setAttribute('aria-label', `${element.textContent}: ${symbol.description}`);
     }
@@ -426,19 +456,19 @@ function bindEquationPanel() {
   }
 }
 
-function bracketNegative(value) {
-  const text = formatNumber(value);
-  return value < 0 && text !== '0' ? `(${text})` : text;
+/** 3 î − 4 ĵ (+ 0 k̂): the component form written with the unit vectors, as MathML. */
+function basisForm(vector, dimension) {
+  const terms = [['x', basis.i], ['y', basis.j], ['z', basis.k]].slice(0, dimension);
+  return row(...terms.map(([axis, unitVector], index) => {
+    const value = vector[axis];
+    if (index === 0) return row(num(value), unitVector);
+    return row(mo(value < 0 ? '−' : '+'), num(Math.abs(value)), unitVector);
+  }));
 }
 
-/** "3 î − 4 ĵ + 0 k̂": the component form written with the unit vectors. */
-function basisForm(vector, dimension) {
-  const terms = [['x', 'î'], ['y', 'ĵ'], ['z', 'k̂']].slice(0, dimension);
-  return terms.map(([axis, basis], index) => {
-    const value = vector[axis];
-    if (index === 0) return `${formatNumber(value)} ${basis}`;
-    return `${value < 0 ? '−' : '+'} ${formatNumber(Math.abs(value))} ${basis}`;
-  }).join(' ');
+/** A number with an upright unit, e.g. 0.500 MPa. */
+function quantityMath(text, unit) {
+  return row(mn(text), '<mspace width="0.25em"></mspace>', mtext(unit));
 }
 
 function vectorLabLiveValues() {
@@ -446,25 +476,26 @@ function vectorLabLiveValues() {
   const length = magnitude(v);
   const unit = length > 1e-9 ? scale(v, 1 / length) : null;
   const scaled = scale(v, scalar);
-  const stack = (axis) => `${formatNumber(v[axis])} + ${bracketNegative(b[axis])} = ${formatNumber(sum[axis])}`;
+  const stack = (axis) => row(num(v[axis]), mo('+'), signedTerm(b[axis]), mo('='), num(sum[axis]));
+  const components = (vector) => [vector.x, vector.y, vector.z].slice(0, dimension);
   return {
-    v: formatVector(v, { dimension }),
-    vx2: formatSquared(v.x),
-    vy2: formatSquared(v.y),
-    vz2: formatSquared(v.z),
-    magnitude: formatNumber(length),
+    v: tuple(components(v)),
+    vx2: squared(v.x),
+    vy2: squared(v.y),
+    vz2: squared(v.z),
+    magnitude: num(length),
     basisForm: basisForm(v, dimension),
-    dSquared: formatNumber(v.x ** 2 + v.y ** 2),
-    d: formatNumber(xyMagnitude(v)),
-    unit: unit ? formatVector(unit) : 'undefined: v has no direction when it is zero',
-    unitMagnitude: unit ? formatNumber(magnitude(unit)) : '—',
-    sum: formatVector(sum),
+    dSquared: num(v.x ** 2 + v.y ** 2),
+    d: num(xyMagnitude(v)),
+    unit: unit ? tuple(components(unit)) : mtext('undefined: the zero vector has no direction'),
+    unitMagnitude: unit ? num(magnitude(unit)) : mo('—'),
+    sum: tuple(components(sum)),
     stackX: stack('x'),
     stackY: stack('y'),
     stackZ: stack('z'),
-    scaled: formatVector(scaled),
-    absC: formatNumber(Math.abs(scalar)),
-    scaledMagnitude: formatNumber(magnitude(scaled)),
+    scaled: tuple(components(scaled)),
+    absC: num(Math.abs(scalar)),
+    scaledMagnitude: num(magnitude(scaled)),
   };
 }
 
@@ -473,12 +504,16 @@ function liveValues() {
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
+  const signed = (value, digits) => `${value < 0 ? '−' : ''}${Math.abs(value).toFixed(digits)}`;
   return {
-    magnitude: formatQuantity(forceMagnitude(), quantity),
-    traction: `${result.tractionMagnitude.toFixed(3)} MPa`,
-    tractionConversion: `${Math.round(forceMagnitude()).toLocaleString('en-US')} N / ${(state.contactArea / 10_000).toFixed(4)} m²`,
-    normalTraction: `${result.normalTraction.toFixed(3)} MPa`,
-    shearMagnitude: `${result.shearMagnitude.toFixed(3)} MPa`,
+    magnitude: quantityMath((forceMagnitude() / quantity.divisor).toFixed(2), quantity.unit),
+    traction: quantityMath(result.tractionMagnitude.toFixed(3), 'MPa'),
+    tractionConversion: frac(
+      quantityMath(Math.round(forceMagnitude()).toLocaleString('en-US'), 'N'),
+      quantityMath((state.contactArea / 10_000).toFixed(4), 'm²'),
+    ),
+    normalTraction: quantityMath(signed(result.normalTraction, 3), 'MPa'),
+    shearMagnitude: quantityMath(result.shearMagnitude.toFixed(3), 'MPa'),
   };
 }
 
@@ -488,8 +523,13 @@ function syncEquationValues() {
   const hidden = new Set(isLessonView() && !state.lessonChoiceCorrect ? currentStep().revealAfterAnswer ?? [] : []);
   for (const element of elements.lessonCard.querySelectorAll('[data-live]')) {
     const isHidden = hidden.has(element.dataset.live);
-    element.textContent = isHidden ? '?' : values[element.dataset.live] ?? '—';
-    element.classList.toggle('is-hidden-value', isHidden);
+    const value = values[element.dataset.live] ?? mo('—');
+    // Live slots sit inside MathML; values are MathML strings. Only rewrite on change.
+    const markup = isHidden ? mi('?', { cls: 'hidden-value' }) : value;
+    if (element.dataset.rendered !== markup) {
+      element.innerHTML = markup;
+      element.dataset.rendered = markup;
+    }
     if (isHidden) element.setAttribute('aria-label', 'hidden until you answer');
     else element.removeAttribute('aria-label');
   }
@@ -708,7 +748,7 @@ function renderLessonPanel() {
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
-    <div class="lesson-heading"><span class="step-badge">${stepNumber()}</span><h2>${step.title}</h2><p>${step.body}</p></div>
+    <div class="lesson-heading"><h2>${step.title}</h2><p>${step.body}</p></div>
     ${step.task ? `<div class="task-card"><span>Try it</span><p>${step.task}</p></div>` : ''}
     ${equationPanelMarkup(step)}${labContent}${choices}
     <div class="lesson-actions"><button id="lesson-back-button" class="button secondary" type="button" ${state.lessonStepIndex === 0 ? 'disabled' : ''}>Back</button><button id="lesson-next-button" class="button" type="button" ${canAdvance(step) ? '' : 'disabled'}>${next.label}</button></div>`;
@@ -1012,15 +1052,16 @@ function syncVectorLabChrome(step) {
     ? 'Drag a round handle: move the tip across the floor · Shift + drag: up or down · drag empty space: orbit'
     : 'Drag the round handle to move the tip · scroll to zoom';
   const sum = options.layout === 'sum';
-  const legend = [legendItem('vector', sum ? 'a' : 'v')];
-  if (sum) legend.push(legendItem('b', 'b'), legendItem('result', 'a + b'));
+  const component = (axis) => inline(sub(mi('v'), mi(axis)));
+  const legend = [legendItem('vector', inline(vec(sum ? 'a' : 'v')))];
+  if (sum) legend.push(legendItem('b', inline(vec('b'))), legendItem('result', inline(vec('a'), mo('+'), vec('b'))));
   if (!sum && options.showComponents !== false) {
-    legend.push(legendItem('x', 'v<sub>x</sub>'), legendItem('y', 'v<sub>y</sub>'));
-    if (is3d) legend.push(legendItem('z', 'v<sub>z</sub>'));
+    legend.push(legendItem('x', component('x')), legendItem('y', component('y')));
+    if (is3d) legend.push(legendItem('z', component('z')));
   }
-  if (options.showTriangles && is3d) legend.push(legendItem('guide', 'd'));
-  if (options.showUnit) legend.push(legendItem('result', 'v̂'));
-  if (options.showScaled) legend.push(legendItem('result', 'c v'));
+  if (options.showTriangles && is3d) legend.push(legendItem('guide', inline(mi('d'))));
+  if (options.showUnit) legend.push(legendItem('result', inline(hat(vec('v')))));
+  if (options.showScaled) legend.push(legendItem('result', inline(mi('c'), vec('v'))));
   elements.sceneLegend.hidden = false;
   elements.sceneLegend.innerHTML = legend.join('');
 }
@@ -1032,12 +1073,20 @@ function syncAll() {
   const step = lessonView ? currentStep() : null;
   const unit = unitOf(lesson);
   elements.activeName.textContent = step?.activeLabel ?? (state.customized ? `Modified ${preset.name}` : preset.name);
-  elements.activeNumber.textContent = step ? stepNumber() : String(preset.number).padStart(2, '0');
-  elements.lessonUnitLabel.textContent = `Unit ${unit.number} · ${unit.title}`;
+  if (step) {
+    // Lesson badge: unit letter stacked over lesson.step, boxed in the unit's color.
+    const [, letter, number] = lesson.id.match(/^([A-Z]+)(\d+)$/);
+    elements.activeNumber.className = 'state-number lesson-badge';
+    elements.activeNumber.dataset.unit = String(unit.number);
+    elements.activeNumber.setAttribute('aria-label', `Lesson ${lesson.id}, step ${state.lessonStepIndex + 1}`);
+    elements.activeNumber.innerHTML = `<span class="lesson-badge-unit" aria-hidden="true">${letter}</span><span class="lesson-badge-number" aria-hidden="true">${number}.${state.lessonStepIndex + 1}</span>`;
+  } else {
+    elements.activeNumber.className = 'state-number';
+    delete elements.activeNumber.dataset.unit;
+    elements.activeNumber.removeAttribute('aria-label');
+    elements.activeNumber.textContent = String(preset.number).padStart(2, '0');
+  }
   elements.lessonProgressLabel.textContent = `${lesson.id} ${lesson.title} · Step ${state.lessonStepIndex + 1} of ${lesson.steps.length}`;
-  elements.lessonProgress.setAttribute('aria-valuemax', String(lesson.steps.length));
-  elements.lessonProgress.setAttribute('aria-valuenow', String(state.lessonStepIndex + 1));
-  elements.lessonProgress.querySelector('span').style.width = `${((state.lessonStepIndex + 1) / lesson.steps.length) * 100}%`;
   elements.moduleChipLabel.textContent = lessonView ? 'Current unit' : 'Laboratory';
   elements.moduleChipValue.textContent = lessonView ? `${unit.number} · ${unit.title}` : 'Stress states';
   elements.responseText.textContent = currentResponseText();
@@ -1144,6 +1193,18 @@ window.addEventListener('keydown', (event) => {
   } else if (['ArrowLeft', 'PageUp'].includes(event.key)) {
     event.preventDefault();
     goBack();
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    jumpToStep(0);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    jumpToStep(currentLesson().steps.length - 1);
+  } else if (/^[1-9]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    const index = Number(event.key) - 1;
+    if (index < currentLesson().steps.length) {
+      event.preventDefault();
+      jumpToStep(index);
+    }
   }
 });
 

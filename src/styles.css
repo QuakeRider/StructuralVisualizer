@@ -216,9 +216,42 @@ h3 { font-size: 17px; font-weight: 650; }
   overflow: hidden;
 }
 
-.visual-header { min-height: 72px; padding: 14px 18px; border-bottom: 1px solid var(--border-soft); }
+.visual-header { min-height: 72px; padding: 12px 18px; flex-wrap: wrap; border-bottom: 1px solid var(--border-soft); }
+.visual-header .active-title-row { min-width: 0; }
 .active-title-row { justify-content: flex-start; }
 .state-number { color: var(--accent); font-family: 'DM Mono', ui-monospace, monospace; font-size: 17px; font-weight: 500; }
+
+/* Lesson badge: unit letter over lesson.step, boxed in the unit color (Okabe–Ito hues, lightened for the dark background). */
+.lesson-badge {
+  --unit-color: var(--accent);
+  min-width: 54px; padding: 5px 9px; display: inline-grid; justify-items: center; line-height: 1.05;
+  border: 2px solid var(--unit-color); border-radius: 10px; background: color-mix(in srgb, var(--unit-color) 12%, transparent); color: var(--unit-color);
+}
+.lesson-badge[data-unit='0'] { --unit-color: #56b4e9; }
+.lesson-badge[data-unit='1'] { --unit-color: #3fd0a0; }
+.lesson-badge[data-unit='2'] { --unit-color: #e69f00; }
+.lesson-badge[data-unit='3'] { --unit-color: #f07a3c; }
+.lesson-badge[data-unit='4'] { --unit-color: #cc79a7; }
+.lesson-badge[data-unit='5'] { --unit-color: #f0e442; }
+.lesson-badge[data-unit='6'] { --unit-color: #9a8cff; }
+.lesson-badge-unit { font-size: 19px; font-weight: 700; }
+.lesson-badge-number { font-size: 15px; }
+.title-stack { min-width: 0; display: grid; gap: 2px; }
+.lesson-progress-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.app-shell:not([data-lesson-view='true']) .lesson-progress-label { display: none; }
+.app-shell[data-mode='present'][data-lesson-view='true'] .lesson-progress-label { font-size: 15px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* In lessons the plot header has two rows: badge + title and view buttons, then the lesson and step selector. */
+.app-shell[data-lesson-view='true'] .visual-header {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: 'title actions' 'nav nav'; align-items: center; gap: 10px 12px;
+}
+.app-shell[data-lesson-view='true'] .visual-header .active-title-row { grid-area: title; }
+.app-shell[data-lesson-view='true'] .visual-header .view-actions { grid-area: actions; }
+.visual-header .lesson-nav { display: none; grid-area: nav; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.app-shell[data-lesson-view='true'] .visual-header .lesson-nav { display: flex; }
+.visual-header .lesson-picker { width: min(300px, 100%); margin: 0; }
+.visual-header .step-navigator { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .active-title-row h2 { font-size: 21px; }
 .view-actions { display: flex; align-items: center; gap: 8px; }
 
@@ -313,14 +346,23 @@ h3 { font-size: 17px; font-weight: 650; }
 .lesson-panel { display: none; padding: 0; max-height: calc(100vh - 100px); overflow: auto; }
 .app-shell[data-lesson-view='true'] .lesson-panel { display: flex; flex-direction: column; }
 
-.lesson-progress-header { padding: 17px 18px 15px; border-bottom: 1px solid var(--border-soft); }
-.lesson-progress-header strong { display: block; font-size: 16px; }
-.lesson-progress { width: 100%; height: 6px; margin-top: 12px; overflow: hidden; border-radius: 999px; background: #2a3039; }
-.lesson-progress span { display: block; width: 10%; height: 100%; border-radius: inherit; background: var(--accent); transition: width 180ms ease; }
+
+.step-strip { display: flex; flex-wrap: wrap; gap: 5px; }
+.step-chip {
+  min-width: 36px; height: 40px; padding: 0 6px; border: 1px solid var(--border); border-radius: 9px;
+  background: #14181e; color: var(--muted); font-family: 'DM Mono', ui-monospace, monospace; font-size: 16px; cursor: pointer;
+}
+.step-chip:hover { border-color: var(--accent); color: var(--text); }
+.step-chip.is-visited { border-color: rgba(92, 200, 161, 0.5); color: #9fe0c8; }
+.step-chip.is-current { border-color: var(--accent); background: var(--accent); color: #11151c; font-weight: 700; }
+.step-strip-label { min-height: 18px; color: var(--text); font-size: 13px; }
+.step-strip-label strong { display: inline; margin-right: 6px; color: var(--accent); font-family: 'DM Mono', ui-monospace, monospace; }
+.step-strip-label span { color: var(--quiet); font-size: 13px; }
+.step-strip-label .step-keys { display: none; }
+.app-shell[data-mode='present'] .step-strip-label .step-keys { display: inline; }
 
 .lesson-card { padding: 20px 18px; display: flex; flex: 1; flex-direction: column; gap: 17px; }
 .lesson-heading { display: grid; gap: 9px; }
-.lesson-heading .step-badge { width: max-content; color: var(--accent); border-color: rgba(141, 180, 255, 0.35); }
 .lesson-heading h2 { font-size: clamp(23px, 2.1vw, 30px); line-height: 1.14; }
 .lesson-heading p { color: var(--muted); font-size: 15px; line-height: 1.58; }
 
@@ -329,49 +371,46 @@ h3 { font-size: 17px; font-weight: 650; }
 .task-card p { font-size: 14px; line-height: 1.5; }
 
 /* Equation–model binding panel */
-.equation-panel { padding: 14px; display: grid; gap: 10px; border: 1px solid var(--border); border-radius: 11px; background: #14181e; }
-.equation-line { color: #e8ebef; font-family: 'DM Mono', ui-monospace, monospace; font-size: 17px; line-height: 1.7; overflow-wrap: anywhere; }
+/* Equations are native MathML set in a math font. Each bound scene ref gets a color and underline pattern. */
+.equation-panel { --math-font: 'STIX Two Math', 'Cambria Math', 'Latin Modern Math', math; padding: 14px; display: grid; gap: 12px; border: 1px solid var(--border); border-radius: 11px; background: #14181e; }
+.equation-line { display: grid; gap: 4px; color: #eceef2; font-size: 21px; line-height: 1.5; overflow-x: auto; overflow-y: hidden; }
+.equation-line math, .equation-key math, .lesson-card math, .scene-legend math { font-family: var(--math-font); }
+.math-line { white-space: nowrap; }
 .equation-line small { display: block; color: var(--quiet); font-size: 12px; line-height: 1.5; }
-.equation-line output { color: var(--accent); white-space: nowrap; }
-.equation-line .equation-matrix { max-width: 300px; margin: 10px 0 6px; white-space: normal; }
-.equation-panel var { padding: 0 2px; border-bottom: 2px solid currentColor; border-radius: 3px; font-style: italic; font-weight: 600; cursor: help; transition: background 120ms ease, opacity 120ms ease; }
-.equation-panel var:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.equation-panel [data-scene-ref='force'] var, .equation-panel var[data-scene-ref='force'] { color: #f4f5f7; border-bottom-style: solid; }
-.equation-panel [data-scene-ref='surface-normal'] var, .equation-panel var[data-scene-ref='surface-normal'] { color: var(--tension); border-bottom-style: dotted; }
-.equation-panel [data-scene-ref='normal'] var, .equation-panel var[data-scene-ref='normal'] { color: var(--tension); border-bottom-style: solid; }
-.equation-panel [data-scene-ref='shear'] var, .equation-panel var[data-scene-ref='shear'] { color: var(--shear); border-bottom-style: dashed; }
-.equation-panel [data-scene-ref='area'] var, .equation-panel var[data-scene-ref='area'] { color: var(--compression); border-bottom-style: solid; }
-.equation-panel [data-scene-ref='traction'] var, .equation-panel var[data-scene-ref='traction'] { color: var(--compression); border-bottom-style: dashed; }
-.equation-panel [data-scene-ref='axis-x'] var, .equation-panel var[data-scene-ref='axis-x'] { color: var(--tension); border-bottom-style: double; }
-.equation-panel [data-scene-ref='axis-y'] var, .equation-panel var[data-scene-ref='axis-y'] { color: var(--compression); border-bottom-style: double; }
-.equation-panel [data-scene-ref='axis-z'] var, .equation-panel var[data-scene-ref='axis-z'] { color: var(--shear); border-bottom-style: double; }
-.equation-panel [data-scene-ref='vector'] var, .equation-panel var[data-scene-ref='vector'],
-.equation-panel [data-scene-ref='vector-a'] var, .equation-panel var[data-scene-ref='vector-a'] { color: #f4f5f7; border-bottom-style: solid; }
-.equation-panel [data-scene-ref='vector-b'] var, .equation-panel var[data-scene-ref='vector-b'] { color: #f0e442; border-bottom-style: dashed; }
-.equation-panel [data-scene-ref='vector-sum'] var, .equation-panel var[data-scene-ref='vector-sum'],
-.equation-panel [data-scene-ref='unit-vector'] var, .equation-panel var[data-scene-ref='unit-vector'],
-.equation-panel [data-scene-ref='scaled-vector'] var, .equation-panel var[data-scene-ref='scaled-vector'] { color: #3fd0a0; border-bottom-style: dotted; border-bottom-width: 3px; }
-.equation-panel [data-scene-ref='comp-x'] var, .equation-panel var[data-scene-ref='comp-x'] { color: var(--tension); border-bottom-style: solid; }
-.equation-panel [data-scene-ref='comp-y'] var, .equation-panel var[data-scene-ref='comp-y'] { color: var(--compression); border-bottom-style: solid; }
-.equation-panel [data-scene-ref='comp-z'] var, .equation-panel var[data-scene-ref='comp-z'] { color: var(--shear); border-bottom-style: solid; }
-.equation-panel [data-scene-ref='xy-diagonal'] var, .equation-panel var[data-scene-ref='xy-diagonal'] { color: #c3c8d0; border-bottom-style: dashed; }
-.equation-panel [data-scene-ref='stack-x'] var, .equation-panel var[data-scene-ref='stack-x'] { color: var(--tension); border-bottom-style: dotted; }
-.equation-panel [data-scene-ref='stack-y'] var, .equation-panel var[data-scene-ref='stack-y'] { color: var(--compression); border-bottom-style: dotted; }
-.equation-panel [data-scene-ref='stack-z'] var, .equation-panel var[data-scene-ref='stack-z'] { color: var(--shear); border-bottom-style: dotted; }
-.equation-line output[data-scene-ref] { padding: 0 2px; border-radius: 3px; transition: background 120ms ease, opacity 120ms ease; }
-.equation-line output[data-scene-ref='comp-x'], .equation-line output[data-scene-ref='stack-x'] { color: var(--tension); }
-.equation-line output[data-scene-ref='comp-y'], .equation-line output[data-scene-ref='stack-y'] { color: var(--compression); }
-.equation-line output[data-scene-ref='comp-z'], .equation-line output[data-scene-ref='stack-z'] { color: var(--shear); }
-.equation-line output[data-scene-ref='vector'] { color: #f4f5f7; }
-.equation-line output[data-scene-ref='xy-diagonal'] { color: #c3c8d0; }
-.equation-line output[data-scene-ref='vector-sum'], .equation-line output[data-scene-ref='unit-vector'], .equation-line output[data-scene-ref='scaled-vector'] { color: #3fd0a0; }
-.equation-line output.is-hidden-value { min-width: 1.6em; display: inline-block; border: 1px dashed var(--border); color: var(--quiet); text-align: center; }
-.equation-panel var.is-highlighted, .equation-panel output.is-highlighted, .equation-key div.is-highlighted { background: rgba(141, 180, 255, 0.2); }
-.equation-panel.has-highlight .equation-line var:not(.is-highlighted),
-.equation-panel.has-highlight .equation-line output[data-scene-ref]:not(.is-highlighted) { opacity: 0.4; }
+.equation-line .equation-matrix { max-width: 300px; margin: 4px 0 6px; font-size: 13px; }
+.lesson-card math:not([display='block']) { font-size: 1.12em; }
+
+[data-scene-ref='force'], [data-scene-ref='vector'], [data-scene-ref='vector-a'] { --ref-color: #f4f5f7; --ref-line: solid; }
+[data-scene-ref='surface-normal'] { --ref-color: var(--tension); --ref-line: dotted; }
+[data-scene-ref='normal'] { --ref-color: var(--tension); --ref-line: solid; }
+[data-scene-ref='shear'] { --ref-color: var(--shear); --ref-line: dashed; }
+[data-scene-ref='area'] { --ref-color: var(--compression); --ref-line: solid; }
+[data-scene-ref='traction'] { --ref-color: var(--compression); --ref-line: dashed; }
+[data-scene-ref='axis-x'] { --ref-color: var(--tension); --ref-line: double; }
+[data-scene-ref='axis-y'] { --ref-color: var(--compression); --ref-line: double; }
+[data-scene-ref='axis-z'] { --ref-color: var(--shear); --ref-line: double; }
+[data-scene-ref='vector-b'] { --ref-color: #f0e442; --ref-line: dashed; }
+[data-scene-ref='vector-sum'], [data-scene-ref='unit-vector'], [data-scene-ref='scaled-vector'] { --ref-color: #3fd0a0; --ref-line: dotted; }
+[data-scene-ref='comp-x'] { --ref-color: var(--tension); --ref-line: solid; }
+[data-scene-ref='comp-y'] { --ref-color: var(--compression); --ref-line: solid; }
+[data-scene-ref='comp-z'] { --ref-color: var(--shear); --ref-line: solid; }
+[data-scene-ref='xy-diagonal'] { --ref-color: #c3c8d0; --ref-line: dashed; }
+[data-scene-ref='stack-x'] { --ref-color: var(--tension); --ref-line: dotted; }
+[data-scene-ref='stack-y'] { --ref-color: var(--compression); --ref-line: dotted; }
+[data-scene-ref='stack-z'] { --ref-color: var(--shear); --ref-line: dotted; }
+
+.equation-panel [data-sym], .equation-key dt math { color: var(--ref-color, inherit); }
+.equation-panel [data-sym] { padding: 0 1px 1px; border-bottom: 2px var(--ref-line, solid) var(--ref-color, currentColor); border-radius: 2px; cursor: help; transition: background 120ms ease, opacity 120ms ease; }
+.equation-panel [data-sym]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.equation-panel [data-live][data-scene-ref] { color: var(--ref-color); transition: background 120ms ease, opacity 120ms ease; }
+.equation-panel [data-live]:not([data-scene-ref]) { color: var(--accent-strong); }
+.equation-panel .hidden-value { padding: 0 6px; border: 1px dashed var(--border); color: var(--quiet); }
+.equation-panel .is-highlighted, .equation-key div.is-highlighted { background: rgba(141, 180, 255, 0.2); }
+.equation-panel.has-highlight .equation-line [data-sym]:not(.is-highlighted),
+.equation-panel.has-highlight .equation-line [data-live][data-scene-ref]:not(.is-highlighted) { opacity: 0.4; }
 .equation-key { margin: 0; padding-top: 10px; display: grid; gap: 4px; border-top: 1px solid var(--border-soft); color: var(--muted); font-size: 12px; line-height: 1.4; }
-.equation-key div { padding: 4px 6px; display: grid; grid-template-columns: 36px 1fr; align-items: baseline; gap: 8px; border-radius: 6px; }
-.equation-key dt { font-family: 'DM Mono', ui-monospace, monospace; font-size: 14px; }
+.equation-key div { padding: 4px 6px; display: grid; grid-template-columns: 52px 1fr; align-items: baseline; gap: 8px; border-radius: 6px; }
+.equation-key dt { font-size: 17px; }
 .equation-key dd { margin: 0; }
 
 .lesson-picker { min-width: 0; margin-bottom: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; color: var(--quiet); font-size: 12px; }
@@ -532,10 +571,11 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .workspace { grid-template-columns: minmax(0, 1fr) minmax(420px, 34vw); }
 .app-shell[data-mode='present'][data-lesson-view='true'] .viewport-shell { min-height: calc(100vh - 190px); }
 .app-shell[data-mode='present'][data-lesson-view='true'] .syllabus { display: none; }
+.app-shell[data-mode='present'][data-lesson-view='true'] .step-strip-label { font-size: 15px; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .lesson-heading h2 { font-size: clamp(28px, 2.4vw, 38px); }
 .app-shell[data-mode='present'][data-lesson-view='true'] .lesson-heading p,
 .app-shell[data-mode='present'][data-lesson-view='true'] .task-card p { font-size: 18px; }
-.app-shell[data-mode='present'][data-lesson-view='true'] .equation-line { font-size: 22px; }
+.app-shell[data-mode='present'][data-lesson-view='true'] .equation-line { font-size: 26px; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .equation-key { font-size: 14px; }
 .app-shell[data-mode='present'][data-lesson-view='true'] .prediction-group legend,
 .app-shell[data-mode='present'][data-lesson-view='true'] .prediction-button { font-size: 17px; }
@@ -578,6 +618,8 @@ h3 { font-size: 17px; font-weight: 650; }
   .visual-header { align-items: flex-start; flex-direction: column; }
   .view-actions { width: 100%; }
   .view-actions .button { flex: 1; }
+  .app-shell[data-lesson-view='true'] .visual-header { grid-template-columns: 1fr; grid-template-areas: 'title' 'nav' 'actions'; }
+  .visual-header .lesson-picker { width: 100%; }
   .viewport-shell { min-height: 420px; }
   .scene-legend { left: 10px; right: 10px; justify-content: flex-start; }
   .interaction-hint { font-size: 11px; }

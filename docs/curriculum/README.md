@@ -98,6 +98,8 @@ These were set with the course instructor. Do not change them without asking.
 | Traction sign | Stated explicitly wherever it matters: `t(n) = −σn` with an outward normal under compression-positive σ, or equivalently `t = σn` using the inward normal. Each lesson spec says which form is on screen; the form is never switched silently. |
 | Mohr diagram | σn on the horizontal axis (compression to the right); τ on the vertical axis. The angle θ is measured from σ1 to the **plane normal**, and the plane appears at 2θ on the circle. The sign convention for τ (sense of shear) is declared in S5 and kept thereafter. |
 | Orientation | Strike/dip with the **right-hand rule**; dip direction/dip accepted as an alternative input. Lines use trend/plunge. The stereonet is **lower hemisphere**. Equal-angle and equal-area nets are both available, and the lesson says which is shown. |
+| Unit colors | Each unit's lesson badge uses one color from the Okabe–Ito colorblind-safe palette, lightened for the dark background: 0 Math sky blue `#56b4e9`, 1 Orientation bluish green `#3fd0a0`, 2 Stress orange `#e69f00`, 3 Brittle vermillion `#f07a3c`, 4 Strain reddish purple `#cc79a7`, 5 Rheology yellow `#f0e442`, 6 Folds violet `#9a8cff`. The unit letter always appears with the color, so the color is never the only cue. |
+| Notation | Vectors bold upright (𝐯, 𝐅, 𝛔 for the tensor), scalars and components italic (v_x, d, c), unit vectors with hats (𝐯̂, ı̂, ȷ̂, k̂), units upright. Equations are MathML written with `src/lessons/mathml.js`; the same notation appears in lesson text and scene labels. |
 | Units | SI. Force in N/kN, stress in Pa/MPa, lengths in m/km, strain rate in s⁻¹. Unit conversions are shown, never hidden. |
 
 ## Design principles

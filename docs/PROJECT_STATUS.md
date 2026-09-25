@@ -20,7 +20,9 @@ The current release (`0.7.0`) contains the first fully built lesson, **M1 Vector
 - [x] Unit-grouped lesson picker; planned lessons listed but disabled.
 - [x] Lesson-to-lesson navigation ("Next lesson") and step numbers of the form lesson.step.
 - [x] Equation–model binding panel: symbol ↔ scene-object highlighting in both directions, live values, and a symbol key that does not rely on color.
-- [x] Present mode for lessons (entered from Guided) with larger type and arrow/PageUp/PageDown step keys; Present from Explore keeps the stress-laboratory toolbar.
+- [x] Scene header with a unit-colored lesson badge, the lesson and step line, the lesson picker, and a step navigator that opens any step.
+- [x] Formal math: equations typeset as native MathML (bold vectors, italic scalars, radicals, fractions, hats, column vectors) in a math font, with symbols bound to the scene.
+- [x] Present mode for lessons (entered from Guided) with larger type and arrow/PageUp/PageDown, 1–9, and Home/End keys; Present from Explore keeps the stress-laboratory toolbar.
 - [x] Numeric-answer prompts with targeted feedback, live construction goals, and values hidden until a prediction is answered.
 - [x] Vector laboratory (`VectorScene`): 2D ↔ 3D camera jump, component box, stacked magnitude triangles, unit sphere, scaling, tip-to-tail addition with component stacks, and illustrative geology contexts.
 
@@ -68,7 +70,7 @@ Manual verification for each release:
 1. Step through every available lesson in Guided mode, including wrong and right predictions, and follow "Next lesson" to the end.
 2. Hover and focus every equation symbol and confirm that the matching scene object is highlighted; hover scene objects and confirm the symbol highlights.
 3. Change force, components, area, and face, and confirm that the live equation values follow.
-4. Enter Present from Guided: confirm the lesson is projected, arrow/PageUp/PageDown step (blocked until a prediction is answered), and Escape returns to Guided.
+4. Enter Present from Guided: confirm the lesson is projected, arrow/PageUp/PageDown step (blocked until a prediction is answered), the step navigator and 1–9/Home/End open any step, and Escape returns to Guided.
 5. Enter Present from Explore and confirm the stress-laboratory toolbar works.
 6. Select all ten presets in Explore and edit each tensor component.
 7. Open `release/Structural-Visualizer.html` from disk without a development server.
@@ -87,7 +89,7 @@ The 0.7.0 build was verified this way in a headless Chromium with software WebGL
 - Preset values are illustrative and not calibrated to a particular rock.
 - Stress arrows are placed relative to the original block faces rather than following the deformed faces.
 - No saved student progress, assessment, or instructor authoring yet (Lab and Self-study modes are planned expansions).
-- The production HTML uses system-font fallbacks when offline; preferred fonts are not yet vendored.
+- The production HTML uses system-font fallbacks when offline; preferred fonts are not yet vendored. Equations use the system math font (Cambria Math on Windows, STIX Two Math on macOS and many Linux systems). Very old browsers without MathML support would show unformatted equations.
 - A double-click check of the standalone file on a physical Windows classroom computer remains outstanding.
 
 ## Decisions intentionally deferred

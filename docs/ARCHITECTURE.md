@@ -27,9 +27,19 @@ Interface (src/main.js)
 
 `src/main.js` owns the selected lesson and step, the prediction state, vector-laboratory and force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, visibility preferences, and the three modes. It coordinates accessible HTML controls with three topic scenes while keeping scientific calculations in the domain layer. The shell's `data-visual-kind` (`vector-lab`, `force-lab`, or `stress-state`) decides which scene is visible.
 
-**Modes.** Guided runs the selected lesson. Explore is the open stress-state laboratory. Present projects whichever of the two it was entered from: from Guided it shows the current lesson with larger type and arrow/PageUp/PageDown step keys; from Explore it shows the stress laboratory with its presentation toolbar. The shell element carries `data-mode` and `data-lesson-view` (true in Guided and in Present-from-Guided), and layout CSS keys off `data-lesson-view`.
+**Modes.** Guided runs the selected lesson. Explore is the open stress-state laboratory. Present projects whichever of the two it was entered from: from Guided it shows the current lesson with larger type and arrow/PageUp/PageDown, 1–9, and Home/End step keys; from Explore it shows the stress laboratory with its presentation toolbar. The shell element carries `data-mode` and `data-lesson-view` (true in Guided and in Present-from-Guided), and layout CSS keys off `data-lesson-view`.
 
-**Equation–model binding panel.** A lesson step may declare `equations`. Each equation has `html` in which bound symbols are `<var data-scene-ref="…">`, live values are `<output data-live="…">` (filled from `liveValues()` in `main.js`), and HTML-valued outputs use `data-live-html` (for example the tensor matrix). A live output may also carry `data-scene-ref`, so a substituted number (such as the `3²` in `√(3² + (−4)²)`) highlights its component. Keys listed in a step's `revealAfterAnswer` show `?` until the prediction is answered correctly. Its `symbols` list gives each bound symbol a plain-language description of its scene object, rendered as a key so the binding does not rely on color alone. Hovering or focusing a symbol calls the active scene's `highlight(ref)`, which dims every other bindable object; hovering a pickable scene object reports its ref back through the scene's `onHover` callback, which highlights the matching symbols.
+**Scene header.** In lesson view the header above the scene has two rows. The first holds the lesson badge (unit letter over lesson.step, boxed in the unit color from `.lesson-badge[data-unit]` in `styles.css`), the "lesson · step n of N" line above the step title, and the view buttons. The second holds the lesson picker and the step navigator (numbered buttons that open any step, with a name preview). In Explore the header shows the preset number and name.
+
+**Equation–model binding panel.** A lesson step may declare `equations`. Each equation's `html` is native MathML, written with the builder in `src/lessons/mathml.js`:
+
+- Every line is `math(...)`.
+- `vec('v')` gives a bold vector, `sub`, `sup`, `sqrt`, `frac`, `hat`, `abs`, and `column` do what their names say, and `inline(...)` puts math in prose.
+- `bound(ref, …)` marks a symbol bound to a scene object. It becomes a focusable `<mrow data-sym data-scene-ref>`.
+- `live(key, ref)` marks a slot that `main.js` fills from `liveValues()`. Live values are MathML strings built with the same helpers (`num`, `squared`, `signedTerm`, `tuple`). A slot with a ref highlights its scene object, for example the `3²` in `√(3² + (−4)²)`.
+- HTML-valued outputs use `data-live-html` (the tensor matrix).
+
+Colors and underline patterns come from per-ref CSS custom properties (`--ref-color`, `--ref-line`), so the equation, the symbol key, and the scene share one mapping. Keys listed in a step's `revealAfterAnswer` show `?` until the prediction is answered correctly. Its `symbols` list gives each bound symbol a plain-language description of its scene object, rendered as a key so the binding does not rely on color alone. Hovering or focusing a symbol calls the active scene's `highlight(ref)`, which dims every other bindable object; hovering a pickable scene object reports its ref back through the scene's `onHover` callback, which highlights the matching symbols.
 
 ### Lesson registry
 

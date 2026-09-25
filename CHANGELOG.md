@@ -13,6 +13,22 @@ All notable user-visible changes are recorded here.
 - Construction goals checked live against the scene, for example "point the vector toward −x, +y, −z".
 - Live values can stay hidden until the prediction is answered.
 - Live substitution of each component in equations, for example `√(3² + (−4)²)`, with each number highlighting its component in the scene.
+- A step navigator in the header above the scene, in Guided and Present. Numbered step buttons open any step directly, and hovering or focusing one previews its name. In Present mode, 1–9 open a step and Home / End go to the first / last step.
+- A lesson badge in the top left of the scene header. It shows the unit letter stacked over lesson.step (for example M over 1.1), boxed in its unit's color.
+
+- Formal math typesetting. Equations are native MathML set in a math font (STIX Two Math or Cambria Math), with no library.
+  - Vectors are bold (𝐯), and scalars and components are italic (v_x).
+  - Unit vectors carry hats.
+  - Magnitudes, square roots, and fractions are typeset properly, and a sum can be written as a column vector.
+  - Units are upright.
+  - Symbols in the lesson text, the symbol key, the scene legend, and the in-scene labels use the same notation.
+  - Built with `src/lessons/mathml.js`, which has tests.
+
+### Changed (layout)
+
+- The lesson picker moved from the lesson panel to the scene header, next to the step navigator.
+- "Lesson · Step n of N" now sits above the step title in the scene header. The lesson panel no longer has its own header (unit line, lesson line, and progress bar).
+- The "Interactive laboratory" label above the scene title and the step badge in the lesson card were removed.
 - A `format.js` number formatter (true minus signs, bracketed negative squares) and new vector helpers, both with tests.
 
 ### Changed

@@ -32,6 +32,8 @@ const CSS_COLORS = {
   tick: '#858d99',
 };
 
+const LABEL_FONT = "'STIX Two Text', 'Cambria', 'Times New Roman', serif";
+
 const VIEW_3D = { position: new THREE.Vector3(3.2, 3.5, 5.7), target: new THREE.Vector3(0, 0.55, 0), up: new THREE.Vector3(0, 1, 0) };
 const VIEW_3D_CLOSE = { position: new THREE.Vector3(2.0, 2.1, 3.6), target: new THREE.Vector3(0, 0.3, 0), up: new THREE.Vector3(0, 1, 0) };
 const VIEW_2D = { position: new THREE.Vector3(0, 8.9, 0.0001), target: new THREE.Vector3(0, 0, 0), up: new THREE.Vector3(0, 0, -1) };
@@ -114,8 +116,9 @@ class Arrow3D {
 /**
  * Text label rendered to a sprite that keeps a constant size on screen.
  * `height` is roughly the fraction of the viewport height the text occupies.
- * `parts` is a list of [text, style] pairs, where style is 'sub' for a
- * subscript or omitted for normal text.
+ * `parts` is a list of [text, style] pairs. Styles follow the equations:
+ * 'vec' bold upright (vectors), 'var' italic (scalars), 'sub' italic
+ * subscript, or omitted for upright text and numbers.
  */
 class Label {
   constructor(color = CSS_COLORS.guide, height = 0.05) {
@@ -136,7 +139,11 @@ class Label {
     this.key = key;
     const size = 56;
     const context = this.context;
-    const fonts = parts.map(([, style]) => (style === 'sub' ? `600 ${size * 0.62}px system-ui, sans-serif` : `600 ${size}px system-ui, sans-serif`));
+    const fonts = parts.map(([, style]) => ({
+      vec: `700 ${size}px ${LABEL_FONT}`,
+      var: `italic 500 ${size}px ${LABEL_FONT}`,
+      sub: `italic 500 ${size * 0.64}px ${LABEL_FONT}`,
+    })[style] ?? `500 ${size}px ${LABEL_FONT}`);
     let width = 0;
     parts.forEach(([text], index) => {
       context.font = fonts[index];
@@ -209,7 +216,7 @@ function boxEdges(tip) {
 }
 
 function componentParts(symbol, axis, value) {
-  return [[symbol], [axis, 'sub'], [` = ${formatNumber(value)}`]];
+  return [[symbol, 'var'], [axis, 'sub'], [` = ${formatNumber(value)}`]];
 }
 
 /**
@@ -314,7 +321,7 @@ export class VectorScene {
       for (const part of [arrow.shaft, arrow.head]) part.material.opacity = 0.75;
       const negative = makeLine([new THREE.Vector3(), toWorld(scale(axis.direction, -LIMIT))], COLORS[axis.key], { dashed: true, opacity: 0.45 });
       const label = new Label(CSS_COLORS[axis.key], 0.06);
-      label.setParts([[axis.key]]);
+      label.setParts([[axis.key, 'var']]);
       label.sprite.position.copy(toWorld(scale(axis.direction, LIMIT + 1.3)));
       group.add(arrow.group, negative, label.sprite);
       for (const value of [-6, -4, -2, 2, 4, 6]) {
@@ -584,7 +591,7 @@ export class VectorScene {
     this.primaryArrow.set(origin, tip);
     this.primaryHandle.position.copy(tip);
     this.primaryHandle.visible = this.options.draggable.includes('v');
-    this.primaryLabel.setParts(sumLayout ? [['a']] : [['v']]);
+    this.primaryLabel.setParts(sumLayout ? [['a', 'vec']] : [['v', 'vec']]);
     this.placeLabel(this.primaryLabel, v, 0.55);
 
     // Tip-to-tail addition: b starts at the tip of a.
@@ -595,7 +602,7 @@ export class VectorScene {
     this.bHandle.position.copy(toWorld(sum));
     this.bHandle.visible = sumLayout && this.options.draggable.includes('b');
     this.bLabel.sprite.visible = sumLayout;
-    this.bLabel.setParts([['b']]);
+    this.bLabel.setParts([['b', 'vec']]);
     this.bLabel.sprite.position.copy(toWorld(add(v, scale(b, 0.5)))).add(new THREE.Vector3(0.24, 0, 0));
 
     // Result vector: a + b, c·v, or the unit vector v̂, depending on the step.
@@ -603,13 +610,13 @@ export class VectorScene {
     let resultParts = [];
     if (sumLayout) {
       result = sum;
-      resultParts = [['a + b']];
+      resultParts = [['a', 'vec'], [' + '], ['b', 'vec']];
     } else if (this.options.showUnit && magnitude(v) > 1e-9) {
       result = scale(v, 1 / magnitude(v));
-      resultParts = [['v̂']];
+      resultParts = [['v̂', 'vec']];
     } else if (this.options.showScaled) {
       result = scale(v, this.scalar);
-      resultParts = [[`${formatNumber(this.scalar)} v`]];
+      resultParts = [[`${formatNumber(this.scalar)} `], ['v', 'vec']];
     }
     this.resultArrow.group.visible = Boolean(result) && magnitude(result) > 1e-9;
     this.resultLabel.sprite.visible = this.resultArrow.group.visible;
@@ -666,7 +673,7 @@ export class VectorScene {
     this.diagonal.set(new THREE.Vector3(), toWorld(floor));
     this.diagonal.group.visible = show && hasRise && Math.hypot(v.x, v.y) > 1e-9;
     this.diagonalLabel.sprite.visible = this.diagonal.group.visible;
-    this.diagonalLabel.setParts([['d']]);
+    this.diagonalLabel.setParts([['d', 'var']]);
     this.diagonalLabel.sprite.position.copy(toWorld(scale(floor, 0.5))).add(new THREE.Vector3(0, 0.2, 0));
 
     const corner = { x: v.x, y: 0, z: 0 };
