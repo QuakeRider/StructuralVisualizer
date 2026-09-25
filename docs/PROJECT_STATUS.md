@@ -1,12 +1,12 @@
 # Project Status
 
-Last updated: 2026-09-24
+Last updated: 2026-09-25
 
 ## Summary
 
 Structural Visualizer is an interactive 3D learning environment for an intro university Structural Geology course, built to make the mathematics of the subject clear and visible. The full curriculum (48 lessons in 7 units) is specified in [curriculum/README.md](curriculum/README.md).
 
-The current release (`0.7.0`) contains the first fully built lesson, **M1 Vectors and components**, and the vector laboratory it runs in. Build 00 (0.6.0) removed the engineering-statics sequence and introduced the lesson registry and the equation–model binding panel. S2, S3, S7, and S10 are still early seed versions. The remaining 43 lessons are planned, and each has a build spec.
+The current release (`0.8.0`) contains two fully built lessons: **M1 Vectors and components**, with the vector laboratory it runs in, and **B7 Anderson's theory of faulting**, built early for classroom use with an NED Earth block and the first Mohr diagram. Build 00 (0.6.0) removed the engineering-statics sequence and introduced the lesson registry and the equation–model binding panel. S2, S3, S7, and S10 are still early seed versions. The remaining 42 lessons are planned, and each has a build spec.
 
 **Next:** build lesson M2 (trigonometry of projection), following the build-session protocol in the curriculum README.
 
@@ -29,6 +29,7 @@ The current release (`0.7.0`) contains the first fully built lesson, **M1 Vector
 ### Built lessons
 
 - [x] M1 (built, 0.7.0): vectors and components in nine steps, from 2D to 3D: magnitude, negative components, unit vectors, addition, scaling, and geological examples.
+- [x] B7 (built early, 0.8.0): Anderson's theory of faulting in nine steps. It covers the free surface, the three regimes, dips from the Coulomb angle, the sense of strike-slip, friction, the limits of the theory, reading stress from faults, and tectonic settings. It uses an NED Earth block with a sliding hanging wall and a linked Mohr diagram. Its prerequisites (B3, B6, O2) are not built yet, and the stereonet view waits for O3.
 
 ### Seed lessons
 
@@ -76,21 +77,22 @@ Manual verification for each release:
 7. Open `release/Structural-Visualizer.html` from disk without a development server.
 8. Check desktop and phone-width layouts for overflow.
 
-The 0.7.0 build was verified this way in a headless Chromium with software WebGL. That check covered every M1 step, the numeric answers (including Enter to submit), goal checks, mouse drags in 2D and 3D (including Shift-drag), highlighting in both directions, and phone-width framing. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
+The 0.8.0 build was verified the same way. The check covered every B7 step in Guided and Present, wrong and right answers, the regime, μ, slip, and setting controls, highlighting in both directions between the equations, the block, and the Mohr diagram, and keyboard focus. It also checked for equation overflow at 1440×900 and 1280×720 (a projector size) and at phone width, and opened the release file from disk. The 0.7.0 build was verified this way in a headless Chromium with software WebGL. That check covered every M1 step, the numeric answers (including Enter to submit), goal checks, mouse drags in 2D and 3D (including Shift-drag), highlighting in both directions, and phone-width framing. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
 
 ## Known limitations
 
 - The seed lessons (S2, S3, S7, S10) are short carry-overs from 0.5, and none yet meets its full spec.
 - The force laboratory used by the S2 and S3 seeds still draws y up; it adopts the z-up math frame of M1 when S1–S3 are built.
 - Dragging a vector tip needs a mouse or touch; keyboard users set components with the number fields, which cover every drag.
-- The equation binding covers the vector and force laboratories; `StressScene` does not yet support symbol highlighting.
+- The equation binding covers the vector, Anderson, and force laboratories; `StressScene` does not yet support symbol highlighting.
+- B7 was built ahead of B3 and B6, so it restates the Coulomb angle itself, and its stereonet view waits for O3. The Mohr diagram's magnitudes are fixed teaching values.
 - S3 still shows the signed traction projection `tn = t̄ · n` (outward normal); the course-wide traction sign form is decided in S4.
 - The stress-state deformation is qualitative and exaggerated until lesson R2 introduces linear elasticity.
 - Preset values are illustrative and not calibrated to a particular rock.
 - Stress arrows are placed relative to the original block faces rather than following the deformed faces.
 - No saved student progress, assessment, or instructor authoring yet (Lab and Self-study modes are planned expansions).
 - The production HTML uses system-font fallbacks when offline; preferred fonts are not yet vendored. Equations use the system math font (Cambria Math on Windows, STIX Two Math on macOS and many Linux systems). Very old browsers without MathML support would show unformatted equations.
-- A double-click check of the standalone file on a physical Windows classroom computer remains outstanding.
+- The equation font was checked on Windows by the instructor (2026-09-25) and renders correctly.
 
 ## Decisions intentionally deferred
 

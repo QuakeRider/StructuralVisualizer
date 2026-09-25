@@ -58,7 +58,8 @@ const SYMBOL = {
 const MAGNITUDE_3D = {
   id: 'magnitude-3d',
   html: math(abs(V), EQ, sqrt(squareOf(VX), PLUS, squareOf(VY), PLUS, squareOf(VZ)))
-    + math(EQ, sqrt(live('vx2', 'comp-x'), PLUS, live('vy2', 'comp-y'), PLUS, live('vz2', 'comp-z')), EQ, live('magnitude', 'vector')),
+    + math(EQ, sqrt(live('vx2', 'comp-x'), PLUS, live('vy2', 'comp-y'), PLUS, live('vz2', 'comp-z')))
+    + math(EQ, live('magnitude', 'vector')),
   symbols: [SYMBOL.v, SYMBOL.vx, SYMBOL.vy, SYMBOL.vz],
 };
 

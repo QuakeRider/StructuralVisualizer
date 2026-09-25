@@ -34,7 +34,26 @@ export const VECTOR_LAB_SCENE_REFS = Object.freeze([
   'stack-z',
 ]);
 
+/** Anderson lab: the NED Earth block (3D) and the Mohr plot beside it. */
+export const ANDERSON_SCENE_REFS = Object.freeze([
+  'sigma-1',
+  'sigma-2',
+  'sigma-3',
+  'vertical-axis',
+  'free-surface',
+  'fault',
+  'conjugate',
+  'beta',
+  'dip',
+  'slip',
+  'envelope',
+  'mohr-circle',
+  'two-theta',
+  'phi',
+]);
+
 export const SCENE_REFS = Object.freeze({
   'force-lab': FORCE_LAB_SCENE_REFS,
   'vector-lab': VECTOR_LAB_SCENE_REFS,
+  anderson: ANDERSON_SCENE_REFS,
 });
