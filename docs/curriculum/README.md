@@ -18,7 +18,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 
 | Unit | ID | Lesson | Frame | Status |
 |---|---|---|---|---|
-| **0 Math foundations** — [spec](unit-0-math.md) | M1 | Vectors and components | x/y/z | Planned (seed exists) |
+| **0 Math foundations** — [spec](unit-0-math.md) | M1 | Vectors and components | x/y/z | Seed (0.6.0) |
 | | M2 | Trigonometry of projection | x/y/z | Planned |
 | | M3 | Dot and cross products | x/y/z | Planned |
 | | M4 | Matrices as transformations | x/y/z | Planned |
@@ -26,16 +26,16 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | O2 | Planes: strike, dip, and poles | NED | Planned |
 | | O3 | Stereonets | NED | Planned |
 | | O4 | Angles, intersections, and rake | NED | Planned |
-| **2 Stress** — [spec](unit-2-stress.md) | S1 | Force | x/y/z | Planned (seed exists) |
-| | S2 | Force vs traction | x/y/z | Planned (seed exists) |
-| | S3 | Normal and shear traction | x/y/z | Planned (seed exists) |
+| **2 Stress** — [spec](unit-2-stress.md) | S1 | Force | x/y/z | Planned |
+| | S2 | Force vs traction | x/y/z | Seed (0.6.0) |
+| | S3 | Normal and shear traction | x/y/z | Seed (0.6.0) |
 | | S4 | Stress at a point (2D) | x/y | Planned |
 | | S5 | Transformation and principal stresses (2D) | x/y | Planned |
 | | S6 | The Mohr circle (2D) | x/y | Planned |
-| | S7 | The stress tensor in 3D | x/y/z → NED | Planned (seed exists) |
+| | S7 | The stress tensor in 3D | x/y/z → NED | Seed (0.6.0) |
 | | S8 | Principal stresses in 3D | x/y/z and NED | Planned |
 | | S9 | The 3D Mohr diagram | NED | Planned |
-| | S10 | Mean, deviatoric, and Earth stress states | NED | Planned (seed exists) |
+| | S10 | Mean, deviatoric, and Earth stress states | NED | Seed (0.6.0) |
 | **3 Brittle deformation** — [spec](unit-3-brittle.md) | B1 | Brittle processes, fracture modes, and deformation bands | NED | Planned |
 | | B2 | Tensile failure | NED | Planned |
 | | B3 | Coulomb failure and the composite failure envelope | NED | Planned |
@@ -67,7 +67,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | F6 | Fault-related folds | NED | Planned |
 | | F7 | Superposed folding | NED | Planned |
 
-"Seed exists" means the current 0.5 code already has a usable starting point, which [build-00-rework.md](build-00-rework.md) moves into the new lesson structure.
+"Seed" means an early version exists in the app (moved from the 0.5 module by [Build 00](build-00-rework.md)); it does not yet meet its spec. A seed lesson's build session replaces it fully and sets the status to "Built".
 
 **Why this order.** Math comes first because every later topic is built from vectors and matrices. Orientation comes next, because a plane is defined by its normal vector, and `t = σn` needs exactly that. Stress follows, and brittle deformation comes straight after it while Mohr circles and principal stresses are still fresh. Strain comes after brittle. Rheology comes after strain because it is the relationship *between* stress and strain. Stress in the crust (R5) sits in rheology because its uniaxial-strain reference state needs Poisson's ratio (R2). It closes the loop on exhumation joints (B5) and leads into the brittle–ductile transition (R6). Folds come last because buckling needs viscosity contrast (R3), strain patterns in folds need the strain ellipse (D4), and fault-related folds (F6) need the fault lessons (B8, B9).
 

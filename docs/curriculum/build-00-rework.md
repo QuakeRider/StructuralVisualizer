@@ -1,5 +1,7 @@
 # Build 00 — Remove statics and restructure into a lesson registry
 
+**Status: done in 0.6.0 (2026-09-24).** Kept for reference. The browser check ran in headless Chromium with software WebGL, because the in-app browser pane has WebGL disabled.
+
 **Goal:** turn the current single 14-step guided lesson (v0.5.0) into the start of the curriculum in [README.md](README.md). This build removes the engineering-statics content, introduces a multi-lesson registry and a shared equation-binding panel, and moves the reusable pieces into seed versions of M1, S1–S3, S7, and S10.
 
 This is a restructuring session. It does not fully build M1 or any other lesson; each of those gets its own later session. What it does produce is a working app with no statics content and the new lesson structure in place.

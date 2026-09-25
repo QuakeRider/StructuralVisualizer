@@ -4,78 +4,53 @@ Last updated: 2026-09-24
 
 ## Summary
 
-Structural Visualizer is planned as a modular, university-level learning environment for the full structural-geology curriculum. The current release is the **interactive mechanics learning-laboratory prototype** (`0.5.0`): a loads-to-stress-state vertical slice used to establish the interaction model, 3D visualization, guided lessons, free exploration, presentation mode, testing, and offline distribution.
+Structural Visualizer is an interactive 3D learning environment for an intro university Structural Geology course, built to make the mathematics of the subject clear and visible. The full curriculum (48 lessons in 7 units) is specified in [curriculum/README.md](curriculum/README.md).
 
-Stress states are one curriculum topic, not the identity or endpoint of the application. Planned scope includes stress and strain analysis, deformation kinematics, rheology, brittle and ductile structures, folds, faults, structural measurements, stereographic projection, maps, cross-sections, and synthesis. The complete product goal is documented in [CURRICULUM_VISION.md](CURRICULUM_VISION.md).
+The current release (`0.6.0`) completes **Build 00**. It removes the engineering-statics sequence added in 0.5.0, introduces the lesson registry and the equation–model binding panel, and moves the reusable parts of the old module into five seed lessons: M1, S2, S3, S7, and S10. The remaining 43 lessons are planned, and each has a build spec.
 
-The current version demonstrates the first reusable interaction pattern and separable domain, lesson-content, rendering, and interface layers. It is not yet a complete multi-topic course. The opening sequence now builds continuously from external load through equilibrium, internal action, traction, and stress before reaching named stress states.
+**Next:** build lesson M1 in full, following the build-session protocol in the curriculum README.
 
 ## Completed
 
+### Curriculum platform
+
+- [x] Curriculum plan and per-lesson build specs in `docs/curriculum/`.
+- [x] Lesson catalog for all 48 lessons, with units and prerequisites.
+- [x] Lesson registry with per-lesson data files, statuses (`planned`, `seed`, `built`), and navigation helpers.
+- [x] Unit-grouped lesson picker; planned lessons listed but disabled.
+- [x] Lesson-to-lesson navigation ("Next lesson") and step numbers of the form lesson.step.
+- [x] Equation–model binding panel: symbol ↔ scene-object highlighting in both directions, live values, and a symbol key that does not rely on color.
+- [x] Present mode for lessons (entered from Guided) with larger type and arrow/PageUp/PageDown step keys; Present from Explore keeps the stress-laboratory toolbar.
+
+### Seed lessons
+
+- [x] M1 (seed): build a 3D vector, and its magnitude from components.
+- [x] S2 (seed): resultant vs distributed load, and average traction `t̄ = F/A` with the unit conversion shown.
+- [x] S3 (seed): normal and shear traction on a selectable face.
+- [x] S7 (seed): why stress needs a tensor, and combined normal + shear states, with the tensor shown in the equation panel.
+- [x] S10 (seed): normal stress states and the open stress laboratory.
+
 ### Core interaction
 
-- [x] Direct 3D force-vector manipulation with a draggable handle.
-- [x] Draggable force application point on every selectable face.
-- [x] Resultant force and `r × F` moment calculation.
-- [x] Free-body translation and rotation tendency.
-- [x] Ideal fixed-opposite-face support with force and moment reactions.
-- [x] Continuous illustrative axial, shear, bending, and torsional response.
-- [x] Movable imaginary section cut with internal force and moment.
-- [x] Live axial-force, shear-force, bending-moment, and torsion readouts.
-- [x] Visible uniform distributed-load arrows tied to the contact area.
-- [x] Synchronized force magnitude and `Fx/Fy/Fz` numerical controls.
+- [x] Direct 3D vector manipulation with a draggable handle and synchronized `x/y/z` and magnitude controls.
 - [x] Clickable block faces and explicit surface-normal selection.
-- [x] Resizable contact patch and average-traction calculation.
+- [x] Resizable contact patch, distributed-load arrows, and average-traction calculation.
 - [x] Geometric normal and shear traction decomposition.
-- [x] Ten reference stress states represented as selectable presets.
-- [x] Shared generic block instead of a material-specific specimen.
-- [x] Animated transitions between undeformed and deformed states.
-- [x] Stress vectors for normal and shear components.
-- [x] Stress magnitude control.
-- [x] Direct editing of six independent tensor components.
+- [x] Ten reference stress states as selectable presets, with animated qualitative deformation.
+- [x] Stress vectors, magnitude control, and direct editing of six tensor components.
 - [x] Compression-positive sign convention.
-- [x] Original block outline for before/after comparison.
-- [x] Approximate volume-change readout.
 - [x] Orbit, zoom, replay, reset, and display controls.
 
 ### Engineering foundation
 
-- [x] Preset definitions separated from visualization code.
-- [x] Deformation calculation separated from rendering code.
-- [x] Reusable Three.js stress-scene class.
-- [x] Reusable Three.js load-response scene class.
-- [x] Unit tests for statics, traction, catalog integrity, and core deformation behavior.
-- [x] Responsive desktop, tablet, and mobile layouts.
-- [x] Reduced-motion behavior.
-- [x] Single-file production build for offline use.
-
-### Documentation
-
-- [x] Full-curriculum product vision and topic map.
-- [x] Setup and operating instructions.
-- [x] Architecture overview.
-- [x] Scientific-scope statement.
-- [x] Phased roadmap.
-- [x] Maintained changelog.
-
-### Teaching and distribution
-
-- [x] Ten-step 3D loads-to-stress foundation sequence before tensor presets.
-- [x] Explicit distinction among external force, resultant moment, reactions, internal resultants, average traction, signed normal traction, and the stress tensor.
-- [x] Live vector traction calculation with newton, square-centimeter, and megapascal units.
-- [x] Transition from normal and shear stress into the 3D stress-state sequence.
-- [x] Fourteen-step guided opening module.
-- [x] Prediction questions with immediate feedback.
-- [x] Progressive reveal of tension, compression, shear, and combined loading.
-- [x] Free Explore mode retained as the full sandbox.
-- [x] Presentation mode with enlarged visualization and compact controls.
-- [x] Named single-file classroom release artifact.
-- [x] GitHub Actions tests and build artifact.
-- [x] Tagged-release attachment workflow.
+- [x] Domain, lesson data, rendering, and interface separated.
+- [x] Unit tests for vectors, traction, the stress catalog, qualitative deformation, the curriculum catalog, lesson content, and a guard against statics content.
+- [x] Responsive desktop, tablet, and phone layouts; reduced-motion behavior.
+- [x] Single-file offline production build, GitHub Actions tests, and release packaging.
 
 ## Verification status
 
-The following commands are the release gate:
+Release gate:
 
 ```bash
 npm test
@@ -83,50 +58,34 @@ npm run build
 npm run release:build
 ```
 
-Manual verification should cover:
+Manual verification for each release:
 
-1. Selecting all ten presets.
-2. Confirming that displayed arrows match active tensor components.
-3. Confirming that tension extends and compression shortens the loaded axis.
-4. Confirming that pure shear distorts without a significant volume change.
-5. Editing each tensor component.
-6. Replaying deformation and resetting the camera.
-7. Opening `release/Structural-Visualizer.html` without a development server.
-8. Checking desktop and narrow-screen layouts.
-9. Changing force and area and confirming that the live stress calculation follows `F/A`.
-10. Dragging the 3D force handle and confirming that all three numerical components update smoothly.
-11. Selecting multiple block faces and confirming the surface normal and traction decomposition update.
-12. Switching among normal, oblique, and tangential loading.
-13. Completing every guided lesson step, including incorrect and correct predictions.
-14. Entering and exiting Explore and Present without carrying invalid zero-magnitude foundation state.
-15. Moving the application point and confirming that `r × F` updates without changing force.
-16. Switching between free and fixed conditions and confirming reaction activation.
-17. Constructing axial, shear, bending, and torsional actions from load geometry.
-18. Moving the section cut and confirming constant internal force with changing bending moment for a single end force.
+1. Step through every available lesson in Guided mode, including wrong and right predictions, and follow "Next lesson" to the end.
+2. Hover and focus every equation symbol and confirm that the matching scene object is highlighted; hover scene objects and confirm the symbol highlights.
+3. Change force, components, area, and face, and confirm that the live equation values follow.
+4. Enter Present from Guided: confirm the lesson is projected, arrow/PageUp/PageDown step (blocked until a prediction is answered), and Escape returns to Guided.
+5. Enter Present from Explore and confirm the stress-laboratory toolbar works.
+6. Select all ten presets in Explore and edit each tensor component.
+7. Open `release/Structural-Visualizer.html` from disk without a development server.
+8. Check desktop and phone-width layouts for overflow.
+
+The 0.6.0 build was verified this way in a headless Chromium with software WebGL. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
 
 ## Known limitations
 
-- The current navigation and state model still need extraction into a curriculum-level module registry.
-- Both deformation mappings are qualitative and intentionally exaggerated; the statics resultants are quantitative under the documented ideal assumptions.
-- Preset values are illustrative and are not calibrated to a particular rock or laboratory material.
-- The block does not yet solve continuum displacements or stresses and has no constitutive material model, yield, fracture, or damage.
-- The free-body ghost is a direction cue, not a rigid-body dynamics simulation.
-- The fixed support and section resultants represent one idealized single-force model.
+- Seed lessons are short carry-overs from 0.5; none yet meets its full spec (component box, 2D-first sequences, derivations, and so on).
+- The equation binding covers the force laboratory only; `StressScene` does not yet support symbol highlighting.
+- S3 still shows the signed traction projection `tn = t̄ · n` (outward normal); the course-wide traction sign form is decided in S4.
+- The stress-state deformation is qualitative and exaggerated until lesson R2 introduces linear elasticity.
+- Preset values are illustrative and not calibrated to a particular rock.
 - Stress arrows are placed relative to the original block faces rather than following the deformed faces.
-- The application has no saved student progress, assessment, or instructor-authoring interface.
+- No saved student progress, assessment, or instructor authoring yet (Lab and Self-study modes are planned expansions).
 - The production HTML uses system-font fallbacks when offline; preferred fonts are not yet vendored.
-- The ten presets are based on the supplied diagram and use clearer application labels where the source wording is abbreviated.
-- The standalone file has been browser-tested from the production bundle, but a final double-click check on a physical Windows classroom computer remains outstanding.
-
-## Next recommended milestone
-
-Validate the redesigned loads-to-stress module with instructors and students. Record misconceptions about free bodies, reactions, internal resultants, traction, and tensors alongside interaction failures, accessibility barriers, and lesson duration. Use that evidence to refine the shared laboratory before building the next curriculum module.
+- A double-click check of the standalone file on a physical Windows classroom computer remains outstanding.
 
 ## Decisions intentionally deferred
 
-- Exact ordering and grouping of the curriculum families in `CURRICULUM_VISION.md`.
+- The single on-screen traction sign form (decided when S4 is built).
 - Whether student progress is stored locally or in a hosted account.
-- Which quantitative material model is introduced first.
-- Whether 2D cross-sections are derived from the same scene or use a separate renderer.
+- Whether 2D views (stereonet, Mohr plot, profile sections) share one renderer or use separate ones.
 - Final deployment target beyond the offline bundle and a possible GitHub Pages build.
-- Licensing.

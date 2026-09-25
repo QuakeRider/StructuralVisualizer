@@ -1,17 +1,20 @@
 # Structural Visualizer
 
-Structural Visualizer is intended to become a university-level interactive learning environment for the full structural-geology curriculum. Its long-term scope includes mathematical and mechanical foundations, stress analysis, strain and kinematics, rheology, brittle and ductile deformation, folds, faults, structural data, maps, cross-sections, and integrative geological interpretation.
+Structural Visualizer is an interactive 3D learning environment for an intro university Structural Geology course (3000–4000 level). Its purpose is to make the mathematics of structural geology clear and visible: every equation on screen is bound to the objects it describes in the 3D model, and vector components are always shown.
 
-The current loads-to-stress-state experience is the first working module and architectural proving ground—not the product's final identity or scope. It follows external force and moment through free-body motion, constraint reactions, internal section actions, distributed load, traction, and finally three-dimensional stress states. Its visual response is deliberately qualitative and does not imply a material-specific constitutive or failure model.
-
-The long-term curriculum and shared experience principles are defined in [docs/CURRICULUM_VISION.md](docs/CURRICULUM_VISION.md).
+The curriculum runs from vectors and matrices through orientation, stress, brittle deformation, strain, rheology, and folds—48 lessons in 7 units. The lesson sequence, conventions, and a build spec for every lesson are in [docs/curriculum/README.md](docs/curriculum/README.md); the product vision is in [docs/CURRICULUM_VISION.md](docs/CURRICULUM_VISION.md).
 
 ## Current release
 
-**Status:** interactive mechanics learning-laboratory prototype (`0.5.0`)
+**Status:** curriculum-structured prototype (`0.6.0`)
+
+Five lessons exist as early *seed* versions (M1, S2, S3, S7, S10); the other 43 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
 
 Implemented:
 
+- A lesson registry covering the full 48-lesson curriculum, with a unit-grouped lesson picker and lesson-to-lesson navigation.
+- An equation–model binding panel: hovering or focusing a symbol highlights its object in the 3D scene (and hovering the object highlights the symbol), with live values and a key describing each symbol's scene object.
+- Present mode that projects the current lesson (large type, arrow/PageUp/PageDown step keys) when entered from Guided, or the stress laboratory when entered from Explore.
 - Ten selectable stress-state presets based on the supplied reference sequence.
 - Animated 3D deformation of a shared generic block.
 - Tension, compression, and shear vectors on the relevant faces.
@@ -22,11 +25,7 @@ Implemented:
 - Approximate volume-change readout.
 - Responsive layout and reduced-motion support.
 - A single-file offline production build.
-- A fourteen-step university-level guided module connecting external loads, equilibrium, internal actions, traction, stress, and three-dimensional stress states.
-- A shared Three.js load laboratory with direct vector dragging, movable application point, `Fx/Fy/Fz` entry, smooth magnitude control, selectable block faces, and resizable contact area.
-- Explicit free-body and fixed-support modes with resultant force, resultant moment, reaction force, and reaction moment.
-- Continuous illustrative block response to load face, direction, magnitude, and eccentricity, including axial, shear, bending, and torsional action.
-- A movable section cut with live internal axial force, shear force, bending moment, and torsion.
+- A Three.js vector/force laboratory with direct vector dragging, `x/y/z` component entry, smooth magnitude control, selectable block faces, and resizable contact area.
 - A visible uniform load distribution connected to its resultant force.
 - Live average-traction and normal/shear decomposition with explicit surface normals, units, assumptions, and sign conventions.
 - Prediction-and-feedback checkpoints integrated with construction and comparison tasks.
@@ -105,17 +104,22 @@ src/
 ├── domain/
 │   ├── stressStates.js       Preset catalog and tensor helpers
 │   ├── forceStress.js        Force/area conversion and stress notation
-│   ├── loadResponse.js       Resultants, reactions, and section equilibrium
+│   ├── vector.js             Vector helpers (add, dot, cross, normalize, …)
 │   ├── deformation.js        Qualitative deformation mapping
 │   └── *.test.js             Domain tests
 ├── visualization/
-│   ├── ForceLabScene.js      Direct-manipulation load, response, and traction laboratory
-│   └── StressScene.js        Stress tensors, vectors, deformation, and camera
+│   ├── ForceLabScene.js      Vector/force-on-a-surface laboratory with symbol highlighting
+│   ├── StressScene.js        Stress tensors, vectors, deformation, and camera
+│   └── sceneRefs.js          Scene objects that equation symbols may bind to
 ├── lessons/
-│   └── stressLesson.js       Guided lesson content and answer keys
+│   ├── catalog.js            All 48 lessons: units, titles, prerequisites
+│   ├── registry.js           Merges the catalog with lesson content; navigation helpers
+│   ├── unit-0-math/          One file per lesson (m1-vectors.js, …)
+│   └── unit-2-stress/        s2-…, s3-…, s7-…, s10-…
 ├── main.js                       Application interface and state coordination
 └── styles.css                    Responsive visual design
 docs/
+├── curriculum/               Lesson sequence, conventions, and per-lesson build specs
 ├── ARCHITECTURE.md
 ├── CURRICULUM_VISION.md
 ├── PROJECT_STATUS.md
@@ -125,7 +129,7 @@ docs/
 
 ## GitHub distribution
 
-The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.5.0` is pushed, the same file is attached to the matching GitHub Release.
+The workflow in `.github/workflows/ci.yml` runs tests, builds the standalone file, and uploads it as a workflow artifact. When a version tag such as `v0.6.0` is pushed, the same file is attached to the matching GitHub Release.
 
 Students should download `Structural-Visualizer.html`, not the development `index.html` at the repository root.
 

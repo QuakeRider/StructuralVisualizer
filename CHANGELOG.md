@@ -2,6 +2,25 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.6.0 — 2026-09-24
+
+### Added
+
+- Curriculum plan in `docs/curriculum/`: 48 lessons in 7 units with a build spec for each.
+- Lesson registry and catalog for the full curriculum, with a unit-grouped lesson picker; planned lessons are listed but disabled.
+- Seed lessons M1 (vectors), S2 (force vs traction), S3 (normal and shear traction), S7 (stress tensor), and S10 (stress states), built from the reusable parts of the 0.5 module.
+- Equation–model binding panel: equation symbols highlight their scene objects and vice versa, with live values and a symbol key.
+- Present mode for lessons (entered from Guided), with arrow and PageUp/PageDown step navigation.
+- `vector.js` domain helpers with tests; registry tests, including a guard against statics content.
+
+### Removed
+
+- The engineering-statics content added in 0.5.0: application-point dragging, `r × F` moments, free-body motion, fixed support and reactions, section cut, and axial/shear/bending/torsion resultants and deformation (`loadResponse.js`). These topics are outside the structural-geology curriculum.
+
+### Changed
+
+- The single 14-step guided lesson is replaced by per-lesson files; step numbers now read as lesson.step (for example, S2.1).
+
 ## 0.5.0 — 2026-09-24
 
 ### Added
