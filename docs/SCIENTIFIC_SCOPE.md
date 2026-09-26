@@ -34,6 +34,20 @@ dip: normal δ = 90° − β, thrust δ = β, strike-slip δ = 90° with strikes
 - **Mohr diagram.** It uses fixed teaching values σ3 = 20 MPa and C = 10 MPa, with σ1 set to just reach the Coulomb line: σ1 = σ3(1 + sin φ)/(1 − sin φ) + 2C cos φ/(1 − sin φ). Its magnitudes are illustrative, but its angles (φ, 2θ) are exact, and the diagram says so.
 - **Deliberately left out.** The lesson does not model pre-existing weaknesses, pore pressure, fault rotation, or tilted stress axes. Step 7 names these as the reasons real faults depart from the prediction.
 
+### Trigonometry of projection (lesson M2)
+
+Everything in the M2 steps is exact, in the same x, y, z frame as M1 (z up), with angles in degrees:
+
+```text
+vx = |v| cos α,  vy = |v| sin α                       (α from +x, counterclockwise)
+α = atan2(vy, vx), in [0°, 360°)                      (tan⁻¹(vy/vx) is also shown, with its quadrant error)
+v̂ = (cos α, cos β, cos γ),  cos²α + cos²β + cos²γ = 1  (direction angles to x, y, z)
+v′x = vx cos θ + vy sin θ,  v′y = −vx sin θ + vy cos θ,  v′z = vz   (axes turned by θ about z)
+cos²θ = ½(1 + cos 2θ),  sin θ cos θ = ½ sin 2θ
+```
+
+Length-and-angle dragging snaps the angle to 5° and the length to 0.5; the sliders are finer. The primed axes are the x and y axes turned about z. The vector itself never moves when θ changes. In the last step, the plane trace and the "plunge-like" angle ε are geometric previews. Trend and plunge themselves, with z pointing down, are defined in O1.
+
 ### Force on a surface (lessons S2, S3)
 
 The force laboratory draws one force acting at the center of a selected face of a schematic cube. It is a force in newtons (displayed in kN), and its magnitude is computed exactly as above.

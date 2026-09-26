@@ -5,8 +5,8 @@ import { decomposeTraction } from './domain/forceStress.js';
 import { formatNumber } from './domain/format.js';
 import { ANDERSON_REGIMES, andersonFaults } from './domain/anderson.js';
 import { coulombAngles } from './domain/failure.js';
-import { basis, frac, hat, inline, mi, mn, mo, mtext, num, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
-import { add, magnitude, scale, xyMagnitude } from './domain/vector.js';
+import { basis, frac, hat, inline, mi, mn, mo, mtext, num, primed, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
+import { add, directionAngles, fromPolar, magnitude, polarAngle, rotate2D, scale, xyMagnitude } from './domain/vector.js';
 import {
   LESSONS,
   UNITS,
@@ -21,6 +21,7 @@ import {
   isLessonChoiceCorrect,
 } from './lessons/registry.js';
 import { AndersonScene } from './visualization/AndersonScene.js';
+import { CurvePlot } from './visualization/CurvePlot.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
 import { MohrPlot } from './visualization/MohrPlot.js';
 import { StressScene } from './visualization/StressScene.js';
@@ -32,7 +33,7 @@ const DEFAULT_EXAGGERATION = 1.2;
 const DEFAULT_FORCE = { x: 0, y: -5_000, z: 0 };
 const DEFAULT_NORMAL = { x: 0, y: 1, z: 0 };
 const DEFAULT_AREA = 100;
-const DEFAULT_VECTOR_LAB = { v: { x: 3, y: 2, z: 0 }, b: { x: 1, y: 2, z: 0 }, scalar: 2, context: null, dimension: 3 };
+const DEFAULT_VECTOR_LAB = { v: { x: 3, y: 2, z: 0 }, b: { x: 1, y: 2, z: 0 }, scalar: 2, theta: 0, context: null, dimension: 3 };
 const DEFAULT_ANDERSON = { regime: 'normal', mu: 0.6, slipped: false, setting: null };
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
@@ -102,10 +103,13 @@ app.innerHTML = `
 
         <div class="viewport-shell">
           <div id="force-lab-viewport" class="viewport force-lab-viewport"></div>
-          <div id="vector-lab-viewport" class="viewport vector-lab-viewport"></div>
-          <div id="anderson-viewport" class="viewport anderson-viewport" data-mohr="true">
-            <div id="anderson-scene" class="anderson-scene"></div>
-            <div id="mohr-panel" class="mohr-panel"></div>
+          <div id="vector-lab-viewport" class="viewport vector-lab-viewport split-viewport" data-side="false">
+            <div id="vector-lab-scene" class="lab-scene"></div>
+            <div id="vector-plot-panel" class="plot-panel"></div>
+          </div>
+          <div id="anderson-viewport" class="viewport anderson-viewport split-viewport" data-side="true">
+            <div id="anderson-scene" class="lab-scene"></div>
+            <div id="mohr-panel" class="plot-panel"></div>
           </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
@@ -206,6 +210,8 @@ const elements = {
   presentationExitButton: document.querySelector('#presentation-exit-button'),
   forceLabViewport: document.querySelector('#force-lab-viewport'),
   vectorLabViewport: document.querySelector('#vector-lab-viewport'),
+  vectorLabScene: document.querySelector('#vector-lab-scene'),
+  vectorPlotPanel: document.querySelector('#vector-plot-panel'),
   andersonViewport: document.querySelector('#anderson-viewport'),
   andersonScene: document.querySelector('#anderson-scene'),
   mohrPanel: document.querySelector('#mohr-panel'),
@@ -296,7 +302,7 @@ const forceLabScene = new ForceLabScene(elements.forceLabViewport, {
   },
 });
 
-const vectorLabScene = new VectorScene(elements.vectorLabViewport, {
+const vectorLabScene = new VectorScene(elements.vectorLabScene, {
   onVectorChange: (key, value) => {
     const lab = state.vectorLab;
     // In the 2D view the scene works with z = 0; keep the stored z for the jump back to 3D.
@@ -306,6 +312,22 @@ const vectorLabScene = new VectorScene(elements.vectorLabViewport, {
   onHover: (ref) => {
     if (!isVectorLabStep()) return;
     vectorLabScene.highlight(ref);
+    vectorPlot.highlight(ref);
+    markEquationRefs(ref);
+  },
+});
+
+/** Double-angle preview plot beside the vector lab (M2). */
+const vectorPlot = new CurvePlot(elements.vectorPlotPanel, {
+  title: 'Products of sine and cosine',
+  curves: [
+    { ref: 'curve-cos2', name: 'cos²θ', label: 'cos²<tspan font-style="italic">θ</tspan>', color: '#56b4e9', f: (theta) => Math.cos((theta * Math.PI) / 180) ** 2 },
+    { ref: 'curve-sincos', name: 'sin θ cos θ', label: 'sin <tspan font-style="italic">θ</tspan> cos <tspan font-style="italic">θ</tspan>', color: '#cc79a7', dash: '10 7', f: (theta) => Math.sin((theta * Math.PI) / 180) * Math.cos((theta * Math.PI) / 180) },
+  ],
+  onHover: (ref) => {
+    if (!isVectorLabStep()) return;
+    vectorLabScene.highlight(ref);
+    vectorPlot.highlight(ref);
     markEquationRefs(ref);
   },
 });
@@ -326,7 +348,12 @@ function vectorLabVectors() {
   const flatten = (vector) => (lab.dimension === 2 ? { ...vector, z: 0 } : vector);
   const v = flatten(lab.v);
   const b = flatten(lab.b);
-  return { v, b, sum: add(v, b), scalar: lab.scalar, dimension: lab.dimension };
+  return { v, b, sum: add(v, b), scalar: lab.scalar, dimension: lab.dimension, theta: lab.theta, primed: rotate2D(v, lab.theta) };
+}
+
+/** The context (geology example) chosen in the current step, if any. */
+function activeContext() {
+  return currentStep().contexts?.find((context) => context.id === state.vectorLab.context) ?? null;
 }
 
 function forceMagnitude() {
@@ -466,6 +493,7 @@ function markEquationRefs(ref) {
 function setSceneHighlight(ref) {
   forceLabScene.highlight(isForceLabStep() ? ref : null);
   vectorLabScene.highlight(isVectorLabStep() ? ref : null);
+  vectorPlot.highlight(isVectorLabStep() ? ref : null);
   andersonScene.highlight(isAndersonStep() ? ref : null);
   mohrPlot.highlight(isAndersonStep() ? ref : null);
   markEquationRefs(ref);
@@ -500,8 +528,45 @@ function quantityMath(text, unit) {
   return row(mn(text), '<mspace width="0.25em"></mspace>', mtext(unit));
 }
 
+const degrees = (value, decimals = 1) => mn(`${formatNumber(value, decimals)}°`);
+
+/** M2 values: angles, polar substitutions, direction cosines, primed components, and the double-angle curves. */
+function trigLiveValues({ v, theta, primed: turned }) {
+  const length = magnitude(v);
+  const alpha = polarAngle(v);
+  const cosines = length > 1e-9 ? scale(v, 1 / length) : null;
+  const angles = directionAngles(v);
+  const rad = (value) => (value * Math.PI) / 180;
+  const trig = (name, angle) => row(mi(name), degrees(angle));
+  const floor = xyMagnitude(v);
+  return {
+    alpha: floor > 1e-9 ? degrees(alpha) : mtext('undefined'),
+    sumSquares: num(v.x ** 2 + v.y ** 2),
+    vx: num(v.x),
+    vy: num(v.y),
+    vxSub: row(num(length), mo('⋅'), trig('cos', alpha)),
+    vySub: row(num(length), mo('⋅'), trig('sin', alpha)),
+    tanRatio: Math.abs(v.x) < 1e-9 ? mtext('undefined (vx = 0)') : row(frac(num(v.y), num(v.x)), mo('='), num(v.y / v.x)),
+    atanNaive: Math.abs(v.x) < 1e-9 ? mtext('undefined') : degrees((Math.atan(v.y / v.x) * 180) / Math.PI),
+    directionAngles: angles ? tuple([angles.x, angles.y, angles.z].map((angle) => Number(angle.toFixed(1)))).replace(/<\/mn>/g, '°</mn>') : mtext('undefined'),
+    cosSquares: cosines ? row(squared(cosines.x), mo('+'), squared(cosines.y), mo('+'), squared(cosines.z)) : mo('—'),
+    cosSquaresSum: cosines ? num(cosines.x ** 2 + cosines.y ** 2 + cosines.z ** 2) : mo('—'),
+    theta: degrees(theta),
+    vxpSub: row(signedTerm(v.x), trig('cos', theta), mo('+'), signedTerm(v.y), trig('sin', theta)),
+    vypSub: row(mo('−'), signedTerm(v.x), trig('sin', theta), mo('+'), signedTerm(v.y), trig('cos', theta)),
+    vxp: num(turned.x),
+    vyp: num(turned.y),
+    primed: tuple([turned.x, turned.y, turned.z]),
+    cos2: num(Math.cos(rad(theta)) ** 2, 3),
+    sincos: num(Math.sin(rad(theta)) * Math.cos(rad(theta)), 3),
+    elevation: length > 1e-9 ? degrees((Math.atan2(v.z, floor) * 180) / Math.PI) : mtext('undefined'),
+    vzFromElevation: num(v.z),
+  };
+}
+
 function vectorLabLiveValues() {
-  const { v, b, sum, scalar, dimension } = vectorLabVectors();
+  const current = vectorLabVectors();
+  const { v, b, sum, scalar, dimension } = current;
   const length = magnitude(v);
   const unit = length > 1e-9 ? scale(v, 1 / length) : null;
   const scaled = scale(v, scalar);
@@ -525,10 +590,11 @@ function vectorLabLiveValues() {
     scaled: tuple(components(scaled)),
     absC: num(Math.abs(scalar)),
     scaledMagnitude: num(magnitude(scaled)),
+    ...trigLiveValues(current),
+    v: tuple(components(v)),
   };
 }
 
-const degrees = (value, decimals = 1) => mn(`${formatNumber(value, decimals)}°`);
 const sigmaSymbol = (key) => sub(mi('σ'), mn(key.slice(-1)));
 const azimuth = (value) => String(Math.round(value) % 360).padStart(3, '0');
 
@@ -656,6 +722,15 @@ function vectorLabControlsMarkup(step) {
   if (controls.has('components')) parts.push(vectorInputsMarkup('v', 'Vector v', 'v'));
   if (controls.has('components-a')) parts.push(vectorInputsMarkup('v', 'Vector a', 'a'));
   if (controls.has('components-b')) parts.push(vectorInputsMarkup('b', 'Vector b', 'b'));
+  if (controls.has('length')) {
+    parts.push(`<label class="lab-control" for="length-input"><span>Length ${inline(mo('|'), vec('v'), mo('|'))} <output id="length-output">${formatNumber(magnitude(lab.v))}</output></span><input id="length-input" class="range" type="range" min="0.5" max="6" step="0.5" value="${magnitude(lab.v)}" /></label>`);
+  }
+  if (controls.has('angle')) {
+    parts.push(`<label class="lab-control" for="angle-input"><span>Angle ${inline(mi('α'))} from +x <output id="angle-output">${formatNumber(polarAngle(lab.v), 1)}°</output></span><input id="angle-input" class="range" type="range" min="0" max="360" step="1" value="${Math.round(polarAngle(lab.v))}" /></label>`);
+  }
+  if (controls.has('theta')) {
+    parts.push(`<label class="lab-control" for="theta-input"><span>Axes turned by ${inline(mi('θ'))} <output id="theta-output">${formatNumber(lab.theta, 1)}°</output></span><input id="theta-input" class="range" type="range" min="0" max="180" step="0.5" value="${lab.theta}" /></label>`);
+  }
   if (controls.has('scalar')) {
     parts.push(`<label class="lab-control" for="scalar-input"><span>Scale factor c <output id="scalar-output">${formatNumber(lab.scalar)}</output></span><input id="scalar-input" class="range" type="range" min="-2" max="3" step="0.1" value="${lab.scalar}" /></label>`);
   }
@@ -696,12 +771,29 @@ function bindVectorLabControls() {
     lab().scalar = Number(event.target.value);
     syncVectorLab();
   });
+  // Length and angle set the vector in polar form; the vector stays the single source of truth.
+  elements.lessonCard.querySelector('#angle-input')?.addEventListener('input', (event) => {
+    const length = currentStep().labOptions.fixedLength ?? (xyMagnitude(lab().v) || 1);
+    lab().v = fromPolar(length, Number(event.target.value));
+    syncVectorLab();
+  });
+  elements.lessonCard.querySelector('#length-input')?.addEventListener('input', (event) => {
+    lab().v = fromPolar(Number(event.target.value), polarAngle(lab().v));
+    syncVectorLab();
+  });
+  elements.lessonCard.querySelector('#theta-input')?.addEventListener('input', (event) => {
+    lab().theta = Number(event.target.value);
+    syncVectorLab();
+  });
   for (const button of elements.lessonCard.querySelectorAll('[data-context]')) {
     button.addEventListener('click', () => {
       const context = currentStep().contexts.find((candidate) => candidate.id === button.dataset.context);
       lab().context = context.id;
       lab().v = { ...context.vector };
+      if (context.dimension) lab().dimension = context.dimension;
+      if (context.theta !== undefined) lab().theta = context.theta;
       syncVectorLab({ refreshInputs: true });
+      syncAll();
     });
   }
 }
@@ -712,6 +804,7 @@ function initVectorLab(step) {
     v: { ...(initial.v ?? DEFAULT_VECTOR_LAB.v) },
     b: { ...(initial.b ?? DEFAULT_VECTOR_LAB.b) },
     scalar: initial.scalar ?? DEFAULT_VECTOR_LAB.scalar,
+    theta: initial.theta ?? DEFAULT_VECTOR_LAB.theta,
     context: initial.context ?? null,
     dimension: step.dimension ?? 3,
   };
@@ -722,12 +815,31 @@ function syncVectorLab({ refreshInputs = false, animate = true } = {}) {
   const step = currentStep();
   const lab = state.vectorLab;
   const current = vectorLabVectors();
-  vectorLabScene.setDimension(lab.dimension, { animate, close: step.labOptions.view === 'close' });
+  const context = activeContext();
+  // Values a step asks students to predict stay hidden in the scene labels too.
+  const hidden = !state.lessonChoiceCorrect ? step.revealAfterAnswer ?? [] : [];
+  const options = {
+    ...step.labOptions,
+    ...context?.options,
+    context: lab.context ?? step.labOptions.context ?? null,
+    hideComponentValues: ['vx', 'vy', 'vxp', 'vyp'].some((key) => hidden.includes(key)),
+  };
+  vectorLabScene.setDimension(lab.dimension, { animate, close: options.view === 'close' });
   vectorLabScene.setState({
     vectors: { v: current.v, b: current.b },
     scalar: current.scalar,
-    options: { ...step.labOptions, context: lab.context ?? step.labOptions.context ?? null },
+    theta: lab.theta,
+    options,
   });
+  elements.vectorLabViewport.dataset.side = String(Boolean(options.plot));
+  vectorPlot.setTheta(lab.theta);
+  const angleInput = elements.lessonCard.querySelector('#angle-input');
+  if (angleInput && document.activeElement !== angleInput) angleInput.value = String(Math.round(polarAngle(lab.v)));
+  setText('#angle-output', `${formatNumber(polarAngle(lab.v), 1)}°`);
+  const lengthInput = elements.lessonCard.querySelector('#length-input');
+  if (lengthInput && document.activeElement !== lengthInput) lengthInput.value = String(magnitude(lab.v));
+  setText('#length-output', formatNumber(magnitude(lab.v)));
+  setText('#theta-output', `${formatNumber(lab.theta, 1)}°`);
   for (const input of elements.lessonCard.querySelectorAll('[data-vector-key]')) {
     if (refreshInputs || document.activeElement !== input) input.value = String(lab[input.dataset.vectorKey][input.dataset.axis]);
     if (input.dataset.axis === 'z') input.closest('label').hidden = lab.dimension === 2;
@@ -841,7 +953,7 @@ function syncAnderson() {
   const step = currentStep();
   const lab = state.anderson;
   const options = andersonOptions(step);
-  elements.andersonViewport.dataset.mohr = String(Boolean(step.labOptions.showMohr));
+  elements.andersonViewport.dataset.side = String(Boolean(step.labOptions.showMohr));
   andersonScene.setState({ regime: lab.regime, mu: lab.mu, options });
   if (!options.showFaults && lab.slipped) lab.slipped = false;
   andersonScene.setSlipped(lab.slipped);
@@ -1218,6 +1330,11 @@ const LEGEND_SWATCHES = {
   y: ['#e69f00', 'solid'],
   z: ['#cc79a7', 'solid'],
   guide: ['#c3c8d0', 'dashed'],
+  xPrime: ['#56b4e9', 'dashed'],
+  yPrime: ['#e69f00', 'dashed'],
+  theta: ['#3fd0a0', 'solid'],
+  elevation: ['#9a8cff', 'solid'],
+  plane: ['#d9b27c', 'solid'],
 };
 
 function legendItem(swatch, label) {
@@ -1226,14 +1343,21 @@ function legendItem(swatch, label) {
 }
 
 function syncVectorLabChrome(step) {
-  const options = step.labOptions;
+  const options = { ...step.labOptions, ...activeContext()?.options };
   const is3d = state.vectorLab.dimension === 3;
-  elements.interactionHint.textContent = is3d
-    ? 'Drag a round handle: move the tip across the floor · Shift + drag: up or down · drag empty space: orbit'
-    : 'Drag the round handle to move the tip · scroll to zoom';
+  const draggable = options.draggable?.length > 0;
+  if (options.polar) {
+    elements.interactionHint.textContent = `Drag the round handle around the origin: the angle snaps to 5°${options.fixedLength ? '' : ', the length to half units'} · scroll to zoom`;
+  } else if (!draggable) {
+    elements.interactionHint.textContent = is3d ? 'The vector is held still · drag empty space: orbit · scroll to zoom' : 'The vector is held still · scroll to zoom';
+  } else {
+    elements.interactionHint.textContent = is3d
+      ? 'Drag a round handle: move the tip across the floor · Shift + drag: up or down · drag empty space: orbit'
+      : 'Drag the round handle to move the tip · scroll to zoom';
+  }
   const sum = options.layout === 'sum';
   const component = (axis) => inline(sub(mi('v'), mi(axis)));
-  const legend = [legendItem('vector', inline(vec(sum ? 'a' : 'v')))];
+  const legend = [legendItem('vector', inline(options.fixedLength === 1 ? hat(vec('v')) : vec(sum ? 'a' : 'v')))];
   if (sum) legend.push(legendItem('b', inline(vec('b'))), legendItem('result', inline(vec('a'), mo('+'), vec('b'))));
   if (!sum && options.showComponents !== false) {
     legend.push(legendItem('x', component('x')), legendItem('y', component('y')));
@@ -1242,6 +1366,12 @@ function syncVectorLabChrome(step) {
   if (options.showTriangles && is3d) legend.push(legendItem('guide', inline(mi('d'))));
   if (options.showUnit) legend.push(legendItem('result', inline(hat(vec('v')))));
   if (options.showScaled) legend.push(legendItem('result', inline(mi('c'), vec('v'))));
+  if (options.showAngle) legend.push(legendItem('x', inline(mi('α'))));
+  if (options.showDirectionAngles) legend.push(legendItem('x', inline(mi('α'))), legendItem('y', inline(mi('β'))), legendItem('z', inline(mi('γ'))));
+  if (options.showElevation && is3d) legend.push(legendItem('elevation', inline(mi('ε'))));
+  if (options.rotatedAxes) legend.push(legendItem('xPrime', inline(mi('x′'))), legendItem('yPrime', inline(mi('y′'))), legendItem('theta', inline(mi('θ'))));
+  if (options.showPrimedComponents) legend.push(legendItem('xPrime', inline(primed('v', 'x'))), legendItem('yPrime', inline(primed('v', 'y'))));
+  if (options.planeTrace) legend.push(legendItem('plane', 'plane'));
   elements.sceneLegend.hidden = false;
   elements.sceneLegend.innerHTML = legend.join('');
 }

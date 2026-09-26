@@ -15,7 +15,7 @@ Structural Visualizer is a modular learning environment for an intro university 
 
 ## Platform milestone 2 — Build 00: rework into the curriculum structure
 
-**Status: complete (v0.6.0).** Spec: [curriculum/build-00-rework.md](curriculum/build-00-rework.md). M1 was built in v0.7.0, and B7 was built early in v0.8.0 for classroom use; next: lesson M2.
+**Status: complete (v0.6.0).** Spec: [curriculum/build-00-rework.md](curriculum/build-00-rework.md). M1 was built in v0.7.0, B7 was built early in v0.8.0 for classroom use, and M2 was built in v0.9.0; next: lesson M3.
 
 v0.5.0 added an engineering-statics sequence (moments, reactions, section cuts, bending, torsion), which the curriculum excludes. Build 00:
 

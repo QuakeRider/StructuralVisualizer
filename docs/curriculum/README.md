@@ -19,7 +19,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | Unit | ID | Lesson | Frame | Status |
 |---|---|---|---|---|
 | **0 Math foundations** — [spec](unit-0-math.md) | M1 | Vectors and components | x/y/z | Built (0.7.0) |
-| | M2 | Trigonometry of projection | x/y/z | Planned |
+| | M2 | Trigonometry of projection | x/y/z | Built (0.9.0) |
 | | M3 | Dot and cross products | x/y/z | Planned |
 | | M4 | Matrices as transformations | x/y/z | Planned |
 | **1 Orientation** — [spec](unit-1-orientation.md) | O1 | The geographic frame and lines | x/y/z → NED | Planned |

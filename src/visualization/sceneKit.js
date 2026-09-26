@@ -40,26 +40,37 @@ export class Arrow3D {
     this.head = new THREE.Mesh(new THREE.ConeGeometry(1, 1, 20), new THREE.MeshBasicMaterial({ color, transparent: true }));
     this.head.visible = head;
     this.hasHead = head;
+    this.thickness = 1;
     this.group.add(this.shaft, this.head);
   }
 
+  /** Scale the shaft radius and head size, for example in a close-up view. */
+  setThickness(thickness) {
+    if (thickness === this.thickness) return;
+    this.thickness = thickness;
+    if (this.from) this.set(this.from, this.to);
+  }
+
   set(from, to) {
+    this.from = from.clone();
+    this.to = to.clone();
     const direction = to.clone().sub(from);
     const length = direction.length();
     this.group.visible = length > 1e-4;
     if (!this.group.visible) return;
     direction.normalize();
     const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
-    const headLength = this.hasHead ? Math.min(this.headLength, length * 0.45) : 0;
+    const headLength = this.hasHead ? Math.min(this.headLength * this.thickness, length * 0.45) : 0;
     const shaftLength = Math.max(length - headLength, 1e-4);
-    this.shaft.scale.set(this.radius, shaftLength, this.radius);
+    const radius = this.radius * this.thickness;
+    this.shaft.scale.set(radius, shaftLength, radius);
     this.shaft.position.copy(from).add(direction.clone().multiplyScalar(shaftLength / 2));
     this.shaft.quaternion.copy(quaternion);
     if (this.shaft.material.alphaMap) {
       this.shaft.material.alphaMap.repeat.set(1, Math.max(shaftLength / this.period, 1));
     }
     if (this.hasHead) {
-      const headRadius = Math.min(this.headRadius, headLength * 0.5);
+      const headRadius = Math.min(this.headRadius * this.thickness, headLength * 0.5);
       this.head.scale.set(headRadius, headLength, headRadius);
       this.head.position.copy(from).add(direction.clone().multiplyScalar(shaftLength + headLength / 2));
       this.head.quaternion.copy(quaternion);
@@ -154,4 +165,30 @@ export function setPoints(object, points) {
   object.geometry.dispose();
   object.geometry = new THREE.BufferGeometry().setFromPoints(points);
   if (object.material.isLineDashedMaterial) object.computeLineDistances();
+}
+
+/** Points along the arc from unit vector `from` to unit vector `to`, about `origin`. */
+export function arcPoints(origin, from, to, radius, count = 32) {
+  const angle = Math.acos(THREE.MathUtils.clamp(from.dot(to), -1, 1));
+  const points = [];
+  for (let index = 0; index <= count; index += 1) {
+    const t = index / count;
+    const direction = angle < 1e-6
+      ? from.clone()
+      : from.clone().multiplyScalar(Math.sin((1 - t) * angle)).add(to.clone().multiplyScalar(Math.sin(t * angle))).multiplyScalar(1 / Math.sin(angle));
+    points.push(origin.clone().add(direction.multiplyScalar(radius)));
+  }
+  return points;
+}
+
+/** A thin tube along a polyline, used for angle arcs that must stay visible through the block. */
+export function tubeMesh(color) {
+  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color, transparent: true, depthTest: false }));
+  mesh.renderOrder = 12;
+  return mesh;
+}
+
+export function setTube(mesh, points, radius = 0.022) {
+  mesh.geometry.dispose();
+  mesh.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), Math.max(points.length * 2, 8), radius, 8, false);
 }

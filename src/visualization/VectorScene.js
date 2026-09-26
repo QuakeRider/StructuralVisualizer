@@ -1,14 +1,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { formatNumber } from '../domain/format.js';
-import { add, clampVector, magnitude, scale, snapVector, subtract } from '../domain/vector.js';
-import { VECTOR_LAB_SCENE_REFS } from './sceneRefs.js';
-import { Arrow3D, Label, makeLine, setPoints } from './sceneKit.js';
+import { add, clampVector, fromPolar, magnitude, polarAngle, rotate2D, scale, snapVector, subtract } from '../domain/vector.js';
+import { CURVE_PLOT_SCENE_REFS, VECTOR_LAB_SCENE_REFS } from './sceneRefs.js';
+import { Arrow3D, Label, arcPoints, makeLine, setPoints, setTube, tubeMesh } from './sceneKit.js';
 
 /** World units per math unit, and the largest component the lab shows. */
 const UNIT = 0.36;
 const LIMIT = 6;
 const SNAP = 0.5;
+/** Polar dragging (M2) snaps the angle to this many degrees. */
+const ANGLE_SNAP = 5;
 const DIMMED_OPACITY_FACTOR = 0.14;
 
 const COLORS = {
@@ -20,6 +22,9 @@ const COLORS = {
   z: 0xcc79a7,
   guide: 0xb1b7c2,
   prop: 0x8f99a6,
+  theta: 0x3fd0a0,
+  elevation: 0x9a8cff,
+  plane: 0xb08a5a,
 };
 
 const CSS_COLORS = {
@@ -31,12 +36,16 @@ const CSS_COLORS = {
   z: '#cc79a7',
   guide: '#c3c8d0',
   tick: '#858d99',
+  theta: '#3fd0a0',
+  elevation: '#9a8cff',
+  plane: '#d9b27c',
 };
 
 const VIEW_3D = { position: new THREE.Vector3(3.2, 3.5, 5.7), target: new THREE.Vector3(0, 0.55, 0), up: new THREE.Vector3(0, 1, 0) };
 const VIEW_3D_CLOSE = { position: new THREE.Vector3(2.0, 2.1, 3.6), target: new THREE.Vector3(0, 0.3, 0), up: new THREE.Vector3(0, 1, 0) };
 const VIEW_2D = { position: new THREE.Vector3(0, 8.9, 0.0001), target: new THREE.Vector3(0, 0, 0), up: new THREE.Vector3(0, 0, -1) };
-const VIEWS = { '2d': VIEW_2D, '3d': VIEW_3D, '3d-close': VIEW_3D_CLOSE };
+const VIEW_2D_CLOSE = { position: new THREE.Vector3(0, 2.5, 0.0001), target: new THREE.Vector3(0, 0, 0), up: new THREE.Vector3(0, 0, -1) };
+const VIEWS = { '2d': VIEW_2D, '2d-close': VIEW_2D_CLOSE, '3d': VIEW_3D, '3d-close': VIEW_3D_CLOSE };
 
 /**
  * Math frame (right-handed x, y, z with z drawn up) → Three.js (y up).
@@ -65,8 +74,15 @@ function boxEdges(tip) {
   return edges;
 }
 
-function componentParts(symbol, axis, value) {
-  return [[symbol, 'var'], [axis, 'sub'], [` = ${formatNumber(value)}`]];
+function componentParts(symbol, axis, value, hidden = false) {
+  return [[symbol, 'var'], [axis, 'sub'], [` = ${hidden ? '?' : formatNumber(value)}`]];
+}
+
+/** Points on a circular arc in the x–y plane (math frame), from angle `from` to `to` in degrees. */
+function planarArc(radius, from, to, count = 48) {
+  const points = [];
+  for (let index = 0; index <= count; index += 1) points.push(toWorld(fromPolar(radius, from + ((to - from) * index) / count)));
+  return points;
 }
 
 /**
@@ -91,8 +107,20 @@ export class VectorScene {
       showStacks: false,
       context: null,
       draggable: ['v'],
+      // M2 options.
+      polar: false,
+      fixedLength: null,
+      showAngle: false,
+      showUnitCircle: false,
+      showDirectionAngles: false,
+      rotatedAxes: false,
+      showPrimedComponents: false,
+      hideComponentValues: false,
+      showElevation: false,
+      planeTrace: false,
     };
     this.options = { ...this.defaultOptions };
+    this.theta = 0;
     this.vectors = { v: { x: 3, y: -4, z: 0 }, b: { x: 1, y: 2, z: 0 } };
     this.scalar = 2;
     this.dimension = 3;
@@ -134,6 +162,15 @@ export class VectorScene {
     this.createAxes();
     this.createVectorObjects();
     this.createContextProps();
+    this.createAngleObjects();
+    this.allArrows = [
+      ...this.axisArrows, this.primaryArrow, this.bArrow, this.resultArrow, this.diagonal,
+      ...Object.values(this.componentArrows),
+      ...Object.values(this.stacks).flatMap((stack) => [stack.aPart, stack.bPart]),
+      ...Object.values(this.primeAxes).map((entry) => entry.arrow),
+      ...Object.values(this.primedArrows),
+      this.planeTrace,
+    ];
     this.highlightGroups = this.createHighlightGroups();
     this.bindPointerEvents();
     this.updateVisuals();
@@ -168,6 +205,7 @@ export class VectorScene {
       const group = new THREE.Group();
       const arrow = new Arrow3D({ color: COLORS[axis.key], radius: 0.009, headLength: 0.16, headRadius: 0.05 });
       arrow.set(new THREE.Vector3(), toWorld(scale(axis.direction, LIMIT + 0.8)));
+      this.axisArrows = [...(this.axisArrows ?? []), arrow];
       for (const part of [arrow.shaft, arrow.head]) part.material.opacity = 0.75;
       const negative = makeLine([new THREE.Vector3(), toWorld(scale(axis.direction, -LIMIT))], COLORS[axis.key], { dashed: true, opacity: 0.45 });
       const label = new Label(CSS_COLORS[axis.key], 0.06);
@@ -257,6 +295,57 @@ export class VectorScene {
     );
   }
 
+  /** M2: angle arcs, the rotated (primed) axis triad, primed components, and a plane trace. */
+  createAngleObjects() {
+    const arcLabel = (color) => new Label(color, 0.055);
+    this.alphaArc = tubeMesh(COLORS.x);
+    this.alphaLabel = arcLabel(CSS_COLORS.x);
+    this.alphaLabel.setParts([['α', 'var']]);
+    this.directionArcs = {
+      x: { arc: tubeMesh(COLORS.x), label: arcLabel(CSS_COLORS.x), symbol: 'α' },
+      y: { arc: tubeMesh(COLORS.y), label: arcLabel(CSS_COLORS.y), symbol: 'β' },
+      z: { arc: tubeMesh(COLORS.z), label: arcLabel(CSS_COLORS.z), symbol: 'γ' },
+    };
+    for (const entry of Object.values(this.directionArcs)) entry.label.setParts([[entry.symbol, 'var']]);
+    this.elevationArc = tubeMesh(COLORS.elevation);
+    this.elevationLabel = arcLabel(CSS_COLORS.elevation);
+    this.elevationLabel.setParts([['ε', 'var']]);
+
+    // Primed axes: dashed, in the colors of the axes they replace.
+    this.primeAxes = {};
+    for (const axis of ['x', 'y']) {
+      const group = new THREE.Group();
+      const arrow = new Arrow3D({ color: COLORS[axis], radius: 0.012, headLength: 0.16, headRadius: 0.05, pattern: 'dashed', period: 0.16 });
+      const negative = makeLine([new THREE.Vector3(), new THREE.Vector3(1, 0, 0)], COLORS[axis], { dashed: true, opacity: 0.4 });
+      const label = new Label(CSS_COLORS[axis], 0.06);
+      label.setParts([[`${axis}′`, 'var']]);
+      group.add(arrow.group, negative, label.sprite);
+      this.primeAxes[axis] = { group, arrow, negative, label };
+    }
+    this.thetaArc = tubeMesh(COLORS.theta);
+    this.thetaLabel = arcLabel(CSS_COLORS.theta);
+    this.thetaLabel.setParts([['θ', 'var']]);
+    this.primedArrows = {
+      x: new Arrow3D({ color: COLORS.x, radius: 0.022, headLength: 0.14, headRadius: 0.055, pattern: 'dashed', period: 0.12 }),
+      y: new Arrow3D({ color: COLORS.y, radius: 0.022, headLength: 0.14, headRadius: 0.055, pattern: 'dashed', period: 0.12 }),
+    };
+    this.primedLabels = { x: new Label(CSS_COLORS.x, 0.046), y: new Label(CSS_COLORS.y, 0.046) };
+    this.planeTrace = new Arrow3D({ color: COLORS.plane, radius: 0.028, head: false });
+    this.planeLabel = new Label(CSS_COLORS.plane, 0.046);
+    this.planeLabel.setParts([['plane']]);
+
+    this.scene.add(
+      this.alphaArc, this.alphaLabel.sprite,
+      ...Object.values(this.directionArcs).flatMap((entry) => [entry.arc, entry.label.sprite]),
+      this.elevationArc, this.elevationLabel.sprite,
+      ...Object.values(this.primeAxes).map((entry) => entry.group),
+      this.thetaArc, this.thetaLabel.sprite,
+      ...Object.values(this.primedArrows).map((arrow) => arrow.group),
+      ...Object.values(this.primedLabels).map((label) => label.sprite),
+      this.planeTrace.group, this.planeLabel.sprite,
+    );
+  }
+
   /** Illustrative props for the "where vectors show up" step. Not to scale. */
   createContextProps() {
     const rockMaterial = new THREE.MeshStandardMaterial({ color: COLORS.prop, roughness: 0.7, transparent: true, opacity: 0.55, depthWrite: false });
@@ -297,8 +386,19 @@ export class VectorScene {
       'stack-x': [this.stacks.x.group],
       'stack-y': [this.stacks.y.group],
       'stack-z': [this.stacks.z.group],
+      'angle-alpha': [this.alphaArc, this.alphaLabel.sprite, this.directionArcs.x.arc, this.directionArcs.x.label.sprite],
+      'angle-beta': [this.directionArcs.y.arc, this.directionArcs.y.label.sprite],
+      'angle-gamma': [this.directionArcs.z.arc, this.directionArcs.z.label.sprite],
+      'unit-circle': [this.unitSphere],
+      'axis-x-prime': [this.primeAxes.x.group],
+      'axis-y-prime': [this.primeAxes.y.group],
+      'comp-x-prime': [this.primedArrows.x.group, this.primedLabels.x.sprite],
+      'comp-y-prime': [this.primedArrows.y.group, this.primedLabels.y.sprite],
+      'angle-theta': [this.thetaArc, this.thetaLabel.sprite],
+      'elevation-angle': [this.elevationArc, this.elevationLabel.sprite],
+      'plane-trace': [this.planeTrace.group, this.planeLabel.sprite],
     };
-    const missing = VECTOR_LAB_SCENE_REFS.filter((ref) => !groups[ref]);
+    const missing = VECTOR_LAB_SCENE_REFS.filter((ref) => !groups[ref] && !CURVE_PLOT_SCENE_REFS.includes(ref));
     if (missing.length) throw new Error(`Scene refs without objects: ${missing.join(', ')}`);
     for (const objects of Object.values(groups)) {
       for (const object of objects) {
@@ -345,6 +445,19 @@ export class VectorScene {
       if (!this.raycaster.ray.intersectPlane(this.dragPlane, this.dragIntersection)) return;
       const point = fromWorld(this.dragIntersection);
       const { name, vertical } = this.dragging;
+      if (this.options.polar && name === 'v') {
+        // Length-and-angle dragging: the angle snaps to 5°, the length to half units (or stays fixed).
+        const angle = Math.round(polarAngle(point) / ANGLE_SNAP) * ANGLE_SNAP;
+        const length = this.options.fixedLength ?? Math.min(LIMIT, Math.max(SNAP, Math.round(Math.hypot(point.x, point.y) / SNAP) * SNAP));
+        const next = fromPolar(length, angle);
+        next.x = Math.round(next.x * 1e9) / 1e9 + 0;
+        next.y = Math.round(next.y * 1e9) / 1e9 + 0;
+        if (Math.abs(next.x - this.vectors.v.x) < 1e-9 && Math.abs(next.y - this.vectors.v.y) < 1e-9) return;
+        this.vectors.v = next;
+        this.updateVisuals();
+        this.onVectorChange?.('v', { ...next });
+        return;
+      }
       const currentTip = name === 'b' ? add(this.vectors.v, this.vectors.b) : this.vectors.v;
       let tip = vertical ? { ...currentTip, z: point.z } : { x: point.x, y: point.y, z: currentTip.z };
       if (this.dimension === 2) tip.z = 0;
@@ -409,6 +522,19 @@ export class VectorScene {
       ['stack-y', this.stacks.y.bPart.shaft],
       ['stack-z', this.stacks.z.aPart.shaft],
       ['stack-z', this.stacks.z.bPart.shaft],
+      ['angle-alpha', this.alphaArc],
+      ['angle-alpha', this.directionArcs.x.arc],
+      ['angle-beta', this.directionArcs.y.arc],
+      ['angle-gamma', this.directionArcs.z.arc],
+      ['angle-theta', this.thetaArc],
+      ['elevation-angle', this.elevationArc],
+      ['comp-x-prime', this.primedArrows.x.shaft],
+      ['comp-x-prime', this.primedArrows.x.head],
+      ['comp-y-prime', this.primedArrows.y.shaft],
+      ['comp-y-prime', this.primedArrows.y.head],
+      ['axis-x-prime', this.primeAxes.x.arrow.shaft],
+      ['axis-y-prime', this.primeAxes.y.arrow.shaft],
+      ['plane-trace', this.planeTrace.shaft],
     ].filter(([, object]) => {
       let visible = object.visible;
       object.traverseAncestors((ancestor) => { if (!ancestor.visible) visible = false; });
@@ -441,7 +567,7 @@ export class VectorScene {
     this.primaryArrow.set(origin, tip);
     this.primaryHandle.position.copy(tip);
     this.primaryHandle.visible = this.options.draggable.includes('v');
-    this.primaryLabel.setParts(sumLayout ? [['a', 'vec']] : [['v', 'vec']]);
+    this.primaryLabel.setParts(sumLayout ? [['a', 'vec']] : [[this.options.fixedLength === 1 ? 'v̂' : 'v', 'vec']]);
     this.placeLabel(this.primaryLabel, v, 0.55);
 
     // Tip-to-tail addition: b starts at the tip of a.
@@ -479,7 +605,7 @@ export class VectorScene {
         this.placeLabel(this.resultLabel, result, sumLayout ? -0.5 : -0.55);
       }
     }
-    this.unitSphere.visible = this.options.showUnit;
+    this.unitSphere.visible = this.options.showUnit || this.options.showUnitCircle;
     this.axisObjects.z.visible = this.dimension === 3;
     for (const meridian of this.unitMeridians) meridian.visible = this.dimension === 3;
 
@@ -503,7 +629,7 @@ export class VectorScene {
       const visible = showComponents && Math.abs(boxed[axis]) > 1e-9 && !(axis === 'z' && this.dimension === 2);
       arrow.group.visible = visible;
       label.sprite.visible = showComponents && !(axis === 'z' && this.dimension === 2);
-      label.setParts(componentParts(sumLayout ? 's' : 'v', axis, boxed[axis]));
+      label.setParts(componentParts(sumLayout ? 's' : 'v', axis, boxed[axis], this.options.hideComponentValues));
       const middle = toWorld(scale(add(starts[axis], corners[axis]), 0.5));
       label.sprite.position.copy(middle.add(labelOffsets[axis]));
     }
@@ -513,7 +639,110 @@ export class VectorScene {
     this.updateTriangles(v);
     this.updateStacks(v, b, sum);
     this.updateContext(v);
+    this.updateAngles(v);
     this.applyHighlight();
+  }
+
+  /** M2 objects: the α arc, direction angles, elevation angle, primed axes and components, and the plane trace. */
+  updateAngles(v) {
+    const options = this.options;
+    const length = magnitude(v);
+    const floorLength = Math.hypot(v.x, v.y);
+    const arcRadius = (reach) => Math.min(Math.max(reach * 0.42, 0.35), 1.5);
+
+    // α: from +x counterclockwise to the vector (in the x–y plane).
+    const alpha = polarAngle(v);
+    const showAlpha = options.showAngle && floorLength > 1e-9 && alpha > 0.5;
+    this.alphaArc.visible = showAlpha;
+    this.alphaLabel.sprite.visible = showAlpha;
+    if (showAlpha) {
+      const radius = arcRadius(floorLength);
+      setTube(this.alphaArc, planarArc(radius, 0, alpha), 0.014);
+      this.alphaLabel.sprite.position.copy(toWorld(fromPolar(radius + 0.45, alpha / 2)));
+    }
+
+    // Direction angles α, β, γ between the vector and each axis (3D).
+    const showDirections = options.showDirectionAngles && length > 1e-9;
+    const unit = length > 1e-9 ? toWorld(v).normalize() : new THREE.Vector3(1, 0, 0);
+    for (const [axis, entry] of Object.entries(this.directionArcs)) {
+      const axisUnit = { x: 0, y: 0, z: 0 };
+      axisUnit[axis] = 1;
+      const from = toWorld(axisUnit).normalize();
+      entry.arc.visible = showDirections;
+      entry.label.sprite.visible = showDirections;
+      if (!showDirections) continue;
+      const radius = arcRadius(length) * UNIT * (axis === 'x' ? 1 : axis === 'y' ? 1.15 : 1.3);
+      setTube(entry.arc, arcPoints(new THREE.Vector3(), from, unit, radius), 0.014);
+      const middle = from.clone().add(unit).normalize();
+      entry.label.sprite.position.copy(middle.multiplyScalar(radius + 0.16));
+    }
+
+    // ε: from the floor (the vector's shadow) up to the vector.
+    const showElevation = options.showElevation && floorLength > 1e-9 && Math.abs(v.z) > 1e-9 && this.dimension === 3;
+    this.elevationArc.visible = showElevation;
+    this.elevationLabel.sprite.visible = showElevation;
+    if (showElevation) {
+      const floor = toWorld({ x: v.x, y: v.y, z: 0 }).normalize();
+      const radius = arcRadius(length) * UNIT;
+      setTube(this.elevationArc, arcPoints(new THREE.Vector3(), floor, unit, radius), 0.014);
+      this.elevationLabel.sprite.position.copy(floor.clone().add(unit).normalize().multiplyScalar(radius + 0.16));
+    }
+
+    // Primed axes x′, y′: the x and y axes turned by θ about z. The vector does not move.
+    const theta = this.theta;
+    const showPrimed = options.rotatedAxes;
+    // In a close-up view the axis labels and the θ arc come in to stay on screen.
+    const reach = this.viewKey.endsWith('close') ? 1.4 : LIMIT;
+    for (const [axis, entry] of Object.entries(this.primeAxes)) {
+      entry.group.visible = showPrimed;
+      if (!showPrimed) continue;
+      const angle = axis === 'x' ? theta : theta + 90;
+      entry.arrow.set(new THREE.Vector3(), toWorld(fromPolar(LIMIT + 0.8, angle)));
+      setPoints(entry.negative, [new THREE.Vector3(), toWorld(fromPolar(-LIMIT, angle))]);
+      entry.label.sprite.position.copy(toWorld(fromPolar(reach + (reach < LIMIT ? 0.35 : 1.3), angle)));
+    }
+    const showTheta = showPrimed && Math.abs(theta) > 0.5;
+    this.thetaArc.visible = showTheta;
+    this.thetaLabel.sprite.visible = showTheta;
+    if (showTheta) {
+      const radius = reach * 0.62;
+      setTube(this.thetaArc, planarArc(radius, 0, theta), reach < LIMIT ? 0.008 : 0.016);
+      this.thetaLabel.sprite.position.copy(toWorld(fromPolar(radius + (reach < LIMIT ? 0.2 : 0.55), theta / 2)));
+    }
+
+    // Primed components: v′x along x′, then v′y parallel to y′, ending at the vector's floor point.
+    const primed = rotate2D(v, theta);
+    const ex = fromPolar(1, theta);
+    const ey = fromPolar(1, theta + 90);
+    const corner = scale(ex, primed.x);
+    const floorTip = add(corner, scale(ey, primed.y));
+    const showPrimedComponents = options.showPrimedComponents;
+    this.primedArrows.x.set(new THREE.Vector3(), toWorld(corner));
+    this.primedArrows.y.set(toWorld(corner), toWorld(floorTip));
+    this.primedArrows.x.group.visible = showPrimedComponents && Math.abs(primed.x) > 1e-6;
+    this.primedArrows.y.group.visible = showPrimedComponents && Math.abs(primed.y) > 1e-6;
+    for (const axis of ['x', 'y']) {
+      const label = this.primedLabels[axis];
+      label.sprite.visible = showPrimedComponents;
+      // Written v′ₓ, as in the equations: the prime marks the turned frame.
+      label.setParts(componentParts('v′', axis, primed[axis], options.hideComponentValues));
+    }
+    // Labels sit outside the primed box, on the side away from the vector.
+    const outward = (direction, sign) => toWorld(scale(direction, sign * 0.55));
+    this.primedLabels.x.sprite.position.copy(toWorld(scale(corner, 0.5)).add(outward(ey, primed.y >= 0 ? -1 : 1)));
+    // A short v′y leg leaves no room beside it, so its label goes past the leg's end instead.
+    const legSign = primed.y >= 0 ? 1 : -1;
+    const yLabelAt = Math.abs(primed.y) < 1.2 ? add(corner, scale(ey, primed.y / 2 - legSign * 0.75)) : add(corner, scale(ey, primed.y / 2));
+    this.primedLabels.y.sprite.position.copy(toWorld(yLabelAt).add(outward(ex, primed.x >= 0 ? 1 : -1)));
+
+    // A plane seen edge-on, normal to x′: the S5 preview.
+    const showPlane = options.planeTrace && showPrimed;
+    this.planeTrace.group.visible = showPlane;
+    this.planeLabel.sprite.visible = showPlane;
+    if (showPlane) {
+      this.planeTrace.set(toWorld(fromPolar(-LIMIT * 0.8, theta + 90)), toWorld(fromPolar(LIMIT * 0.8, theta + 90)));
+      this.planeLabel.sprite.position.copy(toWorld(add(fromPolar(LIMIT * 0.8, theta + 90), fromPolar(-0.6, theta))));
+    }
   }
 
   updateTriangles(v) {
@@ -659,8 +888,9 @@ export class VectorScene {
   }
 
   /** Update what the scene shows. `vectors.v` is the primary vector (a in the sum layout). */
-  setState({ vectors, scalar, options }) {
+  setState({ vectors, scalar, options, theta }) {
     if (options) this.options = { ...this.defaultOptions, ...options };
+    if (theta !== undefined) this.theta = theta;
     if (vectors?.v) this.vectors.v = { ...vectors.v };
     if (vectors?.b) this.vectors.b = { ...vectors.b };
     if (scalar !== undefined) this.scalar = scalar;
@@ -672,11 +902,14 @@ export class VectorScene {
    * camera. `close` frames the region near the origin (for the unit sphere).
    */
   setDimension(dimension, { animate = true, close = false } = {}) {
-    const viewKey = dimension === 2 ? '2d' : close ? '3d-close' : '3d';
+    const viewKey = dimension === 2 ? (close ? '2d-close' : '2d') : close ? '3d-close' : '3d';
     if (viewKey === this.viewKey) return;
     this.dimension = dimension;
     this.viewKey = viewKey;
     this.controls.enableRotate = dimension === 3;
+    // Close-up views are about three times nearer, so arrows are drawn thinner to keep their on-screen weight.
+    const thickness = viewKey.endsWith('close') ? 0.4 : 1;
+    for (const arrow of this.allArrows) arrow.setThickness(thickness);
     this.flyTo(this.fittedView(viewKey), animate && !this.reducedMotion);
     this.updateVisuals();
   }
@@ -734,7 +967,7 @@ export class VectorScene {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
     // The 2D view cannot be orbited, so it can always be refitted to the new shape.
-    if (this.viewKey === '2d' && !this.cameraAnimation) this.flyTo(this.fittedView('2d'), false);
+    if (this.viewKey.startsWith('2d') && !this.cameraAnimation) this.flyTo(this.fittedView(this.viewKey), false);
   }
 
   animate = () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abs, bound, column, frac, hat, live, math, mi, mn, paren, signedTerm, sqrt, squared, sub, tuple, vec } from './mathml.js';
+import { abs, bound, column, frac, hat, live, math, mi, mn, paren, primed, signedTerm, sqrt, squared, sub, tuple, vec } from './mathml.js';
 
 describe('MathML builder', () => {
   it('builds nested MathML and escapes text', () => {
@@ -8,6 +8,7 @@ describe('MathML builder', () => {
     expect(sub(mi('v'), mi('x'))).toBe('<msub><mi>v</mi><mi>x</mi></msub>');
     expect(sqrt(mn('9'))).toBe('<msqrt><mn>9</mn></msqrt>');
     expect(frac(mn('1'), mn('2'))).toBe('<mfrac><mn>1</mn><mn>2</mn></mfrac>');
+    expect(primed('v', 'x')).toBe('<msubsup><mi>v</mi><mi>x</mi><mo>′</mo></msubsup>');
     expect(math(mi('x'))).toBe('<div class="math-line"><math displaystyle="true"><mi>x</mi></math></div>');
   });
 

@@ -1,5 +1,6 @@
 import { LESSON_CATALOG, UNITS } from './catalog.js';
 import m1 from './unit-0-math/m1-vectors.js';
+import m2 from './unit-0-math/m2-trigonometry.js';
 import s2 from './unit-2-stress/s2-force-vs-traction.js';
 import s3 from './unit-2-stress/s3-normal-shear.js';
 import s7 from './unit-2-stress/s7-stress-tensor-3d.js';
@@ -7,7 +8,7 @@ import s10 from './unit-2-stress/s10-stress-states.js';
 import b7 from './unit-3-brittle/b7-anderson.js';
 
 /** Lesson content by id. Add each newly built lesson here. */
-const LESSON_CONTENT = new Map([m1, s2, s3, s7, s10, b7].map((lesson) => [lesson.id, lesson]));
+const LESSON_CONTENT = new Map([m1, m2, s2, s3, s7, s10, b7].map((lesson) => [lesson.id, lesson]));
 
 export const LESSON_STATUSES = Object.freeze(['planned', 'seed', 'built']);
 

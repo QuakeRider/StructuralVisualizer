@@ -2,6 +2,34 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.9.0 — 2026-09-25
+
+### Added
+
+- Lesson M2, Trigonometry of projection, fully built (eight steps):
+  1. The unit circle: a unit vector is (cos α, sin α).
+  2. Components from a length and an angle, with feedback on a radian-mode calculator.
+  3. From components back to the angle, and why tan⁻¹ needs a quadrant check (atan2).
+  4. Direction angles and direction cosines in 3D, with cos²α + cos²β + cos²γ = 1 checked live.
+  5. Turning the axes while the vector stays still, with the rotation equations substituted live.
+  6. The same arrow in every frame: the length is unchanged, and a goal asks students to find the frame where v′y = 0.
+  7. A preview of the double-angle forms of cos²θ and sin θ cos θ, with a plot.
+  8. Where this shows up in geology: how steeply a line plunges (O1), and a plane tilted inside a rock (S5).
+- The vector laboratory gained:
+  - Length-and-angle dragging, where the angle snaps to 5°.
+  - Angle arcs: α in the plane, and α, β, γ to each axis in 3D.
+  - A rotatable x′, y′ axis pair (dashed) with its θ arc and the primed components.
+  - An elevation angle ε, a plane trace, and a 2D close-up view.
+- A curve plot (`CurvePlot.js`) beside the scene. It shows cos²θ and sin θ cos θ with a marker at the current θ, and its curves highlight with their equation symbols.
+- New tested vector helpers: `fromPolar`, `polarAngle` (quadrant-aware), `directionCosines`, `directionAngles`, and `rotate2D`. The MathML builder gained `subsup` and `primed` (v′ₓ).
+
+### Changed
+
+- Arrows are drawn thinner in close-up views, so they keep the same weight on screen. This also affects M1's unit-vector step.
+- Scene labels hide their values while a prediction is open, as the equations already did.
+- Choosing an example in a "where this shows up" step can switch between 2D and 3D. The legend and hints follow the switch.
+- The scene-and-plot split layout is shared by B7 (Mohr diagram) and M2 (curve plot).
+
 ## 0.8.0 — 2026-09-25
 
 ### Added
