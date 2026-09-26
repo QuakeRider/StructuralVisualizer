@@ -6,14 +6,15 @@ The curriculum runs from vectors and matrices through orientation, stress, britt
 
 ## Current release
 
-**Status:** curriculum-structured prototype (`0.9.0`)
+**Status:** curriculum-structured prototype (`0.10.0`)
 
-Lessons M1 (vectors and components), M2 (trigonometry of projection), and B7 (Anderson's theory of faulting, built ahead of its prerequisites for classroom use) are fully built. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 41 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
+Lessons M1 (vectors and components), M2 (trigonometry of projection), B6 (friction and reactivation of existing planes), and B7 (Anderson's theory of faulting) are fully built; B6 and B7 were built ahead of their prerequisites for classroom use. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 40 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
 
 Implemented:
 
 - A vector laboratory for the math unit: 2D-to-3D camera jump, component box, stacked right triangles for the 3D magnitude, unit vectors, scaling, and tip-to-tail addition with component stacks. For trigonometry it adds angle arcs, direction angles, and a rotatable x′, y′ axis pair, with a curve plot beside it.
 - An Anderson faulting laboratory: an Earth block in north–east–down coordinates with principal-stress arrows, the predicted conjugate faults, β and dip angles, and a sliding hanging wall. A Mohr diagram beside it shows the circle touching the Coulomb line.
+- A friction laboratory on the same Earth block: an old plane of any strike and dip with the traction on it, a 3D Mohr diagram with Byerlee's friction line and the intact-rock line, and the first stereonet, which maps slip tendency over every plane orientation and responds to pore-fluid pressure.
 - Numeric-answer predictions with feedback on common mistakes, and construction goals checked live.
 - A lesson registry covering the full 48-lesson curriculum, with a unit-grouped lesson picker and lesson-to-lesson navigation.
 - An equation–model binding panel: hovering or focusing a symbol highlights its object in the 3D scene (and hovering the object highlights the symbol), with live values and a key describing each symbol's scene object.

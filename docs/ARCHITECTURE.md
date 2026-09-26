@@ -16,18 +16,21 @@ Interface (src/main.js)
     |       +-- one data file per lesson (src/lessons/unit-*/<id>-*.js)
     +-- vector helpers (src/domain/vector.js)
     +-- equation number formatting (src/domain/format.js)
-    +-- orientation, failure, Anderson faulting (src/domain/orientation.js, failure.js, anderson.js)
+    +-- orientation, stereonet projection, stress tensors, failure and friction, Anderson faulting
+    |       (src/domain/orientation.js, stereonet.js, tensor.js, failure.js, anderson.js)
     +-- force/stress foundations (src/domain/forceStress.js)
     +-- preset catalog (src/domain/stressStates.js)
     +-- qualitative model (src/domain/deformation.js)
-    +-- renderers (src/visualization/VectorScene.js, CurvePlot.js, AndersonScene.js, MohrPlot.js, ForceLabScene.js, StressScene.js)
+    +-- renderers (src/visualization/VectorScene.js, CurvePlot.js, AndersonScene.js, MohrPlot.js,
+    |       FrictionMohrPlot.js, Stereonet.js, ForceLabScene.js, StressScene.js)
     |       +-- shared arrows and labels (src/visualization/sceneKit.js)
+    |       +-- shared SVG plot helpers (src/visualization/plotKit.js)
     +-- scene references (src/visualization/sceneRefs.js)
 ```
 
 ### Interface
 
-`src/main.js` owns the selected lesson and step, the prediction state, vector-laboratory and force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, visibility preferences, and the three modes. It coordinates accessible HTML controls with three topic scenes while keeping scientific calculations in the domain layer. The shell's `data-visual-kind` (`vector-lab`, `anderson`, `force-lab`, or `stress-state`) decides which scene is visible.
+`src/main.js` owns the selected lesson and step, the prediction state, vector-laboratory and force-laboratory state, the selected stress preset, displayed magnitude, customized tensor, visibility preferences, and the three modes. It coordinates accessible HTML controls with three topic scenes while keeping scientific calculations in the domain layer. The shell's `data-visual-kind` (`vector-lab`, `anderson`, `friction`, `force-lab`, or `stress-state`) decides which scene is visible.
 
 **Modes.** Guided runs the selected lesson. Explore is the open stress-state laboratory. Present projects whichever of the two it was entered from: from Guided it shows the current lesson with larger type and arrow/PageUp/PageDown, 1–9, and Home/End step keys; from Explore it shows the stress laboratory with its presentation toolbar. The shell element carries `data-mode` and `data-lesson-view` (true in Guided and in Present-from-Guided), and layout CSS keys off `data-lesson-view`.
 
@@ -49,7 +52,8 @@ Colors and underline patterns come from per-ref CSS custom properties (`--ref-co
 
 A lesson file exports `{ id, status, steps }`. Each step is data:
 
-- `visualKind` (`vector-lab`, `force-lab`, or `stress-state`), `controls`, `labOptions`, and `initialLabState`.
+- `visualKind` (`vector-lab`, `anderson`, `friction`, `force-lab`, or `stress-state`), `controls`, `labOptions`, and `initialLabState`.
+- For the Anderson lab: optional `settings` (tectonic settings). For the friction lab: optional `mappedFaults` (`{ id, label, strike, dip, description }`).
 - For the vector lab: `dimension` (2 or 3) and, optionally, `contexts`.
 - For stress-state steps: the stress `presetId`/`magnitude` and display toggles.
 - Copy: `title`, `body`, `task`.
@@ -73,7 +77,11 @@ To add a lesson: create its file under `src/lessons/unit-*/`, import it in `regi
 
 `src/domain/orientation.js` converts between trend/plunge or strike/dip (right-hand rule) and unit vectors in the NED frame (x north, y east, z down): `lineVector`, `planeFromDipDirection`, `planeFromStrike`, `planePole` (downward), `planeUpwardNormal` (into the hanging wall), `strikeVector`, and `dipVector`. Lessons O1–O4 extend it.
 
-`src/domain/failure.js` holds the Coulomb failure relations: `frictionAngle`, `coulombAngles` (φ, θ, β, 2θ), `coulombShearStrength`, `sigma1AtFailure`, `mohrCircle`, and `mohrPoint`. Lessons B2–B6 add the other envelopes, effective stress, and slip tendency.
+`src/domain/stereonet.js` (lesson B6) is the lower-hemisphere equal-area projection: `equalAreaPoint`, its inverse `equalAreaLine`, `lineFromVector` (the lower-hemisphere end of a direction), `greatCirclePoints`, and `planeFromPole`. O3 adds equal-angle.
+
+`src/domain/tensor.js` applies a stress tensor to a normal (`applyTensor`) and resolves the traction into σn and τ (`resolveTraction`).
+
+`src/domain/failure.js` holds the Coulomb failure relations: `frictionAngle`, `coulombAngles` (φ, θ, β, 2θ), `coulombShearStrength`, `sigma1AtFailure`, `mohrCircle`, and `mohrPoint`. B6 added friction on existing planes: `BYERLEE` and `byerlee`, `principalMagnitudes`, `mohrCircles3D`, `slipTendency` and `frictionCheck` (with pore pressure), `dilationTendency`, `reactivationSigma1` (closed form), `newFaultSigma1`, `principalCosines`, and `slipTendencyGrid` (Ts over the net). Lessons B2–B4 add the other envelopes and effective stress.
 
 `src/domain/anderson.js` (lesson B7) gives each regime's principal axes (`andersonAxes`) and its conjugate fault planes (`andersonFaults`). It also builds a tensor from principal axes and magnitudes (`principalStressTensor`), finds the slip direction of the hanging wall from the shear part of 𝐭 = −σ𝐦 (`faultSlip`), and names the sense of slip (`slipSense`).
 
@@ -111,14 +119,15 @@ For M2 it also draws:
 
 Its camera has a 2D top view, a 2D close-up, a 3D view, and a 3D close-up. Arrows are thinner in the close-ups. It animates between them (instantly under reduced motion) and pulls back on portrait viewports. A plain drag moves a tip across the floor, and Shift-drag moves it vertically. It reports vector and hover changes and exposes `highlight(ref)`.
 
-`src/visualization/AndersonScene.js` is the lesson-B7 Earth block in the NED frame, converted to Three.js internally (north −z, east +x, down −y). It draws:
+`src/visualization/AndersonScene.js` is the Earth block in the NED frame used by B7 and B6, converted to Three.js internally (north −z, east +x, down −y). It draws:
 - a layered block, drawn as two copies clipped by the active fault plane so the hanging wall can slide
 - the σ1/σ2/σ3 glyph pairs
 - the conjugate fault polygons, cut from the block by a plane–box intersection
 - the β and dip arcs in the σ1–σ3 plane
 - the slip arrows and an N/E/D compass
+- for B6, given an existing `plane`: that plane (which then splits the block), its pole 𝐧, and the traction 𝐭 = σ𝐧 with its σn and τ parts; the Coulomb pair then stands for a new fault
 
-It reframes itself on resize until the student orbits. `src/visualization/MohrPlot.js` is an SVG Mohr diagram next to it: the σ1–σ3 circle at Coulomb failure, the envelope, ±2θ points, and φ. Its groups carry `data-ref`, so it takes part in the same highlighting as the 3D scenes. Both expose `highlight(ref)` and report hover through `onHover`. `src/visualization/sceneKit.js` holds the patterned `Arrow3D` (with a thickness factor for close-ups), the constant-size `Label`, and the line, arc, and tube helpers the scenes share. `src/visualization/CurvePlot.js` is an SVG plot of functions of θ (0–180°) with a marker at the current θ; M2 uses it for cos²θ and sin θ cos θ. The vector lab and the Anderson lab both sit in a `.split-viewport`: a 3D scene (`.lab-scene`) beside an optional plot (`.plot-panel`), shown when `data-side="true"`.
+It reframes itself on resize until the student orbits. `src/visualization/MohrPlot.js` is an SVG Mohr diagram next to it: the σ1–σ3 circle at Coulomb failure, the envelope, ±2θ points, and φ. Its groups carry `data-ref`, so it takes part in the same highlighting as the 3D scenes. Both expose `highlight(ref)` and report hover through `onHover`. `src/visualization/sceneKit.js` holds the patterned `Arrow3D` (with a thickness factor for close-ups), the constant-size `Label`, and the line, arc, and tube helpers the scenes share. `src/visualization/CurvePlot.js` is an SVG plot of functions of θ (0–180°) with a marker at the current θ; M2 uses it for cos²θ and sin θ cos θ. The vector lab and the Anderson lab both sit in a `.split-viewport`: a 3D scene (`.lab-scene`) beside an optional plot (`.plot-panel`), shown when `data-side="true"`. The friction lab (B6) uses a second Earth-block instance with a `.plot-stack` beside it: `FrictionMohrPlot.js` (the three circles and their region, Byerlee's and the intact-rock lines, the plane's point, the Ts line, and the shift by Pf) above `Stereonet.js` (a slip-tendency raster with the slipping planes hatched, principal axes, the plane's great circle and pole, lettered markers, and click/drag pole picking), which shows when `data-net="true"`. `plotKit.js` holds the SVG helpers the plots share (subscripted symbols, tick spacing, and `data-ref` hover and highlight).
 
 `src/visualization/ForceLabScene.js` owns the directly manipulated vector (acting at the center of the selected face), selectable block faces, contact patch, distributed-load arrows, labeled axes, surface normal, and normal/shear component geometry. It reports vector, surface, and hover changes to the interface and exposes `highlight(ref)` for equation binding. The refs each scene supports are listed per visual kind in `sceneRefs.js` (`SCENE_REFS`), which has no Three.js dependency so lesson tests can validate against it.
 

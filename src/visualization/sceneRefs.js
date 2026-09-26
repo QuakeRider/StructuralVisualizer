@@ -70,8 +70,35 @@ export const ANDERSON_SCENE_REFS = Object.freeze([
   'phi',
 ]);
 
+/** Friction lab (B6): the NED block with an existing plane, the 3D Mohr diagram, and the stereonet. */
+export const FRICTION_SCENE_REFS = Object.freeze([
+  'sigma-1',
+  'sigma-2',
+  'sigma-3',
+  'plane',
+  'pole',
+  'traction',
+  'normal-stress',
+  'shear-stress',
+  'slip',
+  'new-fault',
+  // Mohr diagram.
+  'mohr-circle',
+  'mohr-region',
+  'plane-point',
+  'friction',
+  'intact',
+  'ts-line',
+  'pf',
+  // Stereonet.
+  'ts-map',
+  'critical',
+  'mapped-faults',
+]);
+
 export const SCENE_REFS = Object.freeze({
   'force-lab': FORCE_LAB_SCENE_REFS,
   'vector-lab': VECTOR_LAB_SCENE_REFS,
   anderson: ANDERSON_SCENE_REFS,
+  friction: FRICTION_SCENE_REFS,
 });

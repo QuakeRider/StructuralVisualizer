@@ -2,6 +2,29 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.10.0 — 2026-09-25
+
+### Added
+
+- Lesson B6, Friction and reactivation of existing planes, built ahead of the curriculum order for classroom use (eight steps):
+  1. Existing planes are weaker than intact rock: no cohesion, so the friction line starts at the origin.
+  2. Byerlee's law (τ = 0.85σn below 200 MPa, 50 MPa + 0.6σn above), with a numeric check.
+  3. Every plane is a point on the 3D Mohr diagram: the traction 𝐭 = 𝛔𝐧 on an old plane split into σn and τ, with strike and dip sliders. Planes that contain σ2 ride the big circle.
+  4. Slip tendency Ts = τ/σn as the slope of a line from the origin, a numeric check, and a goal to find a plane that slips.
+  5. Reactivate the old plane or break a new fault: raising σ1 stops at whichever happens first. It shows the σ1 needed for each, and planes too misoriented to ever slip ("locked").
+  6. A stereonet map of slip tendency for every plane orientation, with the slipping planes hatched, pole picking on the net, a regime switch, and dilation tendency as an aside.
+  7. Ranking three mapped faults by slip tendency on the stereonet and the Mohr diagram.
+  8. Pore-fluid pressure: effective normal stress σn′ = σn − Pf shifts the circles left and wakes a stable fault, the mechanism behind injection-induced earthquakes.
+- The first stereonet (`Stereonet.js`): lower-hemisphere equal-area, with a slip-tendency color map (viridis scale) and hatching where planes slip, principal axes marked by shape, the current plane's great circle and pole, lettered poles for mapped faults, and click or drag to pick a pole. O3 will extend it.
+- A 3D Mohr diagram for friction (`FrictionMohrPlot.js`): the three circles and the region between them, Byerlee's line, the intact Coulomb line, the plane's point with its σn and τ, the slip-tendency line, the tangent point of a new fault, and the shift by pore pressure.
+- New tested domain modules and functions: `tensor.js` (σ𝐧 and its normal and shear parts), `stereonet.js` (equal-area projection and its inverse, great circles, planes from poles), and in `failure.js` Byerlee's law, slip and dilation tendency, the three Mohr circles, the σ1 that reactivates a plane (closed form, both Byerlee segments), the σ1 that breaks intact rock with pore pressure, and a slip-tendency grid over the net.
+
+### Changed
+
+- The Earth-block scene (`AndersonScene.js`) now also serves B6. Given an existing plane, it splits the block along that plane and draws the plane's pole and the traction on it with its normal and shear parts; the Coulomb pair then stands for a new fault.
+- Shared SVG plot helpers (subscripted symbols, tick spacing, hover and highlight) moved to `plotKit.js`; the B7 Mohr diagram uses them.
+- Present mode now fits the window on projector-sized screens for every lesson and for the stress laboratory: the scene takes the height left under the lesson header, so nothing (such as B6's stacked Mohr diagram and stereonet) falls below the fold, and the lesson panel scrolls on its own.
+
 ## 0.9.0 — 2026-09-25
 
 ### Added

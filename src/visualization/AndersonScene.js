@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { andersonFaults, faultSlip, principalStressTensor } from '../domain/anderson.js';
-import { lineVector, planeUpwardNormal, strikeVector } from '../domain/orientation.js';
+import { lineVector, planePole, planeUpwardNormal, strikeVector } from '../domain/orientation.js';
+import { applyTensor } from '../domain/tensor.js';
 import { Arrow3D, Label, arcPoints, setPoints, setTube, tubeMesh } from './sceneKit.js';
 
 const DIMMED_OPACITY_FACTOR = 0.14;
@@ -21,6 +22,11 @@ const COLORS = {
   slip: 0x3fd0a0,
   beta: 0xcc79a7,
   dip: 0x9a8cff,
+  plane: 0xd9b27c,
+  pole: 0xf4f5f7,
+  traction: 0xe69f00,
+  normalStress: 0x9a8cff,
+  shearStress: 0xcc79a7,
   guide: 0xb1b7c2,
   compass: 0xc3c8d0,
 };
@@ -34,7 +40,14 @@ const CSS_COLORS = {
   slip: '#3fd0a0',
   fault: '#f4f5f7',
   compass: '#c3c8d0',
+  plane: '#d9b27c',
+  pole: '#f4f5f7',
+  traction: '#e69f00',
+  normalStress: '#9a8cff',
+  shearStress: '#cc79a7',
 };
+/** World units per MPa for the traction arrows on an existing plane (B6). */
+const TRACTION_SCALE = 1 / 110;
 
 /** Glyph size and line pattern by rank, so σ1, σ2, σ3 read without color. */
 const GLYPHS = {
@@ -160,22 +173,27 @@ function overlayArrow(options) {
 }
 
 /**
- * Anderson laboratory (lesson B7): an Earth block in the NED frame with the
- * three principal-stress glyphs, the conjugate Coulomb fault pair cut
- * through the block, the angles β (σ1 to fault) and δ (dip), and the
- * hanging wall sliding along the resolved shear direction. Equation symbols
- * highlight scene objects by reference (sceneRefs.js), and hovering an
- * object reports its reference through onHover.
+ * Earth-block laboratory in the NED frame, used by B7 (Anderson) and B6
+ * (friction). It draws the three principal-stress glyphs and the conjugate
+ * Coulomb fault pair cut through the block, with the angles β (σ1 to fault)
+ * and δ (dip), and slides the hanging wall along the resolved shear
+ * direction. Given an existing plane (B6), that plane splits the block
+ * instead, with its pole 𝐧 and the traction 𝐭 on it split into σn and τ
+ * parts; the Coulomb pair then stands for a new fault in intact rock.
+ * Equation symbols highlight scene objects by reference (sceneRefs.js), and
+ * hovering an object reports its reference through onHover.
  */
 export class AndersonScene {
   constructor(container, { onHover } = {}) {
     this.container = container;
     this.onHover = onHover;
-    this.defaultOptions = { showAxes: true, showFaults: true, showConjugate: true, showAngles: true, showSlip: false };
+    this.defaultOptions = { showAxes: true, showFaults: true, showConjugate: true, showAngles: true, showSlip: false, showTraction: false, showPole: false, canSlip: true };
     this.options = { ...this.defaultOptions };
     this.regime = 'normal';
     this.mu = 0.6;
     this.shmaxTrend = 0;
+    this.plane = null;
+    this.magnitudes = null;
     this.slipTarget = 0;
     this.slipAmount = 0;
     this.highlightRef = null;
@@ -219,6 +237,7 @@ export class AndersonScene {
     this.createFaults();
     this.createAngles();
     this.createSlipArrows();
+    this.createExistingPlane();
     this.bindPointerEvents();
     this.update();
 
@@ -333,6 +352,40 @@ export class AndersonScene {
     this.scene.add(this.slipGroup);
   }
 
+  /** A pre-existing weak plane (B6) with its pole and the traction acting on it. */
+  createExistingPlane() {
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: COLORS.plane, roughness: 0.6, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+    mesh.renderOrder = 5;
+    const outline = new THREE.LineSegments(new THREE.BufferGeometry(), new THREE.LineBasicMaterial({ color: COLORS.plane, transparent: true }));
+    outline.renderOrder = 6;
+    this.existing = { group: new THREE.Group(), mesh, outline };
+    this.existing.group.add(mesh, outline);
+    this.scene.add(this.existing.group);
+
+    this.poleArrow = overlayArrow({ color: COLORS.pole, radius: 0.022, headLength: 0.16, headRadius: 0.07 });
+    this.tractionArrow = overlayArrow({ color: COLORS.traction, radius: 0.04, headLength: 0.2, headRadius: 0.1 });
+    this.normalArrow = overlayArrow({ color: COLORS.normalStress, radius: 0.03, headLength: 0.18, headRadius: 0.085, pattern: 'dashed', period: 0.12 });
+    this.shearArrow = overlayArrow({ color: COLORS.shearStress, radius: 0.03, headLength: 0.18, headRadius: 0.085, pattern: 'dashed', period: 0.12 });
+    const label = (color, parts) => {
+      const sprite = new Label(color, 0.05);
+      sprite.setParts(parts);
+      return sprite;
+    };
+    this.poleLabel = label(CSS_COLORS.pole, [['n', 'vec']]);
+    this.tractionLabel = label(CSS_COLORS.traction, [['t', 'vec']]);
+    this.normalLabel = label(CSS_COLORS.normalStress, [['σ', 'var'], ['n', 'sub']]);
+    this.shearLabel = label(CSS_COLORS.shearStress, [['τ', 'var']]);
+    this.poleGroup = new THREE.Group();
+    this.poleGroup.add(this.poleArrow.group, this.poleLabel.sprite);
+    this.tractionGroup = new THREE.Group();
+    this.tractionGroup.add(this.tractionArrow.group, this.tractionLabel.sprite);
+    this.normalGroup = new THREE.Group();
+    this.normalGroup.add(this.normalArrow.group, this.normalLabel.sprite);
+    this.shearGroup = new THREE.Group();
+    this.shearGroup.add(this.shearArrow.group, this.shearLabel.sprite);
+    this.scene.add(this.poleGroup, this.tractionGroup, this.normalGroup, this.shearGroup);
+  }
+
   bindPointerEvents() {
     this.onPointerMove = (event) => {
       const rect = this.renderer.domElement.getBoundingClientRect();
@@ -355,6 +408,8 @@ export class AndersonScene {
       ['dip', this.dipArc],
       ['fault', this.fault.mesh],
       ['conjugate', this.conjugate.mesh],
+      ...[['pole', this.poleArrow], ['traction', this.tractionArrow], ['normal-stress', this.normalArrow], ['shear-stress', this.shearArrow]].flatMap(([ref, arrow]) => [[ref, arrow.shaft], [ref, arrow.head]]),
+      ['plane', this.existing.mesh],
       ['free-surface', this.surfaceOverlay],
     ].filter(([, object]) => {
       let visible = object.visible;
@@ -362,7 +417,9 @@ export class AndersonScene {
       return visible;
     });
     const hit = this.raycaster.intersectObjects(candidates.map(([, object]) => object), false)[0];
-    this.setHoverRef(candidates.find(([, object]) => object === hit?.object)?.[0] ?? null);
+    const ref = candidates.find(([, object]) => object === hit?.object)?.[0] ?? null;
+    // With an existing plane (B6) the Coulomb pair is the new fault that would form instead.
+    this.setHoverRef(this.plane && (ref === 'fault' || ref === 'conjugate') ? 'new-fault' : ref);
   }
 
   setHoverRef(ref) {
@@ -375,7 +432,8 @@ export class AndersonScene {
     const result = andersonFaults(this.regime, this.mu, this.shmaxTrend);
     this.result = result;
     const axes = result.axes;
-    const tensor = principalStressTensor(axes, SLIP_STRESS);
+    const tensor = principalStressTensor(axes, this.magnitudes ?? SLIP_STRESS);
+    const weak = this.plane;
 
     // Principal-stress glyphs: inward arrows on opposite sides of the block.
     for (const key of ['sigma1', 'sigma2', 'sigma3']) {
@@ -410,12 +468,23 @@ export class AndersonScene {
     this.fault.group.visible = this.options.showFaults;
     this.conjugate.group.visible = this.options.showFaults && this.options.showConjugate;
 
-    // The hanging wall (upward-normal side of the active fault) is clipped from the footwall.
-    this.clipPlanes.hanging.setFromNormalAndCoplanarPoint(activeNormal, CENTER);
+    // The block splits along the existing plane (B6) or the active fault (B7).
+    const splitPlane = weak ?? active;
+    const splitNormal = toWorld(planeUpwardNormal(splitPlane));
+    this.existing.group.visible = Boolean(weak);
+    if (weak) {
+      const polygon = planeSection(splitNormal);
+      this.existing.mesh.geometry.dispose();
+      this.existing.mesh.geometry = fanGeometry(polygon);
+      this.existing.mesh.geometry.computeVertexNormals();
+      setPoints(this.existing.outline, loopSegments(polygon));
+    }
+    // The hanging wall (upward-normal side) is clipped from the footwall.
+    this.clipPlanes.hanging.setFromNormalAndCoplanarPoint(splitNormal, CENTER);
     this.clipPlanes.foot.copy(this.clipPlanes.hanging).negate();
-    const { slip } = faultSlip(tensor, active);
+    const { slip } = faultSlip(tensor, splitPlane);
     this.slipDirection = slip ? toWorld(slip) : new THREE.Vector3();
-    const canSlip = this.options.showFaults;
+    const canSlip = weak ? this.options.canSlip : this.options.showFaults;
     if (!canSlip) this.slipTarget = 0;
     this.applySlipOffset();
 
@@ -451,17 +520,53 @@ export class AndersonScene {
     this.angleGroup.visible = this.options.showFaults && this.options.showAngles;
     this.sigma1Line.group.visible = this.options.showAxes;
 
-    // Slip arrows on either side of the active fault, away from the angle markers.
-    const along = toWorld(strikeVector(active));
+    this.updateTraction(tensor, weak, splitNormal);
+
+    // Slip arrows on either side of the split plane, away from the angle markers.
+    const along = toWorld(strikeVector(splitPlane));
     // On a vertical fault the β arc sits on the σ1 side of the ground, so the arrows go to the other side.
     const anchor = (sectionIsHorizontal ? new THREE.Vector3(0, 0.02, 0) : CENTER.clone()).add(along.multiplyScalar(sectionIsHorizontal ? -1.2 : 1.35));
-    const offset = activeNormal.clone().multiplyScalar(0.22);
+    const offset = splitNormal.clone().multiplyScalar(0.22);
     const half = this.slipDirection.clone().multiplyScalar(0.42);
     this.slipArrows[0].set(anchor.clone().add(offset).sub(half), anchor.clone().add(offset).add(half));
     this.slipArrows[1].set(anchor.clone().sub(offset).add(half), anchor.clone().sub(offset).sub(half));
-    this.slipGroup.visible = this.options.showFaults && this.options.showSlip && Boolean(slip);
+    this.slipGroup.visible = canSlip && this.options.showSlip && Boolean(slip);
 
     this.applyHighlight();
+  }
+
+  /**
+   * The traction on the existing plane, drawn where the plane meets the block
+   * center. 𝐧 is the downward pole (the stereonet pole), which points into
+   * the footwall, so 𝐭 = σ𝐧 is the push of the hanging wall on the footwall
+   * (compression positive). Its normal part σn𝐧 points along 𝐧 and its
+   * shear part 𝛕 lies in the plane, the way the hanging wall would slide.
+   */
+  updateTraction(tensor, weak, upward) {
+    const pole = upward.clone().negate();
+    this.poleGroup.visible = Boolean(weak) && this.options.showPole;
+    const visible = Boolean(weak) && this.options.showTraction;
+    for (const group of [this.tractionGroup, this.normalGroup, this.shearGroup]) group.visible = visible;
+    if (!weak) return;
+    const along = toWorld(strikeVector(weak));
+    // The pole sits beside the traction arrows so the two never overlap.
+    const poleAnchor = CENTER.clone().add(along.clone().multiplyScalar(this.options.showTraction ? -1.05 : 0));
+    this.poleArrow.set(poleAnchor, poleAnchor.clone().add(pole.clone().multiplyScalar(0.9)));
+    this.poleLabel.sprite.position.copy(poleAnchor.clone().add(pole.clone().multiplyScalar(1.14)));
+    if (!visible) return;
+    const anchor = CENTER.clone();
+    const t = toWorld(applyTensor(tensor, planePole(weak))).multiplyScalar(TRACTION_SCALE);
+    const normalPart = pole.clone().multiplyScalar(t.dot(pole));
+    const shear = t.clone().sub(normalPart);
+    const hasShear = shear.length() > 1e-4;
+    const side = hasShear ? shear.clone().normalize().multiplyScalar(-0.26) : new THREE.Vector3();
+    this.tractionArrow.set(anchor, anchor.clone().add(t));
+    this.tractionLabel.sprite.position.copy(anchor.clone().add(t.clone().multiplyScalar(1.12)));
+    this.normalArrow.set(anchor, anchor.clone().add(normalPart));
+    this.normalLabel.sprite.position.copy(anchor.clone().add(normalPart.clone().multiplyScalar(0.55)).add(side));
+    this.shearArrow.set(anchor, anchor.clone().add(shear));
+    this.shearLabel.sprite.visible = hasShear;
+    this.shearLabel.sprite.position.copy(anchor.clone().add(shear.clone().multiplyScalar(1.12)).add(upward.clone().multiplyScalar(0.2)));
   }
 
   applySlipOffset() {
@@ -482,6 +587,12 @@ export class AndersonScene {
       beta: [this.betaArc, this.betaLabel.sprite, this.traceLine.group],
       dip: [this.dipArc, this.dipLabel.sprite, this.horizontalLine.group],
       slip: [this.slipGroup],
+      'new-fault': [this.fault.group, this.conjugate.group],
+      plane: [this.existing.group],
+      pole: [this.poleGroup],
+      traction: [this.tractionGroup],
+      'normal-stress': [this.normalGroup],
+      'shear-stress': [this.shearGroup],
     };
   }
 
@@ -508,8 +619,10 @@ export class AndersonScene {
     this.applyHighlight();
   }
 
-  setState({ regime, mu, shmaxTrend, options }) {
+  setState({ regime, mu, shmaxTrend, plane, magnitudes, options }) {
     if (options) this.options = { ...this.defaultOptions, ...options };
+    if (plane !== undefined) this.plane = plane;
+    if (magnitudes !== undefined) this.magnitudes = magnitudes;
     if (regime && regime !== this.regime) {
       this.regime = regime;
       // A new regime starts with the block intact.
@@ -523,7 +636,8 @@ export class AndersonScene {
 
   /** Slide the hanging wall along the fault (true) or put it back (false). */
   setSlipped(slipped, { animate = true } = {}) {
-    this.slipTarget = slipped && this.options.showFaults ? 1 : 0;
+    const allowed = this.plane ? this.options.canSlip : this.options.showFaults;
+    this.slipTarget = slipped && allowed ? 1 : 0;
     if (!animate || this.reducedMotion) {
       this.slipAmount = this.slipTarget;
       this.applySlipOffset();

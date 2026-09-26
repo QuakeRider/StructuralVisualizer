@@ -3,8 +3,18 @@ import { COMPONENTS, STRESS_STATES, formatStress, getStressState, scalePreset } 
 import { computeDeformation, tensorToMatrix, volumeChangePercent } from './domain/deformation.js';
 import { decomposeTraction } from './domain/forceStress.js';
 import { formatNumber } from './domain/format.js';
-import { ANDERSON_REGIMES, andersonFaults } from './domain/anderson.js';
-import { coulombAngles } from './domain/failure.js';
+import { ANDERSON_REGIMES, andersonAxes, andersonFaults, principalStressTensor } from './domain/anderson.js';
+import {
+  coulombAngles,
+  dilationTendency,
+  frictionCheck,
+  newFaultSigma1,
+  principalCosines,
+  principalMagnitudes,
+  reactivationSigma1,
+} from './domain/failure.js';
+import { lineVector, normalizeAzimuth, planeFromStrike, planePole } from './domain/orientation.js';
+import { planeFromPole } from './domain/stereonet.js';
 import { basis, frac, hat, inline, mi, mn, mo, mtext, num, primed, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
 import { add, directionAngles, fromPolar, magnitude, polarAngle, rotate2D, scale, xyMagnitude } from './domain/vector.js';
 import {
@@ -23,7 +33,9 @@ import {
 import { AndersonScene } from './visualization/AndersonScene.js';
 import { CurvePlot } from './visualization/CurvePlot.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
+import { FrictionMohrPlot } from './visualization/FrictionMohrPlot.js';
 import { MohrPlot } from './visualization/MohrPlot.js';
+import { Stereonet } from './visualization/Stereonet.js';
 import { StressScene } from './visualization/StressScene.js';
 import { VectorScene } from './visualization/VectorScene.js';
 
@@ -35,6 +47,9 @@ const DEFAULT_NORMAL = { x: 0, y: 1, z: 0 };
 const DEFAULT_AREA = 100;
 const DEFAULT_VECTOR_LAB = { v: { x: 3, y: 2, z: 0 }, b: { x: 1, y: 2, z: 0 }, scalar: 2, theta: 0, context: null, dimension: 3 };
 const DEFAULT_ANDERSON = { regime: 'normal', mu: 0.6, slipped: false, setting: null };
+const DEFAULT_FRICTION = { regime: 'normal', strike: 30, dip: 50, sigma1: 150, pf: 0, fault: null, slipped: false };
+/** B6 teaching stress state: σ3 fixed, σ2 halfway to σ1, σ1 or σ2 north–south; intact rock for comparison (illustrative). */
+const FRICTION_LAB = Object.freeze({ sigma3: 30, ratio: 0.5, shmaxTrend: 0, intact: { cohesion: 20, mu: 0.85 } });
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
 
@@ -110,6 +125,10 @@ app.innerHTML = `
           <div id="anderson-viewport" class="viewport anderson-viewport split-viewport" data-side="true">
             <div id="anderson-scene" class="lab-scene"></div>
             <div id="mohr-panel" class="plot-panel"></div>
+          </div>
+          <div id="friction-viewport" class="viewport friction-viewport split-viewport" data-side="true" data-net="false">
+            <div id="friction-scene" class="lab-scene"></div>
+            <div class="plot-panel plot-stack"><div id="friction-mohr" class="plot-slot mohr-slot"></div><div id="friction-net" class="plot-slot net-slot"></div></div>
           </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
@@ -215,6 +234,10 @@ const elements = {
   andersonViewport: document.querySelector('#anderson-viewport'),
   andersonScene: document.querySelector('#anderson-scene'),
   mohrPanel: document.querySelector('#mohr-panel'),
+  frictionViewport: document.querySelector('#friction-viewport'),
+  frictionScene: document.querySelector('#friction-scene'),
+  frictionMohr: document.querySelector('#friction-mohr'),
+  frictionNet: document.querySelector('#friction-net'),
   stressViewport: document.querySelector('#stress-viewport'),
 };
 
@@ -238,6 +261,7 @@ const state = {
   contactArea: DEFAULT_AREA,
   vectorLab: structuredClone(DEFAULT_VECTOR_LAB),
   anderson: { ...DEFAULT_ANDERSON },
+  friction: { ...DEFAULT_FRICTION },
 };
 
 function currentLesson() {
@@ -269,8 +293,12 @@ function isAndersonStep() {
   return isLessonView() && currentStep().visualKind === 'anderson';
 }
 
+function isFrictionStep() {
+  return isLessonView() && currentStep().visualKind === 'friction';
+}
+
 function isLabStep() {
-  return isForceLabStep() || isVectorLabStep() || isAndersonStep();
+  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep();
 }
 
 function quantityFor(step) {
@@ -341,6 +369,19 @@ function andersonHover(ref) {
 
 const andersonScene = new AndersonScene(elements.andersonScene, { onHover: andersonHover });
 const mohrPlot = new MohrPlot(elements.mohrPanel, { onHover: andersonHover });
+
+function frictionHover(ref) {
+  if (!isFrictionStep()) return;
+  frictionScene.highlight(ref);
+  frictionMohr.highlight(ref);
+  stereonet.highlight(ref);
+  markEquationRefs(ref);
+}
+
+/** The friction lab (B6) reuses the Earth-block scene with an existing plane. */
+const frictionScene = new AndersonScene(elements.frictionScene, { onHover: frictionHover });
+const frictionMohr = new FrictionMohrPlot(elements.frictionMohr, { onHover: frictionHover });
+const stereonet = new Stereonet(elements.frictionNet, { onHover: frictionHover, onPick: pickPole });
 
 /** The vectors the student currently sees: z is hidden (zero) in the 2D view. */
 function vectorLabVectors() {
@@ -496,6 +537,9 @@ function setSceneHighlight(ref) {
   vectorPlot.highlight(isVectorLabStep() ? ref : null);
   andersonScene.highlight(isAndersonStep() ? ref : null);
   mohrPlot.highlight(isAndersonStep() ? ref : null);
+  frictionScene.highlight(isFrictionStep() ? ref : null);
+  frictionMohr.highlight(isFrictionStep() ? ref : null);
+  stereonet.highlight(isFrictionStep() ? ref : null);
   markEquationRefs(ref);
 }
 
@@ -621,6 +665,7 @@ function andersonLiveValues() {
 function liveValues() {
   if (isVectorLabStep()) return vectorLabLiveValues();
   if (isAndersonStep()) return andersonLiveValues();
+  if (isFrictionStep()) return frictionLiveValues();
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
@@ -979,6 +1024,272 @@ function resetAnderson() {
   syncAll();
 }
 
+/* ---------- Friction lab (B6) ---------- */
+
+const azimuthText = (value) => `${String(Math.round(normalizeAzimuth(value))).padStart(3, '0')}°`;
+
+/** Everything the friction lab draws, from the lab state: stress, the plane, and whether it slips or rock breaks first. */
+function frictionModel() {
+  const options = currentStep().labOptions ?? {};
+  const lab = state.friction;
+  const { sigma3, ratio, shmaxTrend, intact } = FRICTION_LAB;
+  const axes = andersonAxes(lab.regime, shmaxTrend);
+  const axisVectors = Object.fromEntries(Object.entries(axes).map(([key, axis]) => [key, lineVector(axis.trend, axis.plunge)]));
+  const plane = planeFromStrike(lab.strike, lab.dip);
+  const pole = planePole(plane);
+  const pf = options.effective ? lab.pf : 0;
+  const reactivate = reactivationSigma1(principalCosines(pole, axisVectors), { sigma3, ratio, pf });
+  const newFault = newFaultSigma1(sigma3, { ...intact, pf });
+  let sigma1 = lab.sigma1;
+  let event = null;
+  // Once the plane slips or the rock breaks, the stress cannot rise any further.
+  if (options.stopAtFailure && sigma1 >= Math.min(reactivate, newFault)) {
+    sigma1 = Math.min(reactivate, newFault);
+    event = reactivate <= newFault ? 'slip' : 'new-fault';
+  }
+  const magnitudes = principalMagnitudes(sigma1, sigma3, ratio);
+  const tensor = principalStressTensor(axes, magnitudes);
+  const check = frictionCheck(tensor, pole, pf);
+  const faults = (currentStep().mappedFaults ?? []).map((fault) => {
+    const faultPlane = planeFromStrike(fault.strike, fault.dip);
+    return { ...fault, plane: faultPlane, check: frictionCheck(tensor, planePole(faultPlane), pf) };
+  });
+  return { axes, plane, pole, pf, magnitudes, tensor, check, reactivate, newFault, event, faults };
+}
+
+function frictionControlsMarkup(step) {
+  const controls = new Set(step.controls ?? []);
+  const lab = state.friction;
+  const parts = [];
+  if (controls.has('regime')) {
+    parts.push(`
+      <div class="direction-control"><span>Vertical principal stress</span><div class="segmented-control" role="group" aria-label="Which principal stress is vertical">
+        ${REGIME_BUTTONS.map(([regime, key]) => `<button type="button" data-friction-regime="${regime}" aria-pressed="${lab.regime === regime}">${inline(sigmaSymbol(key))} vertical</button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('faults')) {
+    parts.push(`
+      <div class="direction-control"><span>Mapped fault</span><div class="segmented-control context-control" role="group" aria-label="Mapped fault">
+        ${step.mappedFaults.map((fault) => `<button type="button" data-fault="${fault.id}" aria-pressed="${lab.fault === fault.id}">Fault ${fault.label}<small>${fault.description}</small></button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('strike')) {
+    parts.push(`<label class="lab-control" for="strike-input"><span>Strike <output id="strike-output">${azimuthText(lab.strike)}</output></span><input id="strike-input" class="range" type="range" min="0" max="355" step="5" value="${lab.strike}" /></label>`);
+  }
+  if (controls.has('dip')) {
+    parts.push(`<label class="lab-control" for="dip-input"><span>Dip <output id="dip-output"></output></span><input id="dip-input" class="range" type="range" min="0" max="90" step="5" value="${lab.dip}" /></label>`);
+  }
+  if (controls.has('sigma1')) {
+    parts.push(`<label class="lab-control" for="sigma1-input"><span>Raise ${inline(sigmaSymbol('sigma1'))} <output id="sigma1-output"></output></span><input id="sigma1-input" class="range" type="range" min="30" max="240" step="5" value="${lab.sigma1}" /></label>`);
+  }
+  if (controls.has('pf')) {
+    parts.push(`<label class="lab-control" for="pf-input"><span>Pore-fluid pressure ${inline(sub(mi('P'), mi('f')))} <output id="pf-output"></output></span><input id="pf-input" class="range" type="range" min="0" max="25" step="0.5" value="${lab.pf}" /></label>`);
+  }
+  if (controls.has('slip')) {
+    parts.push(`<button id="friction-slip-button" class="button secondary slip-button" type="button" aria-pressed="${lab.slipped}">Slip ▸</button>`);
+  }
+  return parts.length ? `<div class="lab-controls">${parts.join('')}</div>` : '';
+}
+
+function setFrictionPlane(strike, dip, { fault = null } = {}) {
+  const lab = state.friction;
+  lab.strike = normalizeAzimuth(strike);
+  lab.dip = dip;
+  lab.fault = fault;
+  lab.slipped = false;
+}
+
+/** Stereonet click or drag: the picked point is the pole, snapped to 5°. */
+function pickPole(line) {
+  if (!isFrictionStep() || !currentStep().controls?.includes('strike')) return;
+  const plane = planeFromPole(line);
+  const dip = Math.min(90, Math.round(plane.dip / 5) * 5);
+  const dipDirection = Math.round(plane.dipDirection / 5) * 5;
+  setFrictionPlane(dip === 0 ? state.friction.strike : dipDirection - 90, dip);
+  syncFriction({ refreshInputs: true });
+}
+
+function bindFrictionControls() {
+  const lab = () => state.friction;
+  for (const button of elements.lessonCard.querySelectorAll('[data-friction-regime]')) {
+    button.addEventListener('click', () => {
+      lab().regime = button.dataset.frictionRegime;
+      lab().slipped = false;
+      syncFriction();
+      syncAll();
+    });
+  }
+  for (const button of elements.lessonCard.querySelectorAll('[data-fault]')) {
+    button.addEventListener('click', () => {
+      const fault = currentStep().mappedFaults.find((candidate) => candidate.id === button.dataset.fault);
+      setFrictionPlane(fault.strike, fault.dip, { fault: fault.id });
+      syncFriction();
+      syncAll();
+    });
+  }
+  const bindRange = (id, apply) => elements.lessonCard.querySelector(id)?.addEventListener('input', (event) => {
+    apply(Number(event.target.value));
+    syncFriction();
+  });
+  bindRange('#strike-input', (value) => setFrictionPlane(value, lab().dip));
+  bindRange('#dip-input', (value) => setFrictionPlane(lab().strike, value));
+  bindRange('#sigma1-input', (value) => { lab().sigma1 = value; });
+  bindRange('#pf-input', (value) => { lab().pf = value; });
+  elements.lessonCard.querySelector('#friction-slip-button')?.addEventListener('click', () => {
+    lab().slipped = !lab().slipped;
+    syncFriction();
+  });
+}
+
+function initFriction(step) {
+  const initial = step.initialLabState ?? {};
+  state.friction = { ...DEFAULT_FRICTION, ...initial, slipped: false };
+}
+
+function syncFriction({ refreshInputs = false } = {}) {
+  if (!isFrictionStep()) return;
+  const step = currentStep();
+  const options = step.labOptions;
+  const lab = state.friction;
+  const model = frictionModel();
+  const { check } = model;
+  const canSlip = check.slips;
+  if (!canSlip) lab.slipped = false;
+  const newFault = model.event === 'new-fault';
+  elements.frictionViewport.dataset.net = String(Boolean(options.showStereonet));
+  frictionScene.setState({
+    regime: lab.regime,
+    mu: FRICTION_LAB.intact.mu,
+    shmaxTrend: FRICTION_LAB.shmaxTrend,
+    plane: model.plane,
+    magnitudes: model.magnitudes,
+    options: {
+      showAxes: true,
+      showFaults: newFault,
+      showConjugate: true,
+      showAngles: false,
+      showSlip: Boolean(options.showSlip) && canSlip,
+      showTraction: Boolean(options.showTraction),
+      showPole: Boolean(options.showPole),
+      canSlip,
+    },
+  });
+  frictionScene.setSlipped(lab.slipped);
+  const others = model.faults.filter((fault) => fault.id !== lab.fault);
+  frictionMohr.setState({
+    magnitudes: model.magnitudes,
+    pf: model.pf,
+    intact: FRICTION_LAB.intact,
+    point: { sigmaN: check.sigmaN, tau: check.tau },
+    pointLabel: lab.fault ? `fault ${lab.fault}` : 'plane',
+    slips: check.slips,
+    newFault,
+    markers: options.showMarkers ? others.map((fault) => ({ label: fault.label, sigmaN: fault.check.sigmaN, tau: fault.check.tau })) : [],
+    options: {
+      showPoint: options.showPoint !== false,
+      showRegion: options.showRegion !== false,
+      showTsLine: Boolean(options.showTsLine),
+      showProjections: Boolean(options.showProjections || options.showTraction),
+      effective: Boolean(options.effective),
+    },
+  });
+  if (options.showStereonet) {
+    stereonet.setState({
+      tensor: model.tensor,
+      pf: model.pf,
+      plane: model.plane,
+      axes: model.axes,
+      markers: options.showMarkers ? others.map((fault) => ({ label: fault.label, plane: fault.plane })) : [],
+      options: { pickable: Boolean(step.controls?.includes('strike')), poleLabel: lab.fault ? lab.fault : 'pole' },
+    });
+  }
+
+  for (const button of elements.lessonCard.querySelectorAll('[data-friction-regime]')) button.setAttribute('aria-pressed', String(button.dataset.frictionRegime === lab.regime));
+  for (const button of elements.lessonCard.querySelectorAll('[data-fault]')) button.setAttribute('aria-pressed', String(button.dataset.fault === lab.fault));
+  for (const [id, value] of [['#strike-input', lab.strike], ['#dip-input', lab.dip], ['#sigma1-input', lab.sigma1], ['#pf-input', lab.pf]]) {
+    const input = elements.lessonCard.querySelector(id);
+    if (input && (refreshInputs || document.activeElement !== input)) input.value = String(value);
+  }
+  setText('#strike-output', azimuthText(lab.strike));
+  setText('#dip-output', lab.dip === 0 ? '0° (horizontal)' : `${lab.dip}° toward ${azimuthText(model.plane.dipDirection)}`);
+  const sigma1Text = model.event ? `${formatNumber(model.magnitudes.sigma1, 0)} MPa: ${model.event === 'slip' ? 'the plane slipped' : 'new fault'}` : `${formatNumber(lab.sigma1, 0)} MPa`;
+  setText('#sigma1-output', sigma1Text);
+  setText('#pf-output', `${formatNumber(lab.pf, 1)} MPa`);
+  const slipButton = elements.lessonCard.querySelector('#friction-slip-button');
+  if (slipButton) {
+    slipButton.textContent = lab.slipped ? 'Undo slip' : canSlip ? 'Slip ▸' : 'Slip ▸ (friction holds)';
+    slipButton.setAttribute('aria-pressed', String(lab.slipped));
+    slipButton.disabled = !canSlip;
+  }
+  const goalCard = elements.lessonCard.querySelector('#goal-card');
+  if (goalCard) {
+    const met = isGoalMet(step, { slips: check.slips });
+    goalCard.dataset.met = String(met);
+    setText('#goal-status', met ? '✓ Goal reached' : 'Not yet');
+  }
+  // The legend lists the slip arrows and a new fault only while they are drawn.
+  syncFrictionChrome(step);
+  syncEquationValues();
+}
+
+function resetFriction() {
+  initFriction(currentStep());
+  frictionScene.setSlipped(false, { animate: false });
+  renderLessonPanel();
+  syncAll();
+}
+
+function frictionLiveValues() {
+  const model = frictionModel();
+  const { check } = model;
+  const mpa = (value) => row(num(value, 0), mtext(' MPa'));
+  return {
+    traction: tuple([check.traction.x, check.traction.y, check.traction.z], 0),
+    sigmaN: num(check.sigmaN, 1),
+    tau: num(check.tau, 1),
+    ts: Number.isFinite(check.ts) ? num(check.ts) : mtext('no limit'),
+    slipsText: mtext(check.slips ? 'slips' : 'holds'),
+    td: num(dilationTendency(model.tensor, model.pole, model.magnitudes)),
+    reactivate: Number.isFinite(model.reactivate) ? mpa(model.reactivate) : mtext('never: the plane is locked'),
+    newFault: mpa(model.newFault),
+    outcome: mtext(model.reactivate <= model.newFault ? 'the old plane slips' : 'a new fault forms'),
+    pf: num(model.pf, 1),
+    sigmaNEff: num(check.sigmaNEff, 1),
+  };
+}
+
+const FRICTION_SWATCHES = {
+  sigma1: ['#f07a3c', 'solid'],
+  sigma2: ['#f0e442', 'dashed'],
+  sigma3: ['#56b4e9', 'dotted'],
+  fault: ['#f4f5f7', 'solid'],
+  slip: ['#3fd0a0', 'solid'],
+  plane: ['#d9b27c', 'solid'],
+  pole: ['#f4f5f7', 'solid'],
+  traction: ['#e69f00', 'solid'],
+  normalStress: ['#9a8cff', 'dashed'],
+  shearStress: ['#cc79a7', 'dashed'],
+};
+
+function syncFrictionChrome(step) {
+  const options = step.labOptions;
+  const model = frictionModel();
+  elements.interactionHint.textContent = options.showStereonet && step.controls?.includes('strike')
+    ? 'Drag: orbit the block · click or drag on the stereonet to pick a pole · hover to link'
+    : 'Drag: orbit the block · scroll: zoom · hover a symbol or an object to link them';
+  const item = (key, label) => {
+    const [color, pattern] = FRICTION_SWATCHES[key];
+    return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
+  };
+  const legend = [item('sigma1', inline(sigmaSymbol('sigma1'))), item('sigma2', inline(sigmaSymbol('sigma2'))), item('sigma3', inline(sigmaSymbol('sigma3'))), item('plane', 'old plane')];
+  if (options.showPole) legend.push(item('pole', inline(vec('n'))));
+  if (options.showTraction) legend.push(item('traction', inline(vec('t'))), item('normalStress', inline(sub(mi('σ'), mi('n')))), item('shearStress', inline(mi('τ'))));
+  if (options.showSlip && model.check.slips) legend.push(item('slip', 'slip'));
+  if (model.event === 'new-fault') legend.push(item('fault', 'new fault'));
+  elements.sceneLegend.hidden = false;
+  elements.sceneLegend.innerHTML = legend.join('');
+}
+
 function predictionMarkup(step) {
   if (step.choices?.length) {
     return `
@@ -1029,6 +1340,7 @@ function renderLessonPanel() {
     'force-lab': () => `${forceControlsMarkup(step)}${forceReadoutsMarkup(step)}`,
     'vector-lab': () => `${vectorLabControlsMarkup(step)}${goalMarkup(step)}`,
     anderson: () => andersonControlsMarkup(step),
+    friction: () => `${frictionControlsMarkup(step)}${goalMarkup(step)}`,
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
@@ -1048,13 +1360,18 @@ function renderLessonPanel() {
   vectorLabScene.highlight(null);
   andersonScene.highlight(null);
   mohrPlot.highlight(null);
+  frictionScene.highlight(null);
+  frictionMohr.highlight(null);
+  stereonet.highlight(null);
   bindEquationPanel();
   bindForceLabControls();
   bindVectorLabControls();
   bindAndersonControls();
+  bindFrictionControls();
   syncForceLabReadouts();
   syncVectorLab();
   syncAnderson();
+  syncFriction();
   syncEquationValues();
 }
 
@@ -1197,6 +1514,10 @@ function applyLessonStep(index) {
   if (step.visualKind === 'anderson') {
     initAnderson(step);
     andersonScene.setSlipped(false, { animate: false });
+  }
+  if (step.visualKind === 'friction') {
+    initFriction(step);
+    frictionScene.setSlipped(false, { animate: false });
   }
   if (step.visualKind === 'stress-state') stressScene.replay();
   renderLessonView();
@@ -1438,6 +1759,7 @@ function syncAll() {
   const forceLabActive = isForceLabStep();
   const vectorLabActive = isVectorLabStep();
   const andersonActive = isAndersonStep();
+  const frictionActive = isFrictionStep();
   if (forceLabActive) {
     syncForceLabChrome(step);
     syncForceLabReadouts();
@@ -1445,6 +1767,8 @@ function syncAll() {
     syncVectorLabChrome(step);
   } else if (andersonActive) {
     syncAndersonChrome(step);
+  } else if (frictionActive) {
+    syncFrictionChrome(step);
   } else {
     elements.sceneLegend.hidden = true;
     elements.interactionHint.textContent = 'Drag to orbit · scroll to zoom';
@@ -1460,8 +1784,12 @@ function syncAll() {
   vectorLabScene.renderer.domElement.setAttribute('aria-hidden', String(!vectorLabActive));
   andersonScene.renderer.domElement.setAttribute('aria-hidden', String(!andersonActive));
   elements.mohrPanel.setAttribute('aria-hidden', String(!andersonActive));
-  stressScene.renderer.domElement.setAttribute('aria-hidden', String(forceLabActive || vectorLabActive || andersonActive));
-  elements.replayButton.innerHTML = forceLabActive || vectorLabActive || andersonActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
+  frictionScene.renderer.domElement.setAttribute('aria-hidden', String(!frictionActive));
+  elements.frictionMohr.setAttribute('aria-hidden', String(!frictionActive));
+  elements.frictionNet.setAttribute('aria-hidden', String(!frictionActive));
+  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive;
+  stressScene.renderer.domElement.setAttribute('aria-hidden', String(labActive));
+  elements.replayButton.innerHTML = labActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
   for (const button of elements.presetGrid.querySelectorAll('.preset-card')) {
     const active = button.dataset.stateId === state.selectedId;
     button.classList.toggle('is-active', active);
@@ -1508,12 +1836,14 @@ elements.replayButton.addEventListener('click', () => {
   if (isForceLabStep()) resetForceLab();
   else if (isVectorLabStep()) resetVectorLab();
   else if (isAndersonStep()) resetAnderson();
+  else if (isFrictionStep()) resetFriction();
   else stressScene.replay();
 });
 elements.resetViewButton.addEventListener('click', () => {
   if (isForceLabStep()) forceLabScene.resetCamera();
   else if (isVectorLabStep()) vectorLabScene.resetCamera();
   else if (isAndersonStep()) andersonScene.resetCamera();
+  else if (isFrictionStep()) frictionScene.resetCamera();
   else stressScene.resetCamera();
 });
 elements.resetAllButton.addEventListener('click', resetAll);
