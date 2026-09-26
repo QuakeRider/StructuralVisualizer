@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { andersonFaults, faultSlip, principalStressTensor } from '../domain/anderson.js';
 import { lineVector, planeUpwardNormal, strikeVector } from '../domain/orientation.js';
-import { Arrow3D, Label, setPoints } from './sceneKit.js';
+import { Arrow3D, Label, arcPoints, setPoints, setTube, tubeMesh } from './sceneKit.js';
 
 const DIMMED_OPACITY_FACTOR = 0.14;
 /** Half-sizes of the Earth block in world units (east–west, depth, north–south). */
@@ -108,20 +108,6 @@ function loopSegments(polygon) {
   return polygon.flatMap((point, index) => [point, polygon[(index + 1) % polygon.length]]);
 }
 
-/** Points along the arc from unit vector `from` to unit vector `to`, about `origin`. */
-function arcPoints(origin, from, to, radius, count = 32) {
-  const angle = Math.acos(THREE.MathUtils.clamp(from.dot(to), -1, 1));
-  const points = [];
-  for (let index = 0; index <= count; index += 1) {
-    const t = index / count;
-    const direction = angle < 1e-6
-      ? from.clone()
-      : from.clone().multiplyScalar(Math.sin((1 - t) * angle)).add(to.clone().multiplyScalar(Math.sin(t * angle))).multiplyScalar(1 / Math.sin(angle));
-    points.push(origin.clone().add(direction.multiplyScalar(radius)));
-  }
-  return points;
-}
-
 function layerTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 16;
@@ -161,18 +147,6 @@ function groundTexture() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
-}
-
-/** A thin tube along a polyline, used for angle arcs that must stay visible through the block. */
-function tubeMesh(color) {
-  const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color, transparent: true, depthTest: false }));
-  mesh.renderOrder = 12;
-  return mesh;
-}
-
-function setTube(mesh, points, radius = 0.022) {
-  mesh.geometry.dispose();
-  mesh.geometry = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), Math.max(points.length * 2, 8), radius, 8, false);
 }
 
 /** An arrow drawn on top of the translucent block. */

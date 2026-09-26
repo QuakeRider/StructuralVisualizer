@@ -32,7 +32,25 @@ export const VECTOR_LAB_SCENE_REFS = Object.freeze([
   'stack-x',
   'stack-y',
   'stack-z',
+  // M2: angles, the rotated (primed) axes, and the geology previews.
+  'angle-alpha',
+  'angle-beta',
+  'angle-gamma',
+  'unit-circle',
+  'axis-x-prime',
+  'axis-y-prime',
+  'comp-x-prime',
+  'comp-y-prime',
+  'angle-theta',
+  'elevation-angle',
+  'plane-trace',
+  // M2: curves in the plot beside the scene (CurvePlot), not 3D objects.
+  'curve-cos2',
+  'curve-sincos',
 ]);
+
+/** Vector-lab refs drawn by the curve plot rather than the 3D scene. */
+export const CURVE_PLOT_SCENE_REFS = Object.freeze(['curve-cos2', 'curve-sincos']);
 
 /** Anderson lab: the NED Earth block (3D) and the Mohr plot beside it. */
 export const ANDERSON_SCENE_REFS = Object.freeze([

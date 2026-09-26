@@ -6,9 +6,9 @@ Last updated: 2026-09-25
 
 Structural Visualizer is an interactive 3D learning environment for an intro university Structural Geology course, built to make the mathematics of the subject clear and visible. The full curriculum (48 lessons in 7 units) is specified in [curriculum/README.md](curriculum/README.md).
 
-The current release (`0.8.0`) contains two fully built lessons: **M1 Vectors and components**, with the vector laboratory it runs in, and **B7 Anderson's theory of faulting**, built early for classroom use with an NED Earth block and the first Mohr diagram. Build 00 (0.6.0) removed the engineering-statics sequence and introduced the lesson registry and the equation–model binding panel. S2, S3, S7, and S10 are still early seed versions. The remaining 42 lessons are planned, and each has a build spec.
+The current release (`0.9.0`) contains three fully built lessons: **M1 Vectors and components** and **M2 Trigonometry of projection**, which run in the vector laboratory, and **B7 Anderson's theory of faulting**, built early for classroom use with an NED Earth block and the first Mohr diagram. Build 00 (0.6.0) removed the engineering-statics sequence and introduced the lesson registry and the equation–model binding panel. S2, S3, S7, and S10 are still early seed versions. The remaining 41 lessons are planned, and each has a build spec.
 
-**Next:** build lesson M2 (trigonometry of projection), following the build-session protocol in the curriculum README.
+**Next:** build lesson M3 (dot and cross products), following the build-session protocol in the curriculum README.
 
 ## Completed
 
@@ -29,6 +29,7 @@ The current release (`0.8.0`) contains two fully built lessons: **M1 Vectors and
 ### Built lessons
 
 - [x] M1 (built, 0.7.0): vectors and components in nine steps, from 2D to 3D: magnitude, negative components, unit vectors, addition, scaling, and geological examples.
+- [x] M2 (built, 0.9.0): trigonometry of projection in eight steps: the unit circle, components from a length and an angle, the angle back from components (with the quadrant), direction cosines in 3D, turning the axes under a fixed vector (2D, then 3D), a double-angle preview plot, and geological uses.
 - [x] B7 (built early, 0.8.0): Anderson's theory of faulting in nine steps. It covers the free surface, the three regimes, dips from the Coulomb angle, the sense of strike-slip, friction, the limits of the theory, reading stress from faults, and tectonic settings. It uses an NED Earth block with a sliding hanging wall and a linked Mohr diagram. Its prerequisites (B3, B6, O2) are not built yet, and the stereonet view waits for O3.
 
 ### Seed lessons
@@ -77,7 +78,7 @@ Manual verification for each release:
 7. Open `release/Structural-Visualizer.html` from disk without a development server.
 8. Check desktop and phone-width layouts for overflow.
 
-The 0.8.0 build was verified the same way. The check covered every B7 step in Guided and Present, wrong and right answers, the regime, μ, slip, and setting controls, highlighting in both directions between the equations, the block, and the Mohr diagram, and keyboard focus. It also checked for equation overflow at 1440×900 and 1280×720 (a projector size) and at phone width, and opened the release file from disk. The 0.7.0 build was verified this way in a headless Chromium with software WebGL. That check covered every M1 step, the numeric answers (including Enter to submit), goal checks, mouse drags in 2D and 3D (including Shift-drag), highlighting in both directions, and phone-width framing. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
+The 0.9.0 build was verified the same way. The check covered every M2 step with wrong and right answers, the angle, length, and θ controls, the alignment goal, highlighting in both directions (including the curve plot), and equation overflow at 1440×900 and 1280×720 in Guided and Present. M1 and B7 were rechecked after the shared scene changes. The 0.8.0 build was verified the same way. The check covered every B7 step in Guided and Present, wrong and right answers, the regime, μ, slip, and setting controls, highlighting in both directions between the equations, the block, and the Mohr diagram, and keyboard focus. It also checked for equation overflow at 1440×900 and 1280×720 (a projector size) and at phone width, and opened the release file from disk. The 0.7.0 build was verified this way in a headless Chromium with software WebGL. That check covered every M1 step, the numeric answers (including Enter to submit), goal checks, mouse drags in 2D and 3D (including Shift-drag), highlighting in both directions, and phone-width framing. (The in-app browser pane used during development has WebGL disabled, so it cannot render the 3D scenes.)
 
 ## Known limitations
 

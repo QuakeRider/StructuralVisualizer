@@ -292,13 +292,13 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .anderson-viewport { opacity: 1; pointer-events: auto; }
 .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .stress-viewport { opacity: 0; pointer-events: none; }
 
-/* Anderson lab: the 3D block beside the Mohr diagram (the diagram hides when a step does not use it). */
-.anderson-viewport { display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); }
-.anderson-viewport[data-mohr='false'] { grid-template-columns: minmax(0, 1fr); }
-.anderson-viewport[data-mohr='false'] .mohr-panel { display: none; }
-.anderson-scene { position: relative; min-width: 0; min-height: 0; }
-.anderson-scene canvas { position: absolute; inset: 0; }
-.mohr-panel { min-width: 0; min-height: 0; padding: 12px 10px 56px; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border-soft); background: rgba(15, 17, 21, 0.35); }
+/* Split viewports: a 3D scene beside a 2D plot (the Mohr diagram in B7, the curve plot in M2). The plot hides when a step does not use it. */
+.split-viewport { display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); }
+.split-viewport[data-side='false'] { grid-template-columns: minmax(0, 1fr); }
+.split-viewport[data-side='false'] .plot-panel { display: none; }
+.lab-scene { position: relative; min-width: 0; min-height: 0; }
+.lab-scene canvas { position: absolute; inset: 0; }
+.plot-panel { min-width: 0; min-height: 0; padding: 12px 10px 56px; display: flex; align-items: center; justify-content: center; border-left: 1px solid var(--border-soft); background: rgba(15, 17, 21, 0.35); }
 .mohr-svg { width: 100%; height: 100%; max-height: 100%; overflow: visible; }
 .mohr-svg text { font-family: var(--math-font); font-size: 22px; }
 .mohr-svg .mohr-title { fill: var(--text); font-family: inherit; font-size: 20px; font-weight: 600; }
@@ -307,10 +307,13 @@ h3 { font-size: 17px; font-weight: 650; }
 .mohr-svg .mohr-label { font-size: 26px; }
 .mohr-svg .mohr-small { font-family: inherit; font-size: 15px; }
 .mohr-svg .mohr-caption { font-family: inherit; font-size: 14px; }
+.mohr-svg .curve-label { font-size: 22px; }
 .mohr-svg [data-ref] { transition: opacity 150ms ease; cursor: default; }
 .mohr-svg.has-highlight [data-ref]:not(.is-highlighted) { opacity: 0.16; }
-.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .scene-legend { right: calc(40% + 14px); }
-.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .interaction-hint { max-width: calc(60% - 32px); }
+.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-side='true'] ~ .scene-legend,
+.app-shell[data-visual-kind='vector-lab'] .vector-lab-viewport[data-side='true'] ~ .scene-legend { right: calc(40% + 14px); }
+.app-shell[data-visual-kind='anderson'] .anderson-viewport[data-side='true'] ~ .interaction-hint,
+.app-shell[data-visual-kind='vector-lab'] .vector-lab-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(60% - 32px); }
 .slip-button { justify-self: start; min-width: 132px; }
 
 .interaction-hint {
@@ -662,12 +665,13 @@ h3 { font-size: 17px; font-weight: 650; }
   .visual-header .lesson-picker { width: 100%; }
   .viewport-shell { min-height: 420px; }
   .scene-legend { left: 10px; right: 10px; justify-content: flex-start; }
-  .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .viewport-shell { min-height: 720px; }
-  .anderson-viewport, .anderson-viewport[data-mohr='true'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 58fr) minmax(0, 42fr); }
-  .anderson-viewport[data-mohr='false'] { grid-template-rows: minmax(0, 1fr); }
-  .mohr-panel { padding: 8px 6px 10px; border-left: 0; border-top: 1px solid var(--border-soft); }
-  .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .scene-legend { right: 10px; }
-  .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-mohr='true'] ~ .interaction-hint { display: none; }
+  .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .viewport-shell,
+  .app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .viewport-shell:has(.split-viewport[data-side='true']) { min-height: 720px; }
+  .split-viewport, .split-viewport[data-side='true'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 58fr) minmax(0, 42fr); }
+  .split-viewport[data-side='false'] { grid-template-rows: minmax(0, 1fr); }
+  .plot-panel { padding: 8px 6px 10px; border-left: 0; border-top: 1px solid var(--border-soft); }
+  .split-viewport[data-side='true'] ~ .scene-legend { right: 10px !important; }
+  .split-viewport[data-side='true'] ~ .interaction-hint { display: none; }
   .interaction-hint { font-size: 11px; }
   .response-strip { grid-template-columns: 1fr; }
   .response-copy, .metric { min-height: 70px; border-top: 1px solid var(--border-soft); border-left: 0; }

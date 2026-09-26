@@ -6,7 +6,7 @@ An interactive 3D learning environment for an intro university Structural Geolog
 
 - **Curriculum and build plan:** `docs/curriculum/README.md`. It holds the lesson sequence, binding decisions, conventions, lesson-spec template, and build-session protocol.
 - **One session builds one lesson** (or Build 00). Read the README, then only that lesson's spec in `docs/curriculum/unit-*.md`. Check its prerequisites are built before starting.
-- **The next task** is the first lesson in the curriculum README's status table that is not "Built" (currently M2). B7 was built early at the instructor's request; treat it as built, and revisit it when B3 and B6 are built (see its "As built" note).
+- **The next task** is the first lesson in the curriculum README's status table that is not "Built" (currently M3). B7 was built early at the instructor's request; treat it as built, and revisit it when B3 and B6 are built (see its "As built" note).
 - **Browser checks:** the in-app browser pane has no WebGL, so Three.js scenes can't render there. Use headless Chromium with software GL (for example the Playwright cache's `chrome-headless-shell` with `--use-angle=swiftshader --enable-unsafe-swiftshader`) driven over the DevTools protocol, or ask the user to check in their own browser.
 
 ## Rules that must not drift

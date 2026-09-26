@@ -121,6 +121,17 @@
 
 **Acceptance criteria:** axis rotation works with the vector held fixed; both component sets display; the direction-cosine identity is verified live.
 
+**As built (0.9.0).** Eight steps, following the outline, with these choices:
+- **Step 3** asks for the angle of (−3, 3). The feedback targets −45° (plain tan⁻¹), 45°, 225°, and 315°. The calculator's answer and the true angle stay hidden until the student answers.
+- **Step 2** asks for vx of a length-5 vector at 30° (4.33). The feedback catches sine instead of cosine, radian mode (0.77), and cos 30° alone.
+- **Axis rotation is taught in 2D (step 5) and then jumps to 3D (step 6).** Turning about z in 3D shows that vz does not change. Rotations about other axes stay in M4, as the spec says.
+- **Step 6 is a goal:** turn the axes until v′y = 0. It sets up principal directions.
+- **Step 7** plots cos²θ and sin θ cos θ beside the scene with a marker. The scene there shows a unit vector along x in the turned frame.
+- **Step 8** uses two examples. The first is a line and the angle ε it makes with the floor (z still up; O1 turns this into plunge with z down). The second is a plane seen edge-on with x′ along its normal.
+- **Notation:** primed components are written v′ₓ, v′ᵧ, the same way in the equations and the scene. Direction angles are α, β, γ, colored like their axes.
+
+The rotatable axis triad is `rotatedAxes` / `showPrimedComponents` in `VectorScene` (math frame, z up). O1, S5, S8, and D5 can reuse it or port it to their own scenes.
+
 ---
 
 ## M3 — Dot and cross products

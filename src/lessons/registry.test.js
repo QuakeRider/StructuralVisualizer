@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ANDERSON_REGIMES, andersonFaults } from '../domain/anderson.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
-import { magnitude } from '../domain/vector.js';
+import { magnitude, polarAngle, rotate2D } from '../domain/vector.js';
 import { SCENE_REFS } from '../visualization/sceneRefs.js';
 import {
   LESSONS,
@@ -50,7 +50,8 @@ describe('curriculum catalog', () => {
 
 describe('lesson content', () => {
   it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B7 (built early)', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'S2', 'S3', 'S7', 'S10', 'B7']);
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B7']);
+    expect(getLesson('M2').status).toBe('built');
     expect(getLesson('B7').status).toBe('built');
     expect(getLesson('M1').status).toBe('built');
     expect(getLesson('S1').status).toBe('planned');
@@ -140,7 +141,8 @@ describe('lesson navigation helpers', () => {
   });
 
   it('finds the next lesson that has content', () => {
-    expect(getNextAvailableLesson('M1').id).toBe('S2');
+    expect(getNextAvailableLesson('M1').id).toBe('M2');
+    expect(getNextAvailableLesson('M2').id).toBe('S2');
     expect(getNextAvailableLesson('S3').id).toBe('S7');
     expect(getNextAvailableLesson('S10').id).toBe('B7');
     expect(getNextAvailableLesson('B7')).toBeNull();
@@ -242,5 +244,47 @@ describe('B7 Anderson lesson', () => {
     const settings = step('tectonic-settings').settings;
     expect(settings.map((setting) => setting.regime).sort()).toEqual(Object.keys(ANDERSON_REGIMES).sort());
     expect(step('tectonic-settings').final).toBe(true);
+  });
+});
+
+describe('M2 trigonometry lesson', () => {
+  const steps = getLesson('M2').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+
+  it('matches each numeric answer to the vector the step starts with', () => {
+    const polar = step('length-and-angle');
+    expect(polar.initialLabState.v.x).toBeCloseTo(polar.answer.value, 2);
+    expect(checkNumericAnswer(polar, '4.33').correct).toBe(true);
+    expect(checkNumericAnswer(polar, '0.77').feedback).toMatch(/radians/);
+    const inverse = step('angle-from-components');
+    expect(polarAngle(inverse.initialLabState.v)).toBeCloseTo(inverse.answer.value, 9);
+    expect(checkNumericAnswer(inverse, '-45').feedback).toMatch(/180/);
+  });
+
+  it('makes the rotation prediction agree with the rotation equations', () => {
+    const rotate = step('rotate-axes');
+    const { v } = rotate.initialLabState;
+    const larger = rotate2D(v, 30).x > v.x;
+    expect(rotate.choices.find((choice) => choice.correct).id).toBe(larger ? 'larger' : 'smaller');
+  });
+
+  it('checks the alignment goal with the primed components', () => {
+    const same = step('same-arrow');
+    const { v } = same.initialLabState;
+    expect(isGoalMet(same, { primed: rotate2D(v, polarAngle(v)) })).toBe(true);
+    expect(isGoalMet(same, { primed: rotate2D(v, polarAngle(v) + 180) })).toBe(false);
+    expect(isGoalMet(same, { primed: rotate2D(v, 0) })).toBe(false);
+  });
+
+  it('starts in 2D and jumps to 3D for direction angles and for turning the axes', () => {
+    expect(step('unit-circle').dimension).toBe(2);
+    expect(step('direction-angles-3d').dimension).toBe(3);
+    expect(step('rotate-axes').dimension).toBe(2);
+    expect(step('same-arrow').dimension).toBe(3);
+  });
+
+  it('keeps the unit-circle vector at length 1', () => {
+    expect(magnitude(step('unit-circle').initialLabState.v)).toBeCloseTo(1, 12);
+    expect(step('unit-circle').labOptions.fixedLength).toBe(1);
   });
 });

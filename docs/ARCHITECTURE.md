@@ -4,7 +4,7 @@
 
 Structural Visualizer is a curriculum platform, not a single stress-state tool. The project should support independent structural-geology modules that share a lesson shell, interaction vocabulary, accessibility system, presentation mode, and offline packaging while retaining topic-specific scientific models and visualizations.
 
-The curriculum is defined in `docs/curriculum/`; the current code contains the lesson registry, two fully built lessons (M1, and B7 built early), and four seed lessons. Force/stress calculations, stress definitions, qualitative deformation, Three.js rendering, and interface state are separated so they can inform—but not constrain—later modules for strain, kinematics, rheology, fractures, faults, folds, orientation data, maps, and cross-sections.
+The curriculum is defined in `docs/curriculum/`; the current code contains the lesson registry, three fully built lessons (M1, M2, and B7 built early), and four seed lessons. Force/stress calculations, stress definitions, qualitative deformation, Three.js rendering, and interface state are separated so they can inform—but not constrain—later modules for strain, kinematics, rheology, fractures, faults, folds, orientation data, maps, and cross-sections.
 
 ## Current layers
 
@@ -20,7 +20,7 @@ Interface (src/main.js)
     +-- force/stress foundations (src/domain/forceStress.js)
     +-- preset catalog (src/domain/stressStates.js)
     +-- qualitative model (src/domain/deformation.js)
-    +-- renderers (src/visualization/VectorScene.js, AndersonScene.js, MohrPlot.js, ForceLabScene.js, StressScene.js)
+    +-- renderers (src/visualization/VectorScene.js, CurvePlot.js, AndersonScene.js, MohrPlot.js, ForceLabScene.js, StressScene.js)
     |       +-- shared arrows and labels (src/visualization/sceneKit.js)
     +-- scene references (src/visualization/sceneRefs.js)
 ```
@@ -65,7 +65,7 @@ To add a lesson: create its file under `src/lessons/unit-*/`, import it in `regi
 
 ### Vectors and force/stress foundations
 
-`src/domain/vector.js` holds small tested vector helpers (`add`, `subtract`, `scale`, `negate`, `dot`, `cross`, `magnitude`, `xyMagnitude`, `normalize`, `snapVector`, `clampVector`, `isUnitVector`). `src/domain/format.js` formats numbers for live equations (true minus sign, bracketed negative squares).
+`src/domain/vector.js` holds small tested vector helpers (`add`, `subtract`, `scale`, `negate`, `dot`, `cross`, `magnitude`, `xyMagnitude`, `normalize`, `snapVector`, `clampVector`, `isUnitVector`), plus the M2 trigonometry helpers `fromPolar`, `polarAngle` (atan2, in [0°, 360°)), `directionCosines`, `directionAngles`, and `rotate2D` (components in axes turned by θ about z). `src/domain/format.js` formats numbers for live equations (true minus sign, bracketed negative squares).
 
 `src/domain/forceStress.js` converts newtons over square centimeters to megapascals, calculates vector average traction, and decomposes it into signed normal and in-plane shear components for an arbitrary surface normal. The unit conversion and inverse area relationship are tested without the browser.
 
@@ -102,7 +102,14 @@ The catalog contains no Three.js or DOM behavior.
 - the unit sphere, scaled vectors, and tip-to-tail addition with per-axis component stacks
 - illustrative context props
 
-Its camera has a 2D top view, a 3D view, and a 3D close-up. It animates between them (instantly under reduced motion) and pulls back on portrait viewports. A plain drag moves a tip across the floor, and Shift-drag moves it vertically. It reports vector and hover changes and exposes `highlight(ref)`.
+For M2 it also draws:
+- length-and-angle (polar) dragging
+- the α arc, and direction-angle arcs α, β, γ in 3D
+- an elevation arc ε
+- a rotatable x′, y′ axis pair with its θ arc and the primed components v′ₓ, v′ᵧ
+- a plane trace normal to x′
+
+Its camera has a 2D top view, a 2D close-up, a 3D view, and a 3D close-up. Arrows are thinner in the close-ups. It animates between them (instantly under reduced motion) and pulls back on portrait viewports. A plain drag moves a tip across the floor, and Shift-drag moves it vertically. It reports vector and hover changes and exposes `highlight(ref)`.
 
 `src/visualization/AndersonScene.js` is the lesson-B7 Earth block in the NED frame, converted to Three.js internally (north −z, east +x, down −y). It draws:
 - a layered block, drawn as two copies clipped by the active fault plane so the hanging wall can slide
@@ -111,7 +118,7 @@ Its camera has a 2D top view, a 3D view, and a 3D close-up. It animates between 
 - the β and dip arcs in the σ1–σ3 plane
 - the slip arrows and an N/E/D compass
 
-It reframes itself on resize until the student orbits. `src/visualization/MohrPlot.js` is an SVG Mohr diagram next to it: the σ1–σ3 circle at Coulomb failure, the envelope, ±2θ points, and φ. Its groups carry `data-ref`, so it takes part in the same highlighting as the 3D scenes. Both expose `highlight(ref)` and report hover through `onHover`. `src/visualization/sceneKit.js` holds the patterned `Arrow3D`, the constant-size `Label`, and line helpers shared by the scenes.
+It reframes itself on resize until the student orbits. `src/visualization/MohrPlot.js` is an SVG Mohr diagram next to it: the σ1–σ3 circle at Coulomb failure, the envelope, ±2θ points, and φ. Its groups carry `data-ref`, so it takes part in the same highlighting as the 3D scenes. Both expose `highlight(ref)` and report hover through `onHover`. `src/visualization/sceneKit.js` holds the patterned `Arrow3D` (with a thickness factor for close-ups), the constant-size `Label`, and the line, arc, and tube helpers the scenes share. `src/visualization/CurvePlot.js` is an SVG plot of functions of θ (0–180°) with a marker at the current θ; M2 uses it for cos²θ and sin θ cos θ. The vector lab and the Anderson lab both sit in a `.split-viewport`: a 3D scene (`.lab-scene`) beside an optional plot (`.plot-panel`), shown when `data-side="true"`.
 
 `src/visualization/ForceLabScene.js` owns the directly manipulated vector (acting at the center of the selected face), selectable block faces, contact patch, distributed-load arrows, labeled axes, surface normal, and normal/shear component geometry. It reports vector, surface, and hover changes to the interface and exposes `highlight(ref)` for equation binding. The refs each scene supports are listed per visual kind in `sceneRefs.js` (`SCENE_REFS`), which has no Three.js dependency so lesson tests can validate against it.
 
@@ -205,6 +212,7 @@ Current unit tests verify:
   - normal ≈ 60°, thrust ≈ 30°, strike-slip vertical at ±β
   - every fault contains σ2 and lies at β from σ1
   - slip sense: normal, reverse, and sinistral/dextral for the strike-slip pair
+- M2 trigonometry helpers: polar form, quadrant-correct angles, direction cosines and angles, and the invariance of |v| under axis rotation. M2 specifics: numeric answers match each step's starting vector, the rotation prediction agrees with the rotation equations, the alignment goal works, and the lesson jumps to 3D for direction angles and for turning the axes.
 - B7 specifics: the numeric dip answer matches the domain prediction, each step opens in the regime it teaches, and the settings cover all three regimes.
 - Numeric-answer parsing and feedback.
 - Lesson navigation helpers.

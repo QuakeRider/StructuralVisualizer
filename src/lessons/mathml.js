@@ -37,6 +37,9 @@ export const mtext = element('mtext');
 export const row = (...children) => `<mrow>${children.join('')}</mrow>`;
 export const sub = (base, script) => `<msub>${base}${script}</msub>`;
 export const sup = (base, script) => `<msup>${base}${script}</msup>`;
+export const subsup = (base, subscript, superscript) => `<msubsup>${base}${subscript}${superscript}</msubsup>`;
+/** A primed component such as v′ₓ: the component along a turned axis. */
+export const primed = (base, axis) => subsup(mi(base), mi(axis), mo('′'));
 export const sqrt = (...children) => `<msqrt>${children.join('')}</msqrt>`;
 export const frac = (numerator, denominator) => `<mfrac>${numerator}${denominator}</mfrac>`;
 export const paren = (...children) => row(mo('('), ...children, mo(')'));
