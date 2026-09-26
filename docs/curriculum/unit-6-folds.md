@@ -227,7 +227,7 @@ The layered-block view from B5 is reused for boudinage (F5).
 
 **Exact vs illustrative:** the kink construction and the trishear velocity-field kinematics are exact within their stated models. The forced-fold drape is illustrative, and the lesson says so.
 
-**Domain / scenes / tests:** `faultBendFold(rampAngle, slip, layers)` (kink-method geometry for simple cases), `trishearStep(state, params, dt)`, and `dragProfile(displacementField, distance)` in a new `src/domain/faultFolds.js` (or `folds.js`), with tests that conserve bed length in fault-bend folds.
+**Domain / scenes / tests:** `faultBendFold(rampAngle, slip, layers)` (kink-method geometry for simple cases), `trishearStep(state, params, dt)`, and `dragProfile(displacementField, distance)` in a new `src/domain/faultFolds.js` (or `folds.js`), with tests that conserve bed length in fault-bend folds. *B9 (0.12.0, built early) already has a drag model, `dragDisplacement` in `faultGrowth.js`, and a scene that moves marker beds by a fault's displacement field (`FaultGrowthScene.js`); build on them.*
 
 **Out of scope:** Suppe's full fault-bend equations for all geometries (simplest cases only), detachment folds (a mention), cross-section balancing and restoration (parked, Lab mode), and thrust systems and duplexes (parked with tectonics).
 

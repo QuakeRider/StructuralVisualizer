@@ -77,6 +77,25 @@ stratigraphic separation of flat beds in a vertical well: |D_z|, the throw
 - **Illustrative parts.** The block is 1000 m across and 500 m deep with 62.5 m beds; the slip is 300 m (200 m in the separation step, 150 m in the well step), large on purpose so it reads on screen. The stress state is illustrative: σ1 = 130 MPa, σ3 = 30 MPa, σ2 set by the ratio φ, with the Anderson axes (optionally tilted about σ2 in step 10). The traction arrows are to scale with each other (1 world unit ≈ 70 MPa). The "cut" view erodes the land flat down to the lower block's surface. The slickenline steps are schematic, and the step shape shown (smooth toward the missing block's motion) is one common kind of indicator, not a rule for every surface.
 - **Deliberately left out.** Stress inversion from many faults (the reduced stress tensor), moment tensors and seismic radiation beyond the first-motion quadrants, fault curvature, slip that varies along the fault, and the magnitude of slip. Wallace–Bott assumes a planar fault in one uniform stress with no interaction between faults; the lesson says so.
 
+### Fault anatomy and growth (lesson B9)
+
+Same geological frame (x north, y east, z down). All faults are normal faults striking north and dipping 60° east (the relay breach strikes northeast). On a fault, u runs along strike and w down the dip from its center, and d is the distance from it along the downward pole. D is the displacement (slip) between the walls at a point. Exact within these stated models:
+
+```text
+elliptical radius  r = √((u/a)² + (w/b)²)      (r = 1 on the tip line)
+isolated fault     D = Dmax √(1 − r²)  (elliptical)  or  D = Dmax (1 − r)  (linear taper)
+relay segments     D = Dmax (1 − r²)   (bell)
+each wall moves    D/2 along the dip (hanging wall down, footwall up), times e^(−|d|/Λ)
+scaling            D = c Lⁿ,   log D = log c + n log L
+drag               u(d) = (D/2)(1 − k(1 − e^(−|d|/λ))),  offset far away D(1 − k)
+linkage            D_sum(x) = D_A(x) + D_B(x) (+ the linked slip after the breach)
+```
+
+- **Exact parts.** The displacement on the fault surface, its contours and tip line, the profile along any line, the section offsets, D = c Lⁿ and the point on the log–log plot, the drag profile and far-field offset, and the summed relay profiles, each for its stated model. The marker beds are moved exactly by the modeled displacement field.
+- **Idealizations, stated in the lesson.** The elliptical and linear tip-line models are two idealized shapes (measured profiles vary, often between them); the bell profile of the relay segments stands for the steeper tips of interacting segments. Each wall carries half the slip, and the fade away from the fault (Λ = 350 m, or 180 m in the relay) is a simple stand-in for an elastic dislocation field; it produces reverse drag. The relay model keeps the outer tips fixed, grows each segment with D = cL, breaches the ramp at 120 m of overlap, and then adds slip in proportion to the deficit against one fault of the whole length. The drag factor k and length λ = 80 m are illustrative. Superposed fault fields are added, which is fine for display but not a mechanical model.
+- **Illustrative parts.** Displacements use D/L = 0.1 (at the high end of real faults) so they read on screen, and the relay ramp dips more steeply than most real ramps for the same reason. The 40 m outcrop's core (0.8 m) and damage zones (5 m) are typical sizes, not a scaling law; its fractures are schematic, and the fault-rock drawings are schematic, not photographs. The D–L points are synthetic, spread like published data (D/L mostly between 0.001 and 0.1). The step 4 block shows the fault at the chosen size with D/L to scale up to 0.25.
+- **Deliberately left out.** Fault-seal analysis (juxtaposition, shale smear), seismic interpretation, earthquake rupture mechanics, the mechanics of fault growth and interaction (stress shadows, elastic dislocation fields), and regional fault systems.
+
 ### Trigonometry of projection (lesson M2)
 
 Everything in the M2 steps is exact, in the same x, y, z frame as M1 (z up), with angles in degrees:

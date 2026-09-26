@@ -2,6 +2,23 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.12.0 — 2026-09-26
+
+### Added
+
+- Lesson B9, Fault anatomy and growth, built ahead of the curriculum order for classroom use (eight steps):
+  1. Inside a fault zone: the fault core, the principal slip surface, and the damage zone in a 40 m outcrop, with schematic drawings of fault breccia, gouge, cataclasite, and mylonite (not brittle), and how a fault zone guides groundwater.
+  2. Displacement dies out at the tip line: a blind normal fault inside a 1 km block with three marker beds. A section cuts the block; its offset follows D(u) = Dmax √(1 − (u/a)²), with a goal to find where the offset is half of Dmax.
+  3. The fault surface as a map of displacement: the fault colored by D, with contours, the tip line, and the elliptical radius r. A profile line slices it, and a switch compares the elliptical model with a linear taper (numeric check).
+  4. Displacement–length scaling D = c Lⁿ on log–log axes, with synthetic data, sliders for L, c, and n, and a block that changes only its scale bar when n = 1 (numeric check).
+  5. Growth by linkage: two segments grow from underlap to overlap, and a relay ramp tilts between them; the plot adds their profiles.
+  6. Breaching the ramp: the segments hard-link into one fault with a bend, and the linked fault, under-displaced for its new length, catches up with the profile of one fault.
+  7. Normal and reverse drag as displacement gradients, with a drag factor k, a cross-section, and a plot of each wall's movement against distance from the fault.
+  8. Reading segmented faults and relay ramps on maps (final).
+- A fault-growth laboratory (`FaultGrowthScene.js`): marker beds moved by the displacement field of one or more normal faults, so their offset shrinks to zero at the tip line, they bend near the fault, and they tilt across a relay ramp. Fault surfaces are colored by displacement (a colorblind-safe scale) with contour loops and the tip line. It has a section that cuts the block, a profile line, the fault core and damage zone with fractures, a relay-ramp outline, depth shading and structure contours on the bed, and 3D, map, section, and fault-face views.
+- A general x–y plot (`XYPlot.js`) for displacement profiles, the D–L log–log plot, relay profiles, and the drag profile, and a fault-rock panel (`FaultRockPanel.js`).
+- New tested domain module `faultGrowth.js`: elliptical, linear, and bell-shaped displacement on a tip line, contours and profiles, D = c Lⁿ, the 3D displacement of each wall, the drag model, and the relay system (segments, breach, linked slip).
+
 ## 0.11.0 — 2026-09-26
 
 ### Added
