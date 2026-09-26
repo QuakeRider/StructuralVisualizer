@@ -15,6 +15,7 @@ import {
   traceSeparation,
   wellLog,
 } from '../domain/faults.js';
+import { RELAY, classifyDrag, displacementAt, dlScaling, faultDisplacement, relayFaults, relaySystem } from '../domain/faultGrowth.js';
 import { lineVector, planeFromStrike, planePole } from '../domain/orientation.js';
 import { resolveTraction } from '../domain/tensor.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
@@ -66,8 +67,9 @@ describe('curriculum catalog', () => {
 });
 
 describe('lesson content', () => {
-  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6, B7, and B8 (built early)', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7', 'B8']);
+  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6 to B9 (built early)', () => {
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7', 'B8', 'B9']);
+    expect(getLesson('B9').status).toBe('built');
     expect(getLesson('B8').status).toBe('built');
     expect(getLesson('B6').status).toBe('built');
     expect(getLesson('M2').status).toBe('built');
@@ -144,7 +146,7 @@ describe('lesson content', () => {
   });
 
   it('gives every lab step at least one bound equation', () => {
-    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction', 'fault'].includes(candidate.visualKind))) {
+    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction', 'fault', 'fault-growth'].includes(candidate.visualKind))) {
       expect(step.equations?.some((equation) => equation.symbols.length > 0), `${lesson.id}/${step.id}`).toBe(true);
     }
   });
@@ -166,7 +168,8 @@ describe('lesson navigation helpers', () => {
     expect(getNextAvailableLesson('S10').id).toBe('B6');
     expect(getNextAvailableLesson('B6').id).toBe('B7');
     expect(getNextAvailableLesson('B7').id).toBe('B8');
-    expect(getNextAvailableLesson('B8')).toBeNull();
+    expect(getNextAvailableLesson('B8').id).toBe('B9');
+    expect(getNextAvailableLesson('B9')).toBeNull();
   });
 });
 
@@ -508,5 +511,68 @@ describe('B8 fault lesson', () => {
     expect(checkNumericAnswer(predict, '-16.1').feedback).toMatch(/quadrant/);
     expect(predict.revealAfterAnswer).toContain('rake');
     expect(predict.controls).toEqual([]);
+  });
+});
+
+describe('B9 fault growth lesson', () => {
+  const steps = getLesson('B9').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+  const FIELD = { a: 400, b: 240, dMax: 80, model: 'elliptical' };
+
+  it('uses the fault-growth lab for every step, each with a prediction, and ends the lesson', () => {
+    expect(steps).toHaveLength(8);
+    for (const candidate of steps) {
+      expect(candidate.visualKind).toBe('fault-growth');
+      expect(hasPrediction(candidate), candidate.id).toBe(true);
+      expect(['outcrop', 'isolated', 'relay', 'through']).toContain(candidate.labOptions.setup);
+      for (const view of candidate.labOptions.views ?? []) expect(['3d', 'map', 'section', 'fault']).toContain(view);
+      if (candidate.initialLabState.view) expect(candidate.labOptions.views).toContain(candidate.initialLabState.view);
+    }
+    expect(steps.at(-1).final).toBe(true);
+    expect(steps.filter((candidate) => candidate.final)).toHaveLength(1);
+  });
+
+  it('can reach the half-offset goal with the 10 m section slider', () => {
+    const goal = step('tip-line').goal;
+    const offsets = Array.from({ length: 97 }, (_, index) => displacementAt(FIELD, -480 + index * 10, 0));
+    expect(offsets.some((value) => goal.check({ sectionOffset: value }))).toBe(true);
+    expect(goal.check({ sectionOffset: displacementAt(FIELD, 0, 0) })).toBe(false);
+  });
+
+  it('matches the numeric answers to the domain', () => {
+    expect(displacementAt(FIELD, 200, 0)).toBeCloseTo(step('displacement-map').answer.value, 1);
+    expect(dlScaling(2000, 0.03)).toBeCloseTo(step('scaling').answer.value, 6);
+  });
+
+  it('keeps the D–L answer hidden until it is given', () => {
+    expect(step('scaling').revealAfterAnswer).toContain('dScaled');
+  });
+
+  it('lets the relay step reach a 100 m overlap without breaching, with the ramp dipping south', () => {
+    const relay = step('relay');
+    const [, max] = relay.labOptions.growthRange;
+    const system = relaySystem(max);
+    expect(system.stage).toBe('overlapping');
+    expect(relay.goal.check({ overlap: system.overlap })).toBe(true);
+    expect(relay.goal.check({ overlap: relaySystem(relay.initialLabState.growth).overlap })).toBe(false);
+    const faults = relayFaults(system);
+    const depth = (x) => faults.reduce((sum, fault) => sum + faultDisplacement({ x, y: 0, z: RELAY.depth }, fault).vector.z, 0);
+    expect(depth(-60)).toBeGreaterThan(depth(60));
+    expect(relay.choices.find((choice) => choice.correct).id).toBe('south');
+  });
+
+  it('starts the breach step just past the breach, under-displaced for its length', () => {
+    const system = relaySystem(step('breach').initialLabState.growth);
+    expect(system.stage).toBe('breached');
+    const middle = system.profile(0);
+    expect(middle.total).toBeLessThan(middle.target);
+    expect(step('breach').choices.find((choice) => choice.correct).id).toBe('under');
+  });
+
+  it('starts the drag step with reverse drag and can reach normal drag', () => {
+    const drag = step('drag');
+    expect(classifyDrag(drag.initialLabState.drag)).toBe('reverse drag');
+    expect(drag.goal.check({ dragName: classifyDrag(-0.6) })).toBe(true);
+    expect(drag.goal.check({ dragName: classifyDrag(drag.initialLabState.drag) })).toBe(false);
   });
 });

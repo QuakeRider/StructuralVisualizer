@@ -6,9 +6,9 @@ The curriculum runs from vectors and matrices through orientation, stress, britt
 
 ## Current release
 
-**Status:** curriculum-structured prototype (`0.11.0`)
+**Status:** curriculum-structured prototype (`0.12.0`)
 
-Lessons M1 (vectors and components), M2 (trigonometry of projection), B6 (friction and reactivation of existing planes), B7 (Anderson's theory of faulting), and B8 (fault geometry, slip, and kinematic axes) are fully built; B6, B7, and B8 were built ahead of their prerequisites for classroom use. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 39 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
+Lessons M1 (vectors and components), M2 (trigonometry of projection), B6 (friction and reactivation of existing planes), B7 (Anderson's theory of faulting), B8 (fault geometry, slip, and kinematic axes), and B9 (fault anatomy and growth) are fully built; B6 to B9 were built ahead of their prerequisites for classroom use. Four more lessons exist as early *seed* versions (S2, S3, S7, S10); the other 38 are listed in the lesson picker as planned. Each future lesson is built in its own session from its spec.
 
 Implemented:
 
@@ -16,6 +16,7 @@ Implemented:
 - An Anderson faulting laboratory: an Earth block in north–east–down coordinates with principal-stress arrows, the predicted conjugate faults, β and dip angles, and a sliding hanging wall. A Mohr diagram beside it shows the circle touching the Coulomb line.
 - A friction laboratory on the same Earth block: an old plane of any strike and dip with the traction on it, a 3D Mohr diagram with Byerlee's friction line and the intact-rock line, and the first stereonet, which maps slip tendency over every plane orientation and responds to pore-fluid pressure.
 - A fault laboratory: a faulted block whose hanging wall moves by a slip vector (with its strike-slip and dip-slip parts and the rake), a dike that shows separation on an eroded map and in cross-section, a well log with missing or repeated beds, slickenlines, slip set by the stress (Wallace–Bott), and the P, T, and B axes. The stereonet beside it shows the slip, the auxiliary plane, and the beach ball.
+- A fault-growth laboratory: marker beds offset by faults whose displacement dies out at an elliptical tip line, the fault surface colored by displacement, the fault core and damage zone, displacement–length scaling on log–log axes, relay ramps between overlapping segments and their breaching, and normal and reverse drag, with profile plots beside the block.
 - Numeric-answer predictions with feedback on common mistakes, and construction goals checked live.
 - A lesson registry covering the full 48-lesson curriculum, with a unit-grouped lesson picker and lesson-to-lesson navigation.
 - An equation–model binding panel: hovering or focusing a symbol highlights its object in the 3D scene (and hovering the object highlights the symbol), with live values and a key describing each symbol's scene object.

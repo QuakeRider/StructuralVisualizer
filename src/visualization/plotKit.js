@@ -33,3 +33,17 @@ export function applyRefHighlight(svg, ref) {
   svg.classList.toggle('has-highlight', Boolean(active));
   for (const element of svg.querySelectorAll('[data-ref]')) element.classList.toggle('is-highlighted', element.dataset.ref === active);
 }
+
+/** Stops of the displacement color scale (viridis: perceptually even and colorblind-safe), from zero to the maximum. */
+export const DISPLACEMENT_STOPS = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'];
+
+/** Color for a fraction t (0–1) of the displacement scale, as a hex string. */
+export function displacementColor(t) {
+  const clamped = Math.min(Math.max(Number.isFinite(t) ? t : 0, 0), 1) * (DISPLACEMENT_STOPS.length - 1);
+  const index = Math.min(Math.floor(clamped), DISPLACEMENT_STOPS.length - 2);
+  const mix = clamped - index;
+  const parse = (hex) => [1, 3, 5].map((start) => parseInt(hex.slice(start, start + 2), 16));
+  const a = parse(DISPLACEMENT_STOPS[index]);
+  const b = parse(DISPLACEMENT_STOPS[index + 1]);
+  return `#${a.map((value, channel) => Math.round(value + (b[channel] - value) * mix).toString(16).padStart(2, '0')).join('')}`;
+}

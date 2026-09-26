@@ -44,7 +44,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | B6 | Friction and reactivation of existing planes | NED | Built early (0.10.0) |
 | | B7 | Anderson's theory of faulting | NED | Built early (0.8.0) |
 | | B8 | Fault geometry, slip, and kinematic axes (P/T, beach balls) | NED | Built early (0.11.0) |
-| | B9 | Fault anatomy and growth | NED | Planned |
+| | B9 | Fault anatomy and growth | NED | Built early (0.12.0) |
 | **4 Deformation and strain** — [spec](unit-4-strain.md) | D1 | Components of deformation | x/y/z | Planned |
 | | D2 | Homogeneous vs heterogeneous deformation | x/y/z | Planned |
 | | D3 | Measuring strain | x/y → NED | Planned |
@@ -67,7 +67,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | F6 | Fault-related folds | NED | Planned |
 | | F7 | Superposed folding | NED | Planned |
 
-"Built early" means the lesson was built ahead of its prerequisites for classroom use. B7 restates the Coulomb angle it needs from B3 and builds the first Mohr plot. B6 restates the Coulomb line (B3), the 3D Mohr region (S9), and effective stress (B4), and builds the first stereonet and the 3D Mohr plot; O3, S9, B3, and B4 should extend those rather than start again. B8 restates rake (O4) and the traction on a plane (S7, in B6's form) and builds the fault laboratory (`FaultScene.js`), the stereonet's kinematic layers (slip, auxiliary plane, P/T/B, beach ball), and a well log; it also adds O4's `rakeVector` and `lineToRake` to `orientation.js`. When B3 is built, B6 and B7 should be revisited to point back to it, and when O4 and S7 are built, B8 should point back to them (see their "As built" notes).
+"Built early" means the lesson was built ahead of its prerequisites for classroom use. B7 restates the Coulomb angle it needs from B3 and builds the first Mohr plot. B6 restates the Coulomb line (B3), the 3D Mohr region (S9), and effective stress (B4), and builds the first stereonet and the 3D Mohr plot; O3, S9, B3, and B4 should extend those rather than start again. B8 restates rake (O4) and the traction on a plane (S7, in B6's form) and builds the fault laboratory (`FaultScene.js`), the stereonet's kinematic layers (slip, auxiliary plane, P/T/B, beach ball), and a well log; it also adds O4's `rakeVector` and `lineToRake` to `orientation.js`. B9 builds the fault-growth laboratory (`FaultGrowthScene.js`), a general x–y plot (`XYPlot.js`), and the displacement, scaling, drag, and relay models in `faultGrowth.js`; F6 should reuse its drag model. When B3 is built, B6 and B7 should be revisited to point back to it, and when O4 and S7 are built, B8 should point back to them (see their "As built" notes).
 
 "Seed" means an early version exists in the app (moved from the 0.5 module by [Build 00](build-00-rework.md)); it does not yet meet its spec. A seed lesson's build session replaces it fully and sets the status to "Built".
 

@@ -28,10 +28,21 @@ import {
   traceSeparation,
   wellLog,
 } from './domain/faults.js';
+import {
+  RELAY,
+  classifyDrag,
+  displacementAt,
+  displacementProfile,
+  dlScaling,
+  dragDisplacement,
+  faultDisplacement,
+  relayFaults,
+  relaySystem,
+} from './domain/faultGrowth.js';
 import { lineVector, normalizeAzimuth, planeFromStrike, planePole } from './domain/orientation.js';
 import { lineFromVector, planeFromPole } from './domain/stereonet.js';
 import { resolveTraction } from './domain/tensor.js';
-import { basis, frac, hat, inline, mi, mn, mo, mtext, num, primed, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
+import { basis, frac, hat, inline, mi, mn, mo, mtext, num, paren, primed, row, signedTerm, sqrt, squared, sub, sup, tuple, vec } from './lessons/mathml.js';
 import { add, directionAngles, dot, fromPolar, magnitude, polarAngle, rotate2D, scale, xyMagnitude } from './domain/vector.js';
 import {
   LESSONS,
@@ -48,6 +59,8 @@ import {
 } from './lessons/registry.js';
 import { AndersonScene } from './visualization/AndersonScene.js';
 import { CurvePlot } from './visualization/CurvePlot.js';
+import { FaultGrowthScene, formatLength } from './visualization/FaultGrowthScene.js';
+import { FaultRockPanel } from './visualization/FaultRockPanel.js';
 import { FaultScene } from './visualization/FaultScene.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
 import { FrictionMohrPlot } from './visualization/FrictionMohrPlot.js';
@@ -56,6 +69,7 @@ import { Stereonet } from './visualization/Stereonet.js';
 import { StressScene } from './visualization/StressScene.js';
 import { VectorScene } from './visualization/VectorScene.js';
 import { WellLog } from './visualization/WellLog.js';
+import { XYPlot } from './visualization/XYPlot.js';
 
 const DEFAULT_STATE_ID = 'uniaxial-tension';
 const DEFAULT_MAGNITUDE = 28;
@@ -75,6 +89,26 @@ const DEFAULT_FAULT = { strike: 0, dip: 60, rake: -90, regime: 'normal', ratio: 
  * thick, and the slip is 300 m unless a step says otherwise (large, so it reads on screen). The stress is illustrative.
  */
 const FAULT_LAB = Object.freeze({ sigma1: 130, sigma3: 30, shmaxTrend: 0, slipLength: 300, bed: 62.5, depth: 500, center: { x: 0, y: 0, z: 250 } });
+const DEFAULT_GROWTH = { view: '3d', section: 0, profileW: 0, model: 'elliptical', lIndex: 8, cIndex: 4, n: 1, growth: 0.2, drag: 0.4 };
+/**
+ * B9 fault-growth lab (NED metres, origin on the ground above the block center). The
+ * faults strike north and dip 60° east. 'isolated': one blind fault with an elliptical
+ * tip line in the 1 km block; 'through': a fault whose tips are far away (drag);
+ * 'outcrop': a 40 m block with the fault core and damage zone. The relay model is
+ * RELAY in faultGrowth.js. Displacements are large (D/L = 0.1) so they read on screen.
+ */
+const GROWTH_LAB = Object.freeze({
+  horizonColors: ['#c2a878', '#9a5b45', '#8f9a6a'],
+  isolated: { center: { x: 0, y: 0, z: 250 }, a: 400, b: 240, dMax: 80, decay: 350, horizons: [125, 250, 375], contourLevels: [20, 40, 60] },
+  through: { center: { x: 0, y: 0, z: 250 }, slip: 60, dragWidth: 80, horizons: [125, 250, 375], section: -300 },
+  outcrop: { metersPerUnit: 10, center: { x: 0, y: 0, z: 10 }, slip: 4, core: 0.8, damage: 5, horizons: [5, 10, 15] },
+  /** Fault lengths and scaling constants the D–L sliders step through (m). */
+  lengths: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000],
+  constants: [0.001, 0.002, 0.003, 0.005, 0.01, 0.02, 0.03, 0.05, 0.1],
+  /** The block shows a fault 800 m long; D/L is drawn to scale up to this value. */
+  displayLength: 800,
+  maxDisplayRatio: 0.25,
+});
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
 
@@ -158,6 +192,10 @@ app.innerHTML = `
           <div id="fault-viewport" class="viewport fault-viewport split-viewport" data-side="false" data-panel="net">
             <div id="fault-scene" class="lab-scene"></div>
             <div class="plot-panel plot-stack"><div id="fault-net" class="plot-slot fault-net-slot"></div><div id="fault-well" class="plot-slot fault-well-slot"></div></div>
+          </div>
+          <div id="growth-viewport" class="viewport growth-viewport split-viewport" data-side="true" data-panel="profile">
+            <div id="growth-scene" class="lab-scene"></div>
+            <div class="plot-panel plot-stack"><div id="growth-plot" class="plot-slot growth-plot-slot"></div><div id="growth-rocks" class="plot-slot growth-rocks-slot"></div></div>
           </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
@@ -271,6 +309,10 @@ const elements = {
   faultScene: document.querySelector('#fault-scene'),
   faultNet: document.querySelector('#fault-net'),
   faultWell: document.querySelector('#fault-well'),
+  growthViewport: document.querySelector('#growth-viewport'),
+  growthScene: document.querySelector('#growth-scene'),
+  growthPlot: document.querySelector('#growth-plot'),
+  growthRocks: document.querySelector('#growth-rocks'),
   stressViewport: document.querySelector('#stress-viewport'),
 };
 
@@ -296,6 +338,7 @@ const state = {
   anderson: { ...DEFAULT_ANDERSON },
   friction: { ...DEFAULT_FRICTION },
   fault: { ...DEFAULT_FAULT },
+  growth: { ...DEFAULT_GROWTH },
 };
 
 function currentLesson() {
@@ -335,8 +378,12 @@ function isFaultStep() {
   return isLessonView() && currentStep().visualKind === 'fault';
 }
 
+function isGrowthStep() {
+  return isLessonView() && currentStep().visualKind === 'fault-growth';
+}
+
 function isLabStep() {
-  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep() || isFaultStep();
+  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep() || isFaultStep() || isGrowthStep();
 }
 
 function quantityFor(step) {
@@ -433,6 +480,20 @@ function faultHover(ref) {
 const faultScene = new FaultScene(elements.faultScene, { onHover: faultHover });
 const faultNet = new Stereonet(elements.faultNet, { onHover: faultHover, onPick: pickFaultPole });
 const wellLogPlot = new WellLog(elements.faultWell, { onHover: faultHover });
+
+function growthHover(ref) {
+  if (!isGrowthStep()) return;
+  growthScene.highlight(ref);
+  growthPlot.highlight(ref);
+  rockPanel.highlight(ref);
+  markEquationRefs(ref);
+}
+
+/** The fault-growth lab (B9): marker beds and fault surfaces in the block, with a plot or the fault rocks beside it. */
+const growthScene = new FaultGrowthScene(elements.growthScene, { onHover: growthHover });
+const growthPlot = new XYPlot(elements.growthPlot, { onHover: growthHover });
+const rockPanel = new FaultRockPanel(elements.growthRocks, { onHover: growthHover });
+rockPanel.render();
 
 /** The vectors the student currently sees: z is hidden (zero) in the 2D view. */
 function vectorLabVectors() {
@@ -594,6 +655,9 @@ function setSceneHighlight(ref) {
   faultScene.highlight(isFaultStep() ? ref : null);
   faultNet.highlight(isFaultStep() ? ref : null);
   wellLogPlot.highlight(isFaultStep() ? ref : null);
+  growthScene.highlight(isGrowthStep() ? ref : null);
+  growthPlot.highlight(isGrowthStep() ? ref : null);
+  rockPanel.highlight(isGrowthStep() ? ref : null);
   markEquationRefs(ref);
 }
 
@@ -721,6 +785,7 @@ function liveValues() {
   if (isAndersonStep()) return andersonLiveValues();
   if (isFrictionStep()) return frictionLiveValues();
   if (isFaultStep()) return faultLiveValues();
+  if (isGrowthStep()) return growthLiveValues();
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
@@ -1732,6 +1797,448 @@ function syncFaultChrome(step) {
   elements.sceneLegend.innerHTML = legend.join('');
 }
 
+/* ---------- Fault-growth lab (B9) ---------- */
+
+const GROWTH_VIEWS = { '3d': '3D', map: 'Map', section: 'Section', fault: 'Fault face' };
+const FAULT_PLANE = planeFromStrike(0, 60);
+
+/** Synthetic D–L data (deterministic): lengths from 2 m to 50 km with D/L scattered about 0.015, mostly between 0.001 and 0.1. */
+const SYNTHETIC_DL = (() => {
+  let seed = 17;
+  const random = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  return Array.from({ length: 150 }, () => {
+    const logL = 0.3 + random() * 4.4;
+    const logRatio = Math.min(-1, Math.max(-3, -1.8 + (random() + random() + random() - 1.5) * 0.75));
+    return [10 ** logL, 10 ** (logL + logRatio)];
+  });
+})();
+
+/** Everything the fault-growth lab draws, from the step's setup and the lab state. */
+function growthModel() {
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  const lab = state.growth;
+  const colors = GROWTH_LAB.horizonColors;
+  const horizonsAt = (depths) => depths.map((depth, index) => ({ depth, color: colors[index % colors.length] }));
+  const base = { setup: options.setup, metersPerUnit: 250, contourInterval: 10, colorMax: 1, contourLevels: [], section: null, profile: null, anatomy: null, relay: null, dimension: null, scaleParts: null };
+
+  if (options.setup === 'outcrop') {
+    const setup = GROWTH_LAB.outcrop;
+    return {
+      ...base,
+      metersPerUnit: setup.metersPerUnit,
+      contourInterval: 1,
+      faults: [{ id: 'main', ref: 'fault', center: setup.center, plane: FAULT_PLANE, field: { uniform: true, dMax: setup.slip }, decay: null }],
+      horizons: horizonsAt(setup.horizons),
+      anatomy: { core: setup.core, damage: setup.damage },
+      wallLabelsNorth: 0,
+      options: { showWallLabels: true, colorFault: false },
+    };
+  }
+
+  if (options.setup === 'through') {
+    const setup = GROWTH_LAB.through;
+    const k = lab.drag;
+    return {
+      ...base,
+      faults: [{ id: 'main', ref: 'fault', center: setup.center, plane: FAULT_PLANE, field: { uniform: true, dMax: setup.slip }, drag: { k, width: setup.dragWidth }, surface: { kind: 'rect', uMin: -520, uMax: 520, wMin: -300, wMax: 300 } }],
+      horizons: horizonsAt(setup.horizons),
+      section: { x: setup.section, horizon: 1, showOffset: true, cut: true, offsetLabel: [['D', 'var'], [` = ${setup.slip} m`]] },
+      options: { showWallLabels: true, colorFault: false, showTipLine: false },
+      drag: { k, name: classifyDrag(k), slip: setup.slip, width: setup.dragWidth },
+    };
+  }
+
+  if (options.setup === 'relay') {
+    const system = relaySystem(lab.growth);
+    const refs = { A: 'segment-a', B: 'segment-b', breach: 'breach' };
+    const faults = relayFaults(system).map((fault) => ({
+      ...fault,
+      ref: refs[fault.id],
+      surface: fault.id === 'breach'
+        ? { kind: 'rect', uMin: -fault.halfLength, uMax: fault.halfLength, wMin: -RELAY.height, wMax: RELAY.height }
+        : { kind: 'ellipse', u0: fault.tipLine.u0, a: fault.tipLine.a, b: fault.tipLine.b },
+    }));
+    const half = RELAY.stepover / 2;
+    const overlap = system.overlap;
+    // The ramp's tilt along its middle line, from the moved bed.
+    const depthAt = (x) => RELAY.depth + faults.reduce((sum, fault) => sum + faultDisplacement({ x, y: 0, z: RELAY.depth }, fault).vector.z, 0);
+    const reach = Math.max(20, Math.min(Math.abs(overlap) / 2 - 5, 60));
+    const tilt = (Math.atan2(depthAt(-reach) - depthAt(reach), 2 * reach) * 180) / Math.PI;
+    let totalMax = 0;
+    for (let x = -RELAY.outerTip; x <= RELAY.outerTip; x += 5) totalMax = Math.max(totalMax, system.profile(x).total);
+    return {
+      ...base,
+      faults,
+      horizons: [{ depth: RELAY.depth, color: colors[0] }],
+      horizonShading: { range: 22 },
+      camera: { zoom: 0.66, depth: RELAY.depth },
+      contourInterval: 5,
+      // Fault surfaces stop just above the highest footwall cutoff, so the bed hides the rest from above.
+      surfaceTop: RELAY.depth - (system.target.dMax / 2) * Math.sin(Math.PI / 3) - 4,
+      colorMax: system.target.dMax,
+      options: { colorFault: true, showTipLine: false, bedContours: true },
+      relay: {
+        labels: { A: { x: -380, y: -half, z: RELAY.depth }, B: { x: 380, y: half, z: RELAY.depth }, ...(system.breach ? { breach: { x: 30, y: 30, z: RELAY.depth } } : {}) },
+        ramp: overlap > 0 ? { x: system.breach ? -80 : 0, y: 0, z: RELAY.depth } : null,
+        rampZone: overlap > 0 ? { xMin: -overlap / 2, xMax: overlap / 2, yMin: -half, yMax: half } : null,
+      },
+      system,
+      tilt,
+      totalMax,
+    };
+  }
+
+  // Isolated fault: steps 2–4. The scaling step draws the fault at the chosen size (D/L to scale).
+  const setup = GROWTH_LAB.isolated;
+  let field = { a: setup.a, b: setup.b, dMax: setup.dMax, model: lab.model };
+  let scaling = null;
+  if (options.scaling) {
+    const length = GROWTH_LAB.lengths[lab.lIndex];
+    const c = GROWTH_LAB.constants[lab.cIndex];
+    const displacement = dlScaling(length, c, lab.n);
+    const ratio = displacement / length;
+    field = { ...field, model: 'elliptical', dMax: Math.min(ratio, GROWTH_LAB.maxDisplayRatio) * GROWTH_LAB.displayLength };
+    scaling = { length, c, n: lab.n, displacement, ratio };
+  }
+  const profile = options.profile ? displacementProfile(field, { w: lab.profileW }) : null;
+  const sectionD = options.section ? displacementAt(field, lab.section, 0) : null;
+  const blockMetres = scaling ? (1000 * scaling.length) / GROWTH_LAB.displayLength : 1000;
+  return {
+    ...base,
+    faults: [{ id: 'main', ref: 'displacement', center: setup.center, plane: FAULT_PLANE, field, decay: setup.decay, surface: { kind: 'ellipse', a: setup.a, b: setup.b } }],
+    horizons: horizonsAt(setup.horizons),
+    colorMax: field.dMax,
+    contourLevels: options.contours && !scaling ? setup.contourLevels : [],
+    section: options.section ? { x: lab.section, horizon: 1, showOffset: true, cut: true, offsetLabel: [['D', 'var'], [` = ${formatNumber(sectionD, 0)} m`]] } : null,
+    profile: profile ? { w: lab.profileW, halfLength: profile.halfLength } : null,
+    dimension: scaling ? { parts: [['L', 'var'], [` = ${formatLength(scaling.length)}`]] } : null,
+    scaleParts: [[formatLength(blockMetres)]],
+    options: { showHangingWall: !options.hideHangingWall, colorFault: true, showTipLine: true, showContours: Boolean(options.contours) && !scaling, showWallLabels: !scaling, showTipLabel: true },
+    field,
+    sectionD,
+    profileSlice: profile,
+    scaling,
+  };
+}
+
+function growthControlsMarkup(step) {
+  const controls = new Set(step.controls ?? []);
+  const options = step.labOptions ?? {};
+  const lab = state.growth;
+  const parts = [];
+  const range = (id, label, min, max, stepSize, value) => `<label class="lab-control" for="${id}"><span>${label} <output id="${id}-output"></output></span><input id="${id}" class="range" type="range" min="${min}" max="${max}" step="${stepSize}" value="${value}" /></label>`;
+  if (controls.has('view')) {
+    parts.push(`
+      <div class="direction-control"><span>View</span><div class="segmented-control" role="group" aria-label="Camera view">
+        ${(options.views ?? ['3d']).map((view) => `<button type="button" data-growth-view="${view}" aria-pressed="${lab.view === view}">${GROWTH_VIEWS[view]}</button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('model')) {
+    parts.push(`
+      <div class="direction-control"><span>Model</span><div class="segmented-control" role="group" aria-label="Displacement model">
+        <button type="button" data-growth-model="elliptical" aria-pressed="${lab.model === 'elliptical'}">Elliptical</button>
+        <button type="button" data-growth-model="linear" aria-pressed="${lab.model === 'linear'}">Linear taper</button>
+      </div></div>`);
+  }
+  if (controls.has('section')) parts.push(range('growth-section-input', `Section ${inline(mi('u'))}`, -480, 480, 10, lab.section));
+  if (controls.has('profile')) parts.push(range('growth-profile-input', `Profile line ${inline(mi('w'))}`, -230, 230, 10, lab.profileW));
+  if (controls.has('length')) parts.push(range('growth-length-input', `Length ${inline(mi('L'))}`, 0, GROWTH_LAB.lengths.length - 1, 1, lab.lIndex));
+  if (controls.has('c')) parts.push(range('growth-c-input', `Constant ${inline(mi('c'))}`, 0, GROWTH_LAB.constants.length - 1, 1, lab.cIndex));
+  if (controls.has('n')) parts.push(range('growth-n-input', `Exponent ${inline(mi('n'))}`, 0.5, 1.5, 0.1, lab.n));
+  if (controls.has('growth')) {
+    const [min, max] = options.growthRange ?? [0, 1];
+    parts.push(range('growth-growth-input', 'Growth', min, max, 0.01, lab.growth));
+  }
+  if (controls.has('drag')) parts.push(range('growth-drag-input', `Drag factor ${inline(mi('k'))}`, -0.6, 0.6, 0.05, lab.drag));
+  return parts.length ? `<div class="lab-controls">${parts.join('')}</div>` : '';
+}
+
+function bindGrowthControls() {
+  const lab = () => state.growth;
+  for (const button of elements.lessonCard.querySelectorAll('[data-growth-view]')) {
+    button.addEventListener('click', () => {
+      lab().view = button.dataset.growthView;
+      growthScene.setView(lab().view);
+      syncGrowth();
+    });
+  }
+  for (const button of elements.lessonCard.querySelectorAll('[data-growth-model]')) {
+    button.addEventListener('click', () => {
+      lab().model = button.dataset.growthModel;
+      syncGrowth();
+    });
+  }
+  const bindRange = (id, key) => elements.lessonCard.querySelector(id)?.addEventListener('input', (event) => {
+    lab()[key] = Number(event.target.value);
+    syncGrowth();
+  });
+  bindRange('#growth-section-input', 'section');
+  bindRange('#growth-profile-input', 'profileW');
+  bindRange('#growth-length-input', 'lIndex');
+  bindRange('#growth-c-input', 'cIndex');
+  bindRange('#growth-n-input', 'n');
+  bindRange('#growth-growth-input', 'growth');
+  bindRange('#growth-drag-input', 'drag');
+}
+
+function initGrowth(step) {
+  state.growth = { ...DEFAULT_GROWTH, ...(step.initialLabState ?? {}) };
+  growthScene.setState(growthModel());
+  growthScene.setView(state.growth.view);
+}
+
+const STAGE_NAMES = { underlapping: 'underlapping', overlapping: 'soft-linked', breached: 'hard-linked' };
+const metreText = (value, decimals = 0) => `${formatNumber(value, decimals)} m`;
+
+/** The plot beside the block: a displacement profile, the D–L plot, the relay profiles, or the drag profile. */
+function syncGrowthPlot(step, model) {
+  const options = step.labOptions ?? {};
+  const alongStrike = { label: '<tspan font-style="italic">x</tspan> (m)', min: -500, max: 500, ticks: [-400, -200, 0, 200, 400] };
+  if (options.panel === 'profile') {
+    const field = model.field;
+    const center = displacementProfile(field, { w: 0, count: 161 });
+    const series = [];
+    const markers = [];
+    const vlines = [{ ref: 'tip-line', x: -field.a, color: '#f4f5f7', dash: '3 5' }, { ref: 'tip-line', x: field.a, color: '#f4f5f7', dash: '3 5' }];
+    if (model.profileSlice) {
+      const slice = displacementProfile(field, { w: state.growth.profileW, count: 161 });
+      series.push({ ref: 'displacement', points: center.points.map((point) => [point.u, point.d]), color: '#9aa1ad', width: 2, dash: '7 6', label: 'center line, <tspan font-style="italic">w</tspan> = 0' });
+      series.push({ ref: 'profile-line', points: slice.points.map((point) => [point.u, point.d]), color: '#e69f00', label: `profile at <tspan font-style="italic">w</tspan> = ${formatNumber(state.growth.profileW, 0)} m` });
+    } else {
+      series.push({ ref: 'displacement', points: center.points.map((point) => [point.u, point.d]), color: '#f4f5f7', label: 'middle bed' });
+    }
+    if (model.section) {
+      vlines.push({ ref: 'section', x: state.growth.section, color: '#56b4e9', dash: '6 4', width: 2.4 });
+      markers.push({ ref: 'offset', x: state.growth.section, y: model.sectionD, color: '#cc79a7', label: `${metreText(model.sectionD)}`, dx: state.growth.section > 250 ? -12 : 12, anchor: state.growth.section > 250 ? 'end' : 'start' });
+    }
+    growthPlot.setState({
+      title: 'Displacement along strike',
+      caption: 'Tip line dotted. Colors match the fault surface.',
+      x: { ...alongStrike, label: '<tspan font-style="italic">u</tspan> (m)' },
+      y: { label: '<tspan font-style="italic">D</tspan> (m)', min: 0, max: 100, ticks: [0, 20, 40, 60, 80, 100] },
+      series,
+      markers,
+      vlines,
+      colorbar: { max: field.dMax, ref: 'displacement' },
+      ariaLabel: `Displacement along strike. Peak ${metreText(field.dMax)}; zero at the tips, ${metreText(field.a)} from the center.`,
+    });
+    return;
+  }
+  if (options.panel === 'scaling') {
+    const { length, c, n, displacement } = model.scaling;
+    const lengths = [1, 1e5];
+    const lengthFormat = (value) => formatLength(value);
+    const displacementFormat = (value) => (value >= 1000 ? `${formatNumber(value / 1000, 0)} km` : value >= 1 ? `${formatNumber(value, 0)} m` : value >= 0.01 ? `${formatNumber(value * 100, 0)} cm` : `${formatNumber(value * 1000, 0)} mm`);
+    const answered = state.lessonChoiceCorrect;
+    growthPlot.setState({
+      title: 'Displacement–length scaling',
+      caption: 'Log–log axes. Gray points: synthetic faults.',
+      x: { label: '<tspan font-style="italic">L</tspan>', min: 1, max: 1e5, log: true, format: lengthFormat },
+      y: { label: '<tspan font-style="italic">D</tspan>', min: 1e-3, max: 1e4, log: true, format: displacementFormat },
+      series: [
+        { ref: 'dl-data', kind: 'points', points: SYNTHETIC_DL, color: '#9aa1ad', radius: 2.8, opacity: 0.55, label: 'synthetic faults' },
+        { ref: 'dl-data', points: lengths.map((value) => [value, 0.1 * value]), color: '#6c7380', width: 1.4, dash: '4 5' },
+        { ref: 'dl-data', points: lengths.map((value) => [value, 0.001 * value]), color: '#6c7380', width: 1.4, dash: '4 5' },
+        { ref: 'dl-line', points: Array.from({ length: 21 }, (_, index) => { const value = 10 ** (index / 4); return [value, dlScaling(value, c, n)]; }), color: '#3fd0a0', label: `<tspan font-style="italic">D</tspan> = ${formatNumber(c, 3)} <tspan font-style="italic">L</tspan><tspan dy="-0.45em" font-size="0.72em">${formatNumber(n, 1)}</tspan>` },
+      ],
+      markers: [{ ref: 'dl-point', x: length, y: displacement, color: '#e69f00', shape: 'diamond', label: answered ? `${formatLength(length)}, ${displacementFormat(displacement)}` : `${formatLength(length)}`, dx: length > 3e3 ? -14 : 14, anchor: length > 3e3 ? 'end' : 'start', key: 'this fault' }],
+      notes: [
+        { ref: 'dl-data', x: 1.6e4, y: 0.1 * 1.6e4, text: 'D/L = 0.1', dy: -12, color: '#9aa1ad' },
+        { ref: 'dl-data', x: 1.6e4, y: 0.001 * 1.6e4, text: 'D/L = 0.001', dy: 20, color: '#9aa1ad' },
+      ],
+      ariaLabel: `Log–log plot of displacement against length with the line D = c L to the n, c = ${formatNumber(c, 3)}, n = ${formatNumber(n, 1)}.`,
+    });
+    return;
+  }
+  if (options.panel === 'relay') {
+    const { system } = model;
+    const xs = Array.from({ length: 201 }, (_, index) => -500 + index * 5);
+    const samples = xs.map((x) => ({ x, ...system.profile(x) }));
+    const series = [
+      { ref: 'segment-a', points: samples.map((point) => [point.x, point.A]), color: '#56b4e9', dash: '9 6', label: '<tspan font-style="italic">D</tspan><tspan dy="0.3em" font-size="0.7em">A</tspan>' },
+      { ref: 'segment-b', points: samples.map((point) => [point.x, point.B]), color: '#e69f00', dash: '3 5', label: '<tspan font-style="italic">D</tspan><tspan dy="0.3em" font-size="0.7em">B</tspan>' },
+    ];
+    if (system.linked > 0) series.push({ ref: 'breach', points: samples.map((point) => [point.x, point.extraA + point.extraB + point.extraBreach]), color: '#cc79a7', width: 2.4, label: '<tspan font-style="italic">D</tspan><tspan dy="0.3em" font-size="0.7em">link</tspan>' });
+    if (options.target) series.push({ ref: 'target-profile', points: samples.map((point) => [point.x, point.target]), color: '#9aa1ad', width: 2, dash: '7 6', label: 'one 920 m fault' });
+    series.push({ ref: 'sum-profile', points: samples.map((point) => [point.x, point.total]), color: '#f4f5f7', width: 3.6, label: '<tspan font-style="italic">D</tspan><tspan dy="0.3em" font-size="0.7em">sum</tspan>' });
+    const overlap = system.overlap;
+    const bands = overlap > 0 ? [{ ref: 'relay-ramp', from: -overlap / 2, to: overlap / 2, color: '#3fd0a0', opacity: 0.18 }] : [{ ref: 'relay-ramp', from: overlap / 2, to: -overlap / 2, color: '#9aa1ad', opacity: 0.12 }];
+    growthPlot.setState({
+      title: 'Displacement along strike',
+      caption: overlap > 0 ? 'Green band: where the segments overlap (the ramp).' : 'Gray band: the unfaulted gap between the tips.',
+      x: alongStrike,
+      y: { label: '<tspan font-style="italic">D</tspan> (m)', min: 0, max: 110, ticks: [0, 20, 40, 60, 80, 100] },
+      series,
+      bands,
+      ariaLabel: `Displacement profiles of segments A and B and their sum, ${STAGE_NAMES[system.stage]}.`,
+    });
+    return;
+  }
+  if (options.panel === 'drag') {
+    const { k, slip, width } = model.drag;
+    const hanging = Array.from({ length: 61 }, (_, index) => { const d = (index / 60) * 450; return [d, dragDisplacement(d, { slip, k, width })]; });
+    const foot = hanging.map(([d, u]) => [-d, -u]);
+    const far = dragDisplacement(450, { slip, k, width });
+    growthPlot.setState({
+      title: 'Movement across the fault',
+      caption: 'Each wall’s movement along the dip, down positive.',
+      x: { label: 'distance from the fault (m)', min: -450, max: 450, ticks: [-400, -200, 0, 200, 400] },
+      y: { label: '<tspan font-style="italic">u</tspan> (m)', min: -60, max: 60, ticks: [-60, -30, 0, 30, 60] },
+      series: [
+        { ref: 'far-offset', points: [[-450, -slip / 2], [0, -slip / 2]], color: '#6c7380', width: 1.6, dash: '5 5' },
+        { ref: 'far-offset', points: [[0, slip / 2], [450, slip / 2]], color: '#6c7380', width: 1.6, dash: '5 5', label: 'no drag' },
+        { ref: 'drag-profile', points: foot, color: '#f4f5f7', label: `<tspan font-style="italic">u</tspan>(<tspan font-style="italic">d</tspan>), ${classifyDrag(k)}` },
+        { ref: 'drag-profile', points: hanging, color: '#f4f5f7' },
+      ],
+      vlines: [{ ref: 'fault', x: 0, color: '#d9b27c', dash: '0', width: 2.4 }],
+      markers: [
+        { ref: 'offset', x: 0, y: slip / 2, color: '#cc79a7', r: 5.5 },
+        { ref: 'offset', x: 0, y: -slip / 2, color: '#cc79a7', r: 5.5, label: `slip ${metreText(slip)}`, dx: 10, dy: 24 },
+        { ref: 'far-offset', x: 440, y: far, color: '#3fd0a0', r: 5.5, label: `far offset ${metreText(2 * far)}`, dx: -12, dy: far > 0 ? -12 : 24, anchor: 'end' },
+        { ref: 'far-offset', x: -440, y: -far, color: '#3fd0a0', r: 5.5 },
+      ],
+      notes: [
+        { x: -250, y: 50, text: '← footwall', color: '#c3c8d0' },
+        { x: 270, y: -50, text: 'hanging wall →', color: '#c3c8d0' },
+      ],
+      ariaLabel: `Movement of each wall against distance from the fault: ${classifyDrag(k)}, slip ${slip} m on the fault, ${formatNumber(2 * far, 0)} m offset far away.`,
+    });
+  }
+}
+
+function syncGrowth({ refreshInputs = false } = {}) {
+  if (!isGrowthStep()) return;
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  const lab = state.growth;
+  const model = growthModel();
+  growthScene.setState(model);
+  const panel = options.panel ?? null;
+  elements.growthViewport.dataset.side = String(Boolean(panel));
+  elements.growthViewport.dataset.panel = panel ?? 'none';
+  if (panel && panel !== 'rocks') syncGrowthPlot(step, model);
+
+  for (const button of elements.lessonCard.querySelectorAll('[data-growth-view]')) button.setAttribute('aria-pressed', String(button.dataset.growthView === lab.view));
+  for (const button of elements.lessonCard.querySelectorAll('[data-growth-model]')) button.setAttribute('aria-pressed', String(button.dataset.growthModel === lab.model));
+  for (const [id, value] of [['#growth-section-input', lab.section], ['#growth-profile-input', lab.profileW], ['#growth-length-input', lab.lIndex], ['#growth-c-input', lab.cIndex], ['#growth-n-input', lab.n], ['#growth-growth-input', lab.growth], ['#growth-drag-input', lab.drag]]) {
+    const input = elements.lessonCard.querySelector(id);
+    if (input && (refreshInputs || document.activeElement !== input)) input.value = String(value);
+  }
+  setText('#growth-section-input-output', `${formatNumber(lab.section, 0)} m ${lab.section > 0 ? 'north' : lab.section < 0 ? 'south' : ''}`.trim());
+  setText('#growth-profile-input-output', `${formatNumber(lab.profileW, 0)} m (depth ${formatNumber(GROWTH_LAB.isolated.center.z + lab.profileW * Math.sin(Math.PI / 3), 0)} m)`);
+  setText('#growth-length-input-output', formatLength(GROWTH_LAB.lengths[lab.lIndex]));
+  setText('#growth-c-input-output', formatNumber(GROWTH_LAB.constants[lab.cIndex], 3));
+  setText('#growth-n-input-output', formatNumber(lab.n, 1));
+  if (model.system) setText('#growth-growth-input-output', STAGE_NAMES[model.system.stage]);
+  setText('#growth-drag-input-output', `${formatNumber(lab.drag, 2)} (${classifyDrag(lab.drag)})`);
+  const goalCard = elements.lessonCard.querySelector('#goal-card');
+  if (goalCard) {
+    const met = isGoalMet(step, { sectionOffset: model.sectionD ?? null, overlap: model.system?.overlap ?? null, dragName: model.drag?.name ?? null });
+    goalCard.dataset.met = String(met);
+    setText('#goal-status', met ? '✓ Goal reached' : 'Not yet');
+  }
+  syncGrowthChrome(step, model);
+  syncEquationValues();
+}
+
+function resetGrowth() {
+  initGrowth(currentStep());
+  renderLessonPanel();
+  syncAll();
+}
+
+function growthLiveValues() {
+  const model = growthModel();
+  const lab = state.growth;
+  const values = {};
+  const m = (value, decimals = 0) => metres(value, decimals);
+  if (model.anatomy) {
+    const { core, damage } = model.anatomy;
+    values.zoneSum = row(num(core, 1), mo('+'), mn('2'), mo('×'), num(damage, 0));
+    values.zoneWidth = m(core + 2 * damage, 1);
+    values.coreWidth = m(core, 1);
+    values.damageWidth = m(damage, 0);
+    values.outcropSlip = m(GROWTH_LAB.outcrop.slip, 0);
+  }
+  if (model.field) {
+    values.dMax = m(model.field.dMax, 0);
+    values.a = m(model.field.a, 0);
+    values.shape = model.field.model === 'linear' ? paren(mn('1'), mo('−'), mi('r')) : sqrt(mn('1'), mo('−'), sup(mi('r'), mn('2')));
+    values.modelName = mtext(model.field.model === 'linear' ? 'linear taper' : 'elliptical');
+  }
+  if (model.sectionD !== null && model.sectionD !== undefined) {
+    values.u = m(lab.section);
+    values.dAtU = m(model.sectionD, 1);
+  }
+  if (model.profileSlice) {
+    values.profileW = m(lab.profileW);
+    values.profileLength = m(2 * model.profileSlice.halfLength);
+    values.profilePeak = m(model.profileSlice.peak, 1);
+  }
+  if (model.scaling) {
+    const { length, c, n, displacement, ratio } = model.scaling;
+    values.length = length >= 1000 ? quantityMath(formatNumber(length / 1000, 0), 'km') : m(length);
+    values.c = num(c, 3);
+    values.n = num(n, 1);
+    values.dScaled = m(displacement, displacement < 1 ? 3 : displacement < 100 ? 1 : 0);
+    values.dOverL = num(ratio, 4);
+  }
+  if (model.system) {
+    const { system } = model;
+    values.overlap = m(system.overlap);
+    values.stage = mtext(STAGE_NAMES[system.stage]);
+    values.dA = m(system.segments[0].dMax);
+    values.dB = m(system.segments[1].dMax);
+    values.dSumMax = m(model.totalMax);
+    values.rampDip = mtext(system.overlap <= 0 ? 'none: no overlap' : system.breach ? 'cut by the breach' : `dips ${formatNumber(Math.abs(model.tilt), 0)}° toward ${model.tilt >= 0 ? 'S' : 'N'}`);
+  }
+  if (model.drag) {
+    values.k = num(model.drag.k, 2);
+    values.dragName = mtext(model.drag.name);
+    values.farOffset = m(model.drag.slip * (1 - model.drag.k));
+  }
+  return values;
+}
+
+const GROWTH_SWATCHES = {
+  bed: ['#c2a878', 'solid'],
+  fault: ['#d9b27c', 'solid'],
+  displacement: ['#5ec962', 'solid'],
+  tip: ['#f4f5f7', 'solid'],
+  section: ['#56b4e9', 'solid'],
+  offset: ['#cc79a7', 'solid'],
+  profile: ['#e69f00', 'solid'],
+  core: ['#6b6259', 'solid'],
+  damage: ['#e69f00', 'dashed'],
+  slipSurface: ['#f4f5f7', 'solid'],
+  ramp: ['#3fd0a0', 'solid'],
+};
+
+function syncGrowthChrome(step, model = growthModel()) {
+  elements.interactionHint.textContent = 'Drag: orbit the block · scroll: zoom · hover a symbol or an object to link them';
+  const item = (key, label) => {
+    const [color, pattern] = GROWTH_SWATCHES[key];
+    return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
+  };
+  const legend = [item('bed', 'marker beds')];
+  if (model.anatomy) legend.push(item('core', 'fault core'), item('damage', 'damage zone'), item('slipSurface', 'slip surface'));
+  if (model.options.colorFault) {
+    legend.push(item('displacement', `fault, colored by ${inline(mi('D'))}`));
+    if (model.options.showTipLine !== false) legend.push(item('tip', 'tip line'));
+  } else if (!model.anatomy) {
+    legend.push(item('fault', 'fault'));
+  }
+  if (model.section) legend.push(item('section', 'section'), item('offset', 'offset'));
+  if (model.profile) legend.push(item('profile', 'profile line'));
+  if (model.relay?.ramp) legend.push(item('ramp', 'relay ramp'));
+  elements.sceneLegend.hidden = false;
+  elements.sceneLegend.innerHTML = legend.join('');
+}
+
 function predictionMarkup(step) {
   if (step.choices?.length) {
     return `
@@ -1784,6 +2291,7 @@ function renderLessonPanel() {
     anderson: () => andersonControlsMarkup(step),
     friction: () => `${frictionControlsMarkup(step)}${goalMarkup(step)}`,
     fault: () => `${faultControlsMarkup(step)}${goalMarkup(step)}`,
+    'fault-growth': () => `${growthControlsMarkup(step)}${goalMarkup(step)}`,
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
@@ -1809,17 +2317,22 @@ function renderLessonPanel() {
   faultScene.highlight(null);
   faultNet.highlight(null);
   wellLogPlot.highlight(null);
+  growthScene.highlight(null);
+  growthPlot.highlight(null);
+  rockPanel.highlight(null);
   bindEquationPanel();
   bindForceLabControls();
   bindVectorLabControls();
   bindAndersonControls();
   bindFrictionControls();
   bindFaultControls();
+  bindGrowthControls();
   syncForceLabReadouts();
   syncVectorLab();
   syncAnderson();
   syncFriction();
   syncFault();
+  syncGrowth();
   syncEquationValues();
 }
 
@@ -1968,6 +2481,7 @@ function applyLessonStep(index) {
     frictionScene.setSlipped(false, { animate: false });
   }
   if (step.visualKind === 'fault') initFault(step);
+  if (step.visualKind === 'fault-growth') initGrowth(step);
   if (step.visualKind === 'stress-state') stressScene.replay();
   renderLessonView();
 }
@@ -2210,6 +2724,7 @@ function syncAll() {
   const andersonActive = isAndersonStep();
   const frictionActive = isFrictionStep();
   const faultActive = isFaultStep();
+  const growthActive = isGrowthStep();
   if (forceLabActive) {
     syncForceLabChrome(step);
     syncForceLabReadouts();
@@ -2221,6 +2736,8 @@ function syncAll() {
     syncFrictionChrome(step);
   } else if (faultActive) {
     syncFaultChrome(step);
+  } else if (growthActive) {
+    syncGrowthChrome(step);
   } else {
     elements.sceneLegend.hidden = true;
     elements.interactionHint.textContent = 'Drag to orbit · scroll to zoom';
@@ -2242,7 +2759,10 @@ function syncAll() {
   faultScene.renderer.domElement.setAttribute('aria-hidden', String(!faultActive));
   elements.faultNet.setAttribute('aria-hidden', String(!faultActive));
   elements.faultWell.setAttribute('aria-hidden', String(!faultActive));
-  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive || faultActive;
+  growthScene.renderer.domElement.setAttribute('aria-hidden', String(!growthActive));
+  elements.growthPlot.setAttribute('aria-hidden', String(!growthActive));
+  elements.growthRocks.setAttribute('aria-hidden', String(!growthActive));
+  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive || faultActive || growthActive;
   stressScene.renderer.domElement.setAttribute('aria-hidden', String(labActive));
   elements.replayButton.innerHTML = labActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
   for (const button of elements.presetGrid.querySelectorAll('.preset-card')) {
@@ -2293,6 +2813,7 @@ elements.replayButton.addEventListener('click', () => {
   else if (isAndersonStep()) resetAnderson();
   else if (isFrictionStep()) resetFriction();
   else if (isFaultStep()) resetFault();
+  else if (isGrowthStep()) resetGrowth();
   else stressScene.replay();
 });
 elements.resetViewButton.addEventListener('click', () => {
@@ -2301,6 +2822,7 @@ elements.resetViewButton.addEventListener('click', () => {
   else if (isAndersonStep()) andersonScene.resetCamera();
   else if (isFrictionStep()) frictionScene.resetCamera();
   else if (isFaultStep()) faultScene.resetCamera();
+  else if (isGrowthStep()) growthScene.resetCamera();
   else stressScene.resetCamera();
 });
 elements.resetAllButton.addEventListener('click', resetAll);

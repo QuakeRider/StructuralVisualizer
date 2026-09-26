@@ -123,10 +123,46 @@ export const FAULT_SCENE_REFS = Object.freeze([
   'beach-ball',
 ]);
 
+/** Fault growth lab (B9): the block with marker horizons and fault surfaces, and the plot or fault-rock panel beside it. */
+export const GROWTH_SCENE_REFS = Object.freeze([
+  'horizon',
+  'fault',
+  'displacement',
+  'contours',
+  'tip-line',
+  'section',
+  'offset',
+  'profile-line',
+  'hanging-wall',
+  'footwall',
+  // Fault anatomy (the block and the fault-rock panel).
+  'core',
+  'damage-zone',
+  'slip-surface',
+  'breccia',
+  'gouge',
+  'cataclasite',
+  'mylonite',
+  // Linkage.
+  'segment-a',
+  'segment-b',
+  'relay-ramp',
+  'breach',
+  // Plot only.
+  'sum-profile',
+  'target-profile',
+  'dl-line',
+  'dl-data',
+  'dl-point',
+  'drag-profile',
+  'far-offset',
+]);
+
 export const SCENE_REFS = Object.freeze({
   'force-lab': FORCE_LAB_SCENE_REFS,
   'vector-lab': VECTOR_LAB_SCENE_REFS,
   anderson: ANDERSON_SCENE_REFS,
   friction: FRICTION_SCENE_REFS,
   fault: FAULT_SCENE_REFS,
+  'fault-growth': GROWTH_SCENE_REFS,
 });
