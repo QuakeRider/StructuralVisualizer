@@ -26,10 +26,7 @@ const COLORS = {
   sectionLine: 0xf4f5f7,
   offset: 0xcc79a7,
   profile: 0xe69f00,
-  core: 0x3d3833,
-  damage: 0xe69f00,
-  fracture: 0x2a2622,
-  slipSurface: 0xf4f5f7,
+  processZone: 0xcc79a7,
   edge: 0xd8dde4,
   compass: 0xc3c8d0,
   dimension: 0xc3c8d0,
@@ -41,22 +38,12 @@ const CSS = {
   contour: '#f4f5f7',
   offset: '#cc79a7',
   profile: '#e69f00',
-  core: '#f4f5f7',
-  damage: '#f0b84a',
+  processZone: '#e7a6cb',
   segment: '#f4f5f7',
   ramp: '#3fd0a0',
   compass: '#c3c8d0',
   dimension: '#c3c8d0',
 };
-
-/** A deterministic random sequence, so the fractures are the same every time. */
-function seeded(seed) {
-  let state = seed;
-  return () => {
-    state = (state * 9301 + 49297) % 233280;
-    return state / 233280;
-  };
-}
 
 /** Structure contours on a horizon: a thin dark line at each whole value of v. */
 function contourTexture() {
@@ -68,35 +55,6 @@ function contourTexture() {
   context.fillRect(0, 0, 4, 64);
   context.fillStyle = '#34302c';
   context.fillRect(0, 0, 4, 3);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  return texture;
-}
-
-/** Crushed rock for the fault core: angular light fragments in a dark matrix (schematic). */
-function coreTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const context = canvas.getContext('2d');
-  context.fillStyle = '#3d3833';
-  context.fillRect(0, 0, 128, 128);
-  const random = seeded(11);
-  for (let index = 0; index < 70; index += 1) {
-    const x = random() * 128;
-    const y = random() * 128;
-    const size = 2 + random() * 7;
-    context.fillStyle = random() > 0.5 ? '#8c8174' : '#6b6259';
-    context.beginPath();
-    for (let corner = 0; corner < 4; corner += 1) {
-      const angle = (corner / 4) * Math.PI * 2 + random();
-      const radius = size * (0.6 + random() * 0.4);
-      context[corner ? 'lineTo' : 'moveTo'](x + Math.cos(angle) * radius, y + Math.sin(angle) * radius);
-    }
-    context.fill();
-  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.wrapS = THREE.RepeatWrapping;
@@ -134,55 +92,17 @@ class FatLines {
   }
 }
 
-/** Section of the block by a plane, ordered by angle about the pole using fixed axes (so parallel sections line up). */
-function orderedSection(pole, point) {
-  const polygon = boxSection(pole, point);
-  if (polygon.length < 3) return polygon;
-  const centroid = polygon.reduce((sum, p) => sum.add(p), new THREE.Vector3()).multiplyScalar(1 / polygon.length);
-  const axisU = new THREE.Vector3(0, 1, 0).cross(pole);
-  if (axisU.lengthSq() < 1e-8) axisU.set(1, 0, 0);
-  axisU.normalize();
-  const axisV = pole.clone().cross(axisU).normalize();
-  return polygon
-    .map((p) => ({ p, angle: Math.atan2(p.clone().sub(centroid).dot(axisV), p.clone().sub(centroid).dot(axisU)) }))
-    .sort((a, b) => a.angle - b.angle)
-    .map(({ p }) => p);
-}
-
 /**
- * A slab of the block between two planes parallel to the fault (distances
- * `near` and `far` along the pole from `point`), as a closed solid.
- */
-function slabGeometry(pole, point, near, far) {
-  const a = orderedSection(pole, point.clone().add(pole.clone().multiplyScalar(near)));
-  const b = orderedSection(pole, point.clone().add(pole.clone().multiplyScalar(far)));
-  const geometry = new THREE.BufferGeometry();
-  if (a.length < 3 || a.length !== b.length) return geometry;
-  const positions = [];
-  const push = (...points) => points.forEach((p) => positions.push(p.x, p.y, p.z));
-  for (let index = 1; index < a.length - 1; index += 1) {
-    push(a[0], a[index], a[index + 1]);
-    push(b[0], b[index + 1], b[index]);
-  }
-  for (let index = 0; index < a.length; index += 1) {
-    const next = (index + 1) % a.length;
-    push(a[index], b[index], b[next], a[index], b[next], a[next]);
-  }
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-/**
- * Fault anatomy and growth (B9) in the NED frame. Marker horizons (bedding
- * surfaces) are moved by the displacement field of one or more normal faults
- * (from faultGrowth.js), so their offset shrinks to zero at each fault's tip
- * line, they bend near the fault (drag), and they tilt across a relay ramp.
- * Each fault surface is colored by its displacement D, with contours and the
- * tip line. Setups: 'outcrop' (a 40 m block with the fault core and damage
- * zone), 'isolated' (one elliptical fault in a 1 km block), 'relay' (two
- * segments, their relay ramp, and a breach), and 'through' (a fault whose
- * tips are far away, for drag). Scene refs: GROWTH_SCENE_REFS in sceneRefs.js.
+ * Fault displacement and growth (B9) in the NED frame. Marker horizons
+ * (bedding surfaces) are moved by the displacement field of one or more
+ * normal faults (from faultGrowth.js), so their offset shrinks to zero at each
+ * fault's tip line, they bend near the fault (drag), and they tilt across a
+ * relay ramp. Each fault surface is colored by its displacement D, with
+ * contours and the tip line. Setups: 'isolated' (one elliptical fault in a
+ * 1 km block), 'relay' (two segments, their relay ramp, process zones ahead of
+ * the growing tips, and a breach), and 'through' (a fault whose tips are far
+ * away, for drag). The fault zone's anatomy is B11's (FaultZoneScene.js).
+ * Scene refs: GROWTH_SCENE_REFS in sceneRefs.js.
  */
 export class FaultGrowthScene {
   constructor(container, { onHover } = {}) {
@@ -241,7 +161,6 @@ export class FaultGrowthScene {
     this.createHorizons();
     this.createSurfaces();
     this.createSection();
-    this.createAnatomy();
     this.createLabels();
     this.bindPointerEvents();
 
@@ -339,30 +258,6 @@ export class FaultGrowthScene {
     this.scene.add(this.sectionGroup, this.offsetGroup);
   }
 
-  createAnatomy() {
-    this.anatomyGroup = new THREE.Group();
-    const coreMap = coreTexture();
-    this.coreMesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshStandardMaterial({ color: 0xffffff, map: coreMap, roughness: 1, transparent: true, side: THREE.DoubleSide }));
-    this.damageMeshes = [0, 1].map(() => {
-      const mesh = new THREE.Mesh(new THREE.BufferGeometry(), new THREE.MeshBasicMaterial({ color: COLORS.damage, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide }));
-      mesh.renderOrder = 3;
-      return mesh;
-    });
-    this.damageOutline = this.fatLines(COLORS.damage, 2.2, { dashed: true, opacity: 0.95 });
-    this.slipSurface = this.fatLines(COLORS.slipSurface, 3.4);
-    this.fractures = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ color: COLORS.fracture, roughness: 1, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }), 240);
-    this.fractures.count = 0;
-    this.damageGroup = new THREE.Group();
-    this.damageGroup.add(...this.damageMeshes, this.damageOutline.object, this.fractures);
-    this.coreGroup = new THREE.Group();
-    this.coreGroup.add(this.coreMesh);
-    this.slipGroup = new THREE.Group();
-    this.slipGroup.add(this.slipSurface.object);
-    this.anatomyGroup.add(this.coreGroup, this.damageGroup, this.slipGroup);
-    this.anatomyGroup.visible = false;
-    this.scene.add(this.anatomyGroup);
-  }
-
   createLabels() {
     this.wallLabels = { foot: this.label(CSS.label), hanging: this.label(CSS.label) };
     this.wallLabels.foot.setParts([['footwall']]);
@@ -377,10 +272,11 @@ export class FaultGrowthScene {
     this.rampOutline = this.fatLines(0x3fd0a0, 3, { dashed: true, overlay: true });
     this.scene.add(this.rampOutline.object);
     this.rampLabel.setParts([['relay ramp']]);
-    this.anatomyLabels = { core: this.label(CSS.core, 0.042), damage: this.label(CSS.damage, 0.042), damage2: this.label(CSS.damage, 0.042) };
-    this.anatomyLabels.core.setParts([['fault core']]);
-    this.anatomyLabels.damage.setParts([['damage zone']]);
-    this.anatomyLabels.damage2.setParts([['damage zone']]);
+    // Process zones: cracked rock ahead of each growing tip (B11 callback).
+    this.processOutline = this.fatLines(COLORS.processZone, 2.6, { dashed: true, overlay: true });
+    this.processLabel = this.label(CSS.processZone, 0.04);
+    this.processLabel.setParts([['process zone']]);
+    this.scene.add(this.processOutline.object);
     this.dimension = { arrows: [0, 1].map(() => overlayArrow({ color: COLORS.dimension, radius: 0.012, headLength: 0.1, headRadius: 0.045 })), label: this.label(CSS.dimension, 0.042) };
     for (const arrow of this.dimension.arrows) this.scene.add(arrow.group);
   }
@@ -451,7 +347,6 @@ export class FaultGrowthScene {
     const extentX = HALF.z * mpu * 1.04;
     const extentY = HALF.x * mpu * 1.04;
     const threshold = 0.004 * mpu;
-    const coreHalf = model.anatomy ? model.anatomy.core / 2 : 0;
     const hideFault = options.showHangingWall === false ? 0 : -1;
     this.horizons.forEach((mesh, index) => {
       const horizon = model.horizons[index];
@@ -469,7 +364,6 @@ export class FaultGrowthScene {
       const shade = new THREE.Color();
       const sides = new Uint8Array(nx * ny * faultCount);
       const values = new Float32Array(nx * ny * faultCount);
-      const nearCore = new Uint8Array(nx * ny);
       for (let i = 0; i < nx; i += 1) {
         for (let j = 0; j < ny; j += 1) {
           const v = i * ny + j;
@@ -486,7 +380,6 @@ export class FaultGrowthScene {
             sides[v * faultCount + f] = result.sides[f];
             values[v * faultCount + f] = result.values[f];
           }
-          if (coreHalf && Math.abs(result.distances[0]) < coreHalf) nearCore[v] = 1;
         }
       }
       const keep = (a, b, c) => {
@@ -497,7 +390,7 @@ export class FaultGrowthScene {
           if (f === hideFault && (sa || sb || sc)) return false;
           if ((sa !== sb || sa !== sc) && Math.max(values[a * faultCount + f], values[b * faultCount + f], values[c * faultCount + f]) > threshold) return false;
         }
-        return !(nearCore[a] || nearCore[b] || nearCore[c]);
+        return true;
       };
       const indices = [];
       for (let i = 0; i < nx - 1; i += 1) {
@@ -712,69 +605,6 @@ export class FaultGrowthScene {
     }
   }
 
-  updateAnatomy() {
-    const anatomy = this.model.anatomy;
-    this.anatomyGroup.visible = Boolean(anatomy);
-    for (const label of Object.values(this.anatomyLabels)) label.sprite.visible = Boolean(anatomy);
-    if (!anatomy) return;
-    const fault = this.model.faults[0];
-    const mpu = this.model.metersPerUnit;
-    const pole = toWorld(planePole(fault.plane)).normalize();
-    const center = this.world(fault.center);
-    const core = anatomy.core / 2 / mpu;
-    const damage = (anatomy.core / 2 + anatomy.damage) / mpu;
-    this.coreMesh.geometry.dispose();
-    this.coreMesh.geometry = slabGeometry(pole, center, -core, core);
-    // Texture coordinates from world position, so the fragments keep their size.
-    const position = this.coreMesh.geometry.getAttribute('position');
-    const uvs = [];
-    for (let index = 0; index < position.count; index += 1) uvs.push(position.getZ(index) * 1.4, position.getY(index) * 1.4 + position.getX(index) * 0.8);
-    this.coreMesh.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-    this.damageMeshes[0].geometry.dispose();
-    this.damageMeshes[0].geometry = slabGeometry(pole, center, core, damage);
-    this.damageMeshes[1].geometry.dispose();
-    this.damageMeshes[1].geometry = slabGeometry(pole, center, -damage, -core);
-    const offset = (distance) => orderedSection(pole, center.clone().add(pole.clone().multiplyScalar(distance)));
-    this.damageOutline.set([offset(damage), offset(-damage)], true);
-    // The principal slip surface along the footwall side of the core.
-    this.slipSurface.set([offset(core)], true);
-    // Fractures: most next to the core, fewer outward (schematic).
-    const random = seeded(5);
-    const strike = toWorld(strikeVector(fault.plane)).normalize();
-    const updip = toWorld(dipVector(fault.plane)).multiplyScalar(-1).normalize();
-    const matrix = new THREE.Matrix4();
-    const quaternion = new THREE.Quaternion();
-    let count = 0;
-    for (let attempt = 0; attempt < 4000 && count < 240; attempt += 1) {
-      const across = core + random() * (damage - core);
-      if (random() > Math.exp(-((across - core) / (damage - core)) * 2.2)) continue;
-      const side = random() > 0.5 ? 1 : -1;
-      const alongStrike = (random() * 2 - 1) * HALF.z * 0.98;
-      const alongDip = (random() * 2 - 1) * 1.1;
-      const point = center.clone().add(pole.clone().multiplyScalar(side * across)).add(strike.clone().multiplyScalar(alongStrike)).add(updip.clone().multiplyScalar(alongDip));
-      if (point.y > BOX_MAX.y - 0.05 || point.y < BOX_MIN.y + 0.05 || Math.abs(point.x) > HALF.x - 0.05) continue;
-      // Fractures parallel to the fault or in a conjugate set, turned about the strike.
-      const turn = (random() > 0.45 ? 0 : 1.05) * (random() > 0.5 ? 1 : -1) + (random() - 0.5) * 0.35;
-      const normal = pole.clone().applyAxisAngle(strike, turn);
-      quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
-      const size = 0.05 + random() * 0.09;
-      matrix.compose(point, quaternion, new THREE.Vector3(size, size * 0.6, 1));
-      this.fractures.setMatrixAt(count, matrix);
-      count += 1;
-    }
-    this.fractures.count = count;
-    this.fractures.instanceMatrix.needsUpdate = true;
-    // Labels where the zone meets the top of the block: the core at the north end, the damage zone at the south end.
-    const atTop = (distance, north) => {
-      const point = center.clone().add(pole.clone().multiplyScalar(distance));
-      const shift = -point.y / updip.y;
-      return point.add(updip.clone().multiplyScalar(shift)).setZ(north ? -HALF.z * 0.75 : HALF.z * 0.8).add(new THREE.Vector3(0, 0.16, 0));
-    };
-    this.anatomyLabels.core.sprite.position.copy(atTop(0, true));
-    this.anatomyLabels.damage.sprite.position.copy(atTop(-(core + damage) / 2, false));
-    this.anatomyLabels.damage2.sprite.visible = false;
-  }
-
   updateLabels() {
     const model = this.model;
     // The compass sits off the block's southwest corner, or nearer the middle when the camera zooms in.
@@ -789,7 +619,7 @@ export class FaultGrowthScene {
       label.sprite.visible = showWalls && (side === 'foot' || options.showHangingWall !== false);
       if (!label.sprite.visible) continue;
       const east = side === 'foot' ? -0.66 : 0.66;
-      const north = model.wallLabelsNorth ?? 0.8;
+      const north = 0.8;
       label.sprite.position.copy(this.world({ x: HALF.z * mpu * north, y: east * HALF.x * mpu, z: 0 })).add(new THREE.Vector3(0, 0.18, 0));
     }
     const relay = model.relay;
@@ -818,6 +648,15 @@ export class FaultGrowthScene {
     } else {
       this.rampOutline.set([]);
     }
+    // Process zones: dashed ellipses on the moved bed just ahead of each growing tip.
+    const zones = relay?.processZones ?? [];
+    this.processLabel.sprite.visible = zones.length > 0;
+    this.processOutline.set(zones.map((zone) => Array.from({ length: 40 }, (_, k) => {
+      const angle = (k / 40) * Math.PI * 2;
+      const point = { x: zone.x + zone.rx * Math.cos(angle), y: zone.y + zone.ry * Math.sin(angle), z: model.horizons[0].depth };
+      return this.world(this.moved(point).point).add(new THREE.Vector3(0, 0.014, 0));
+    })), true);
+    if (zones.length) this.processLabel.sprite.position.copy(this.world(this.moved({ x: zones[0].x, y: zones[0].y, z: model.horizons[0].depth }).point)).add(new THREE.Vector3(0, 0.3, 0));
 
     // A dimension line over the fault's length, and the scale of the block.
     const dimension = model.dimension;
@@ -847,7 +686,6 @@ export class FaultGrowthScene {
     this.updateHorizons();
     this.updateSurfaces();
     this.updateSection();
-    this.updateAnatomy();
     this.updateLabels();
     this.applyHighlight();
   }
@@ -873,15 +711,12 @@ export class FaultGrowthScene {
       ...lines('profile-line', this.profileLine),
       ...lines('tip-line', this.tipLines),
       ...lines('contours', this.contourLines),
-      ...lines('slip-surface', this.slipSurface),
       ...lines('section', this.sectionLines),
       ...lines('relay-ramp', this.rampOutline),
       ['core', this.coreMesh],
-      ['damage-zone', this.fractures],
       ...this.surfaces.map((mesh) => [mesh.userData.ref ?? 'fault', mesh]),
       ...this.horizons.map((mesh) => ['horizon', mesh]),
-      ['damage-zone', this.damageMeshes[0]],
-      ['damage-zone', this.damageMeshes[1]],
+      ...lines('process-zone', this.processOutline),
       ['section', this.sectionPlane],
     ].filter(([, object]) => {
       let visible = object.visible;
@@ -914,22 +749,16 @@ export class FaultGrowthScene {
 
   highlightGroups() {
     const surfaceFor = (ref) => this.surfaces.filter((mesh) => mesh.visible && mesh.userData.ref === ref);
-    const core = [this.coreGroup];
     return {
       horizon: [this.horizonGroup],
-      fault: [...surfaceFor('fault'), this.slipGroup],
+      fault: [...surfaceFor('fault')],
       displacement: [this.surfaceGroup, this.contourLines.object],
       contours: [this.contourLines.object, ...this.contourLabels.map((label) => label.sprite)],
       'tip-line': [this.tipLines.object, this.tipLabel.sprite],
       section: [this.sectionGroup],
       offset: [this.offsetGroup, this.offsetLabel.sprite],
       'profile-line': [this.profileLine.object, this.profileLabel.sprite],
-      core: [...core, this.anatomyLabels.core.sprite],
-      breccia: core,
-      gouge: core,
-      cataclasite: core,
-      'damage-zone': [this.damageGroup, this.anatomyLabels.damage.sprite, this.anatomyLabels.damage2.sprite],
-      'slip-surface': [this.slipGroup],
+      'process-zone': [this.processOutline.object, this.processLabel.sprite],
       'segment-a': [...surfaceFor('segment-a'), this.segmentLabels.A.sprite],
       'segment-b': [...surfaceFor('segment-b'), this.segmentLabels.B.sprite],
       breach: [...surfaceFor('breach'), this.segmentLabels.breach.sprite],
@@ -967,8 +796,8 @@ export class FaultGrowthScene {
    * model: { setup, metersPerUnit, faults (faultGrowth.js field descriptors, with
    * surface and ref), horizons [{ depth, color }], contourInterval, colorMax,
    * contourLevels, section { x, horizon, showOffset, offsetLabel } | null,
-   * profile { w, halfLength } | null, anatomy { core, damage } | null,
-   * relay { labels, ramp, rampZone } | null, dimension { parts } | null,
+   * profile { w, halfLength } | null, relay { labels, ramp, rampZone,
+   * processZones [{ x, y, rx, ry }] } | null, dimension { parts } | null,
    * scaleParts, options }.
    */
   setState(model) {

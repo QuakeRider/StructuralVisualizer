@@ -77,7 +77,7 @@ stratigraphic separation of flat beds in a vertical well: |D_z|, the throw
 - **Illustrative parts.** The block is 1000 m across and 500 m deep with 62.5 m beds; the slip is 300 m (200 m in the separation step, 150 m in the well step), large on purpose so it reads on screen. The stress state is illustrative: σ1 = 130 MPa, σ3 = 30 MPa, σ2 set by the ratio φ, with the Anderson axes (optionally tilted about σ2 in step 10). The traction arrows are to scale with each other (1 world unit ≈ 70 MPa). The "cut" view erodes the land flat down to the lower block's surface. The slickenline steps are schematic, and the step shape shown (smooth toward the missing block's motion) is one common kind of indicator, not a rule for every surface.
 - **Deliberately left out.** Stress inversion from many faults (the reduced stress tensor), moment tensors and seismic radiation beyond the first-motion quadrants, fault curvature, slip that varies along the fault, and the magnitude of slip. Wallace–Bott assumes a planar fault in one uniform stress with no interaction between faults; the lesson says so.
 
-### Fault anatomy and growth (lesson B9)
+### Fault displacement and growth (lesson B9)
 
 Same geological frame (x north, y east, z down). All faults are normal faults striking north and dipping 60° east (the relay breach strikes northeast). On a fault, u runs along strike and w down the dip from its center, and d is the distance from it along the downward pole. D is the displacement (slip) between the walls at a point. Exact within these stated models:
 
@@ -93,8 +93,29 @@ linkage            D_sum(x) = D_A(x) + D_B(x) (+ the linked slip after the breac
 
 - **Exact parts.** The displacement on the fault surface, its contours and tip line, the profile along any line, the section offsets, D = c Lⁿ and the point on the log–log plot, the drag profile and far-field offset, and the summed relay profiles, each for its stated model. The marker beds are moved exactly by the modeled displacement field.
 - **Idealizations, stated in the lesson.** The elliptical and linear tip-line models are two idealized shapes (measured profiles vary, often between them); the bell profile of the relay segments stands for the steeper tips of interacting segments. Each wall carries half the slip, and the fade away from the fault (Λ = 350 m, or 180 m in the relay) is a simple stand-in for an elastic dislocation field; it produces reverse drag. The relay model keeps the outer tips fixed, grows each segment with D = cL, breaches the ramp at 120 m of overlap, and then adds slip in proportion to the deficit against one fault of the whole length. The drag factor k and length λ = 80 m are illustrative. Superposed fault fields are added, which is fine for display but not a mechanical model.
-- **Illustrative parts.** Displacements use D/L = 0.1 (at the high end of real faults) so they read on screen, and the relay ramp dips more steeply than most real ramps for the same reason. The 40 m outcrop's core (0.8 m) and damage zones (5 m) are typical sizes, not a scaling law; its fractures are schematic, and the fault-rock drawings are schematic, not photographs. The D–L points are synthetic, spread like published data (D/L mostly between 0.001 and 0.1). The step 4 block shows the fault at the chosen size with D/L to scale up to 0.25.
+- **Illustrative parts.** Displacements use D/L = 0.1 (at the high end of real faults) so they read on screen, and the relay ramp dips more steeply than most real ramps for the same reason. The process zones ahead of the growing relay tips (35 m ahead, dashed loops) are schematic markers, not a fracture-mechanics model. The fault zone's anatomy and fault rocks are B11's. The D–L points are synthetic, spread like published data (D/L mostly between 0.001 and 0.1). The step 4 block shows the fault at the chosen size with D/L to scale up to 0.25.
 - **Deliberately left out.** Fault-seal analysis (juxtaposition, shale smear), seismic interpretation, earthquake rupture mechanics, the mechanics of fault growth and interaction (stress shadows, elastic dislocation fields), and regional fault systems.
+
+### Fault zones and fault rocks (lesson B11)
+
+Same geological frame. The outcrop fault strikes north, dips 60° east, and has slipped 10 m. Widths are measured at right angles to the fault (d is the signed distance from its center plane, positive into the hanging wall); grain sizes are in millimetres. Exact, given their definitions:
+
+```text
+zone width         W = w_core + w_FW + w_HW
+clast sizes        N(>d) ∝ d^(−Df) in 3D;  N(>d) ∝ d^(−(Df−1)) in a plane slice
+fraction finer     f(d) = (d^e − d_min^e) / (d_max^e − d_min^e),  e = 3 − Df   (ln form at Df = 3)
+Sibson (1977)      matrix = grains finer than 0.1 mm; 10 / 50 / 90 % matrix; loose breccia ≥ 30 % fragments;
+                   crush breccias by fragment size: over 5 mm, 1–5 mm, under 1 mm
+Woodcock & Mort    breccia ≥ 30 % clasts of 2 mm or more; chaotic 30–60, mosaic 60–75, crackle ≥ 75 %
+heating bound      ΔT = τ D / (ρ c w),  ρ = 2700 kg/m³, c = 1000 J/(kg K)
+architecture       F_a = w_dmg / (w_core + w_dmg)   (Caine, Evans & Forster 1996)
+geotherm           T = T0 + G z,  z = (T − T0)/G
+```
+
+- **Exact parts.** The fraction finer and the matrix and 2 mm percentages for the stated distribution; the classification boundaries of each scheme; the heating bound for its assumptions (no heat loss, no latent heat); F_a; the depth of each boundary temperature for the chosen gradient; the scanline counts of the drawn traces. The slab's drawn matrix area matches the model within about 2% (tested), and its clast outlines follow the slice exponent Df − 1; area fractions in a slice equal volume fractions.
+- **Stated models, labeled on screen.** The damage density ρ(x) = ρ0 (1 + x/x0)^(−n) down to a background ρbg, with n = 0.8 (Savage & Brodsky 2011), x0 = 0.5 m, and ρbg = 0.5 per m (bands in sandstone: x0 = 2 cm, ρbg = 0.2 per m); ρ0 is set so the edge falls at the chosen width, and traces on the pavement are placed so an east–west scanline crosses ρ(d) sin δ per metre. The comminution schedule (slip from 1 cm to 100 m: d_max from 30 mm down 2.4 orders of magnitude, Df from 1.6 toward 2.58) is a rule, not a law. The typical fragment size used to name crush breccias is the volume median of the grains coarser than the matrix (a choice; Sibson names them by the dominant fragments). The boundary temperatures (cohesion from about 100 °C, calcite 250 °C, quartz 300 °C, feldspar 450 °C; earthquakes between about 100 and 300 °C), the 200 °C starting temperature, and the melting temperatures (about 1000 °C; quartz about 1700 °C) are stated round values; real boundaries vary with rock, fluids, and strain rate. "Well developed" for Caine et al.'s end-members means a core of 10 cm or more and damage zones of 1 m or more in total, a choice for this outcrop.
+- **Illustrative parts.** The width-scaling bands (core D/1000 to D/10, damage D/10 to 10D, drawn to D = 100 m) summarize published scatter; they are not data. The outcrop's widths, strands, lenses, sandstone stages, and flow arrows are schematic. Fracture traces are straight segments of one length; fractures on different faces are not the same 3D planes. Clast shapes, the foliation bands, and the pseudotachylyte vein are schematic in appearance (the areas are the model's). The damage map is a schematic plan after Kim, Peacock & Sanderson (2004). In the crustal block and the depth column the fault zone is drawn much wider than true and its widening with depth is schematic. No photographs are used.
+- **Deliberately left out.** Mylonite microstructures and shear-zone kinematics, fault-rock permeability values beyond order-of-magnitude contrasts, the mechanics of deformation bands, heat conduction and the melting energy during slip, and damage-zone saturation at large displacement beyond one sentence.
 
 ### Trigonometry of projection (lesson M2)
 

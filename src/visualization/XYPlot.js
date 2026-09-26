@@ -7,12 +7,14 @@ const COLORS = { grid: '#343a44', axis: '#9aa1ad', label: '#c3c8d0', caption: '#
 
 /**
  * A general x–y plot for lesson panels: lines, scatter points, markers,
- * vertical guides, shaded bands, and notes, on linear or log axes. Every
- * drawn item may carry a data-ref for equation–model binding. Used by B9 for
- * displacement profiles, the D–L scaling plot, and the drag profile.
+ * vertical guides, shaded bands, filled areas, and notes, on linear or log
+ * axes. Every drawn item may carry a data-ref for equation–model binding. Used
+ * by B9 for displacement profiles, the D–L scaling plot, and the drag
+ * profile, and by B11 for scanlines, width scaling, and clast sizes.
  *
- * state: { title, caption, x, y, series, markers, vlines, bands, notes,
+ * state: { title, caption, x, y, series, markers, vlines, bands, areas, notes,
  * colorbar }. Axes: { label (SVG markup), min, max, log?, ticks?, format? }.
+ * areas: { ref, points [[x, y]] (a closed polygon in data units), color, opacity?, label? }.
  * series: { ref, points [[x, y]], color, width?, dash?, kind?: 'line' |
  * 'points', radius?, opacity?, label? } (labelled series join the key).
  */
@@ -29,8 +31,8 @@ export class XYPlot {
   }
 
   setState(state) {
-    const { title = '', caption = '', x, y, series = [], markers = [], vlines = [], bands = [], notes = [], colorbar = null, ariaLabel = title } = state;
-    const key = [...series.filter((item) => item.label), ...markers.filter((item) => item.key)];
+    const { title = '', caption = '', x, y, series = [], markers = [], vlines = [], bands = [], areas = [], notes = [], colorbar = null, ariaLabel = title } = state;
+    const key = [...areas.filter((item) => item.label).map((item) => ({ ...item, kind: 'area' })), ...series.filter((item) => item.label), ...markers.filter((item) => item.key)];
     // The key sits under the title, two entries per row; the plot starts below it.
     const keyRows = Math.ceil(key.length / 2);
     const MARGIN = { ...BASE_MARGIN, top: 62 + keyRows * 23 + 34 };
@@ -65,7 +67,9 @@ export class XYPlot {
     const keyMarkup = key.map((item, index) => {
       const column = index % 2;
       const rowIndex = Math.floor(index / 2);
-      const swatch = item.kind === 'points' || item.key
+      const swatch = item.kind === 'area'
+        ? `<rect x="0" y="-13" width="26" height="14" fill="${item.color}" opacity="${Math.min((item.opacity ?? 0.3) * 1.6, 1)}" />`
+        : item.kind === 'points' || item.key
         ? `<circle cx="13" cy="-6" r="6" fill="${item.color}" stroke="#11141a" stroke-width="1.5" />`
         : `<line x1="0" y1="-6" x2="26" y2="-6" stroke="${item.color}" stroke-width="${item.width ?? 3.2}"${item.dash ? ` stroke-dasharray="${item.dash}"` : ''} />`;
       return `<g data-ref="${item.ref}" transform="translate(${MARGIN.left - 40 + column * 214} ${62 + rowIndex * 23})">${swatch}<text x="34" y="0" fill="${item.color}" class="mohr-small">${item.key ?? item.label}</text></g>`;
@@ -84,6 +88,7 @@ export class XYPlot {
           ${yTicks.filter((value) => inRange(y, value)).map((value) => `<line x1="${MARGIN.left}" y1="${f(py(value))}" x2="${WIDTH - MARGIN.right}" y2="${f(py(value))}" />`).join('')}
         </g>
         <g clip-path="url(#${clipId})">
+          ${areas.map((area) => `<g data-ref="${area.ref}"><path d="${path(area.points)} Z" fill="${area.color}" opacity="${area.opacity ?? 0.3}" stroke="none" /></g>`).join('')}
           ${bands.map((band) => `<g data-ref="${band.ref}"><rect x="${f(px(Math.max(band.from, x.min)))}" y="${MARGIN.top}" width="${f(Math.max(0, px(Math.min(band.to, x.max)) - px(Math.max(band.from, x.min))))}" height="${HEIGHT - MARGIN.top - MARGIN.bottom}" fill="${band.color}" opacity="${band.opacity ?? 0.16}" /></g>`).join('')}
         </g>
         <g stroke="${COLORS.axis}" stroke-width="1.6">

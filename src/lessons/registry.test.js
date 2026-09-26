@@ -16,6 +16,15 @@ import {
   wellLog,
 } from '../domain/faults.js';
 import { RELAY, classifyDrag, displacementAt, dlScaling, faultDisplacement, relayFaults, relaySystem } from '../domain/faultGrowth.js';
+import {
+  comminutionState,
+  damageZoneEdge,
+  depthOfTemperature,
+  frictionalHeating,
+  permeabilityStructure,
+  rockComposition,
+  sibsonClass,
+} from '../domain/faultRocks.js';
 import { lineVector, planeFromStrike, planePole } from '../domain/orientation.js';
 import { resolveTraction } from '../domain/tensor.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
@@ -43,12 +52,23 @@ const STATICS_LAB_OPTIONS = ['showResultants', 'showSupport', 'showReactions', '
 const allSteps = LESSONS.flatMap((lesson) => lesson.steps.map((step) => ({ lesson, step })));
 
 describe('curriculum catalog', () => {
-  it('lists the full 48-lesson curriculum with unique ids in unit order', () => {
-    expect(LESSONS).toHaveLength(48);
-    expect(new Set(LESSONS.map((lesson) => lesson.id)).size).toBe(48);
-    const unitNumbers = LESSONS.map((lesson) => lesson.unit);
-    expect(unitNumbers).toEqual([...unitNumbers].sort((a, b) => a - b));
-    for (const lesson of LESSONS) expect(UNITS.some((unit) => unit.number === lesson.unit)).toBe(true);
+  it('lists the full 57-lesson curriculum with unique ids in unit order', () => {
+    expect(LESSONS).toHaveLength(57);
+    expect(new Set(LESSONS.map((lesson) => lesson.id)).size).toBe(57);
+    const unitIndices = LESSONS.map((lesson) => UNITS.findIndex((unit) => unit.id === lesson.unit));
+    expect(unitIndices.every((index) => index >= 0)).toBe(true);
+    expect(unitIndices).toEqual([...unitIndices].sort((a, b) => a - b));
+  });
+
+  it('teaches Unit 3B in its own order, with B17 and B18 after Unit 6', () => {
+    const ids = (unit) => LESSONS.filter((lesson) => lesson.unit === unit).map((lesson) => lesson.id);
+    expect(ids('3B')).toEqual(['B7', 'B8', 'B10', 'B11', 'B12', 'B9', 'B13', 'B14', 'B15', 'B16']);
+    expect(ids('3B-after-6')).toEqual(['B17', 'B18']);
+    expect(UNITS.filter((unit) => unit.number === '3B')).toHaveLength(2);
+    expect(LESSONS.findIndex((lesson) => lesson.id === 'B17')).toBeGreaterThan(LESSONS.findIndex((lesson) => lesson.id === 'F7'));
+    expect(getLesson('B9').title).toBe('Fault displacement and growth');
+    expect(getLesson('B9').prerequisites).toContain('B11');
+    expect(getLesson('F6').prerequisites).toContain('B10');
   });
 
   it('references only existing lessons as prerequisites', () => {
@@ -67,8 +87,9 @@ describe('curriculum catalog', () => {
 });
 
 describe('lesson content', () => {
-  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6 to B9 (built early)', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7', 'B8', 'B9']);
+  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6 to B9 and B11 (built early)', () => {
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7', 'B8', 'B11', 'B9']);
+    expect(getLesson('B11').status).toBe('built');
     expect(getLesson('B9').status).toBe('built');
     expect(getLesson('B8').status).toBe('built');
     expect(getLesson('B6').status).toBe('built');
@@ -146,7 +167,7 @@ describe('lesson content', () => {
   });
 
   it('gives every lab step at least one bound equation', () => {
-    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction', 'fault', 'fault-growth'].includes(candidate.visualKind))) {
+    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction', 'fault', 'fault-growth', 'fault-zone'].includes(candidate.visualKind))) {
       expect(step.equations?.some((equation) => equation.symbols.length > 0), `${lesson.id}/${step.id}`).toBe(true);
     }
   });
@@ -168,7 +189,8 @@ describe('lesson navigation helpers', () => {
     expect(getNextAvailableLesson('S10').id).toBe('B6');
     expect(getNextAvailableLesson('B6').id).toBe('B7');
     expect(getNextAvailableLesson('B7').id).toBe('B8');
-    expect(getNextAvailableLesson('B8').id).toBe('B9');
+    expect(getNextAvailableLesson('B8').id).toBe('B11');
+    expect(getNextAvailableLesson('B11').id).toBe('B9');
     expect(getNextAvailableLesson('B9')).toBeNull();
   });
 });
@@ -520,11 +542,12 @@ describe('B9 fault growth lesson', () => {
   const FIELD = { a: 400, b: 240, dMax: 80, model: 'elliptical' };
 
   it('uses the fault-growth lab for every step, each with a prediction, and ends the lesson', () => {
-    expect(steps).toHaveLength(8);
+    expect(steps).toHaveLength(7);
+    expect(steps[0].id).toBe('tip-line');
     for (const candidate of steps) {
       expect(candidate.visualKind).toBe('fault-growth');
       expect(hasPrediction(candidate), candidate.id).toBe(true);
-      expect(['outcrop', 'isolated', 'relay', 'through']).toContain(candidate.labOptions.setup);
+      expect(['isolated', 'relay', 'through']).toContain(candidate.labOptions.setup);
       for (const view of candidate.labOptions.views ?? []) expect(['3d', 'map', 'section', 'fault']).toContain(view);
       if (candidate.initialLabState.view) expect(candidate.labOptions.views).toContain(candidate.initialLabState.view);
     }
@@ -574,5 +597,65 @@ describe('B9 fault growth lesson', () => {
     expect(classifyDrag(drag.initialLabState.drag)).toBe('reverse drag');
     expect(drag.goal.check({ dragName: classifyDrag(-0.6) })).toBe(true);
     expect(drag.goal.check({ dragName: classifyDrag(drag.initialLabState.drag) })).toBe(false);
+  });
+});
+
+describe('B11 fault zones lesson', () => {
+  const steps = getLesson('B11').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+
+  it('uses the fault-zone lab for every step, each with a prediction, and ends the lesson', () => {
+    expect(steps).toHaveLength(10);
+    const panels = ['damage-map', 'scanline', 'scaling', 'counts', 'fraction', 'chart', 'heating', 'depth', 'gauge'];
+    for (const candidate of steps) {
+      expect(candidate.visualKind).toBe('fault-zone');
+      expect(hasPrediction(candidate), candidate.id).toBe(true);
+      expect(['outcrop', 'sample', 'crust']).toContain(candidate.labOptions.setup);
+      for (const panel of candidate.labOptions.panels) expect(panels).toContain(panel);
+      expect(candidate.labOptions.panels.length).toBeLessThanOrEqual(2);
+      expect(candidate.labOptions.views).toContain(candidate.initialLabState.view);
+    }
+    expect(steps.at(-1).final).toBe(true);
+    expect(steps.filter((candidate) => candidate.final)).toHaveLength(1);
+  });
+
+  it('matches the numeric answers to the domain', () => {
+    expect(damageZoneEdge({ peak: 3 })).toBeCloseTo(step('scanline').answer.value, 1);
+    expect(50 / 100).toBeCloseTo(step('scaling').answer.value, 6);
+    expect(Math.abs(frictionalHeating({ tau: 50, slip: 1, width: 0.01 }) - step('melting').answer.value)).toBeLessThan(step('melting').answer.tolerance);
+    expect(depthOfTemperature(300, 25, 10)).toBeCloseTo(step('depth').answer.value, 6);
+  });
+
+  it('hides the values a numeric prompt asks for until it is answered', () => {
+    expect(step('scaling').revealAfterAnswer).toContain('coreWidth');
+    expect(step('depth').revealAfterAnswer).toContain('zQuartz');
+    expect(step('depth').initialLabState.gradient).not.toBe(25);
+  });
+
+  it('shows a slab that is still coarse at the start of the grinding step, and can reach every named rock of the goal', () => {
+    const start = comminutionState(10 ** step('grinding').initialLabState.logSlip);
+    expect(start.matrixPct).toBeLessThan(10);
+    const goal = step('naming').goal;
+    const names = new Set();
+    for (let logDMax = Math.log10(0.12); logDMax <= Math.log10(30); logDMax += 0.05) {
+      for (let Df = 1.6; Df <= 2.9; Df += 0.1) {
+        const composition = rockComposition({ dMin: 0.001, dMax: 10 ** logDMax, Df });
+        for (const cohesive of [true, false]) names.add(sibsonClass({ cohesive, ...composition }).name);
+      }
+    }
+    expect(goal.check({ madeRocks: [...names] })).toBe(true);
+    expect(goal.check({ madeRocks: ['fault gouge'] })).toBe(false);
+    for (const name of ['crush breccia', 'crush microbreccia', 'protocataclasite', 'cataclasite', 'fault breccia']) expect(names).toContain(name);
+  });
+
+  it('starts the melting step below melting and melts a thin zone', () => {
+    const { tau, logHeatSlip, logWidth } = step('melting').initialLabState;
+    expect(200 + frictionalHeating({ tau, slip: 10 ** logHeatSlip, width: 10 ** logWidth })).toBeLessThan(1000);
+    expect(200 + frictionalHeating({ tau, slip: 10 ** logHeatSlip, width: 1e-3 })).toBeGreaterThan(1000);
+  });
+
+  it('classifies the final prompt as a combined conduit–barrier', () => {
+    expect(permeabilityStructure({ core: 2, damage: 30 }).id).toBe('combined-conduit-barrier');
+    expect(step('conduit-barrier').choices.find((choice) => choice.correct).id).toBe('combined');
   });
 });

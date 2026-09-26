@@ -6,12 +6,13 @@ import s3 from './unit-2-stress/s3-normal-shear.js';
 import s7 from './unit-2-stress/s7-stress-tensor-3d.js';
 import s10 from './unit-2-stress/s10-stress-states.js';
 import b6 from './unit-3-brittle/b6-friction.js';
-import b7 from './unit-3-brittle/b7-anderson.js';
-import b8 from './unit-3-brittle/b8-faults.js';
-import b9 from './unit-3-brittle/b9-fault-growth.js';
+import b7 from './unit-3b-faults/b7-anderson.js';
+import b8 from './unit-3b-faults/b8-faults.js';
+import b9 from './unit-3b-faults/b9-fault-growth.js';
+import b11 from './unit-3b-faults/b11-fault-zones.js';
 
 /** Lesson content by id. Add each newly built lesson here. */
-const LESSON_CONTENT = new Map([m1, m2, s2, s3, s7, s10, b6, b7, b8, b9].map((lesson) => [lesson.id, lesson]));
+const LESSON_CONTENT = new Map([m1, m2, s2, s3, s7, s10, b6, b7, b8, b9, b11].map((lesson) => [lesson.id, lesson]));
 
 export const LESSON_STATUSES = Object.freeze(['planned', 'seed', 'built']);
 
