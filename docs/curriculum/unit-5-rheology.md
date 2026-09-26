@@ -204,7 +204,7 @@ It also fixes a standing limitation of the tool. The current `computeDeformation
 
 ## R6 — Controls and the brittle–ductile transition
 
-**Prerequisites:** R4, R5, B6, B7, S10. **Used later by:** F4, (parked) lithosphere/tectonics.
+**Prerequisites:** R4, R5, B6, B7, S10; B11 and B13 recommended. **Used later by:** F4, (parked) lithosphere/tectonics.
 
 **Learning objectives**
 - Explain the effects of temperature, confining pressure, strain rate, and fluids on rock behavior (brittle vs ductile).
@@ -227,7 +227,7 @@ It also fixes a standing limitation of the tool. The current `computeDeformation
 5. Terminology check: brittle vs plastic (mechanism) and ductile (style). Prompt: classify three examples.
 6. The envelope and its transition depth. Prediction: "A hotter geotherm moves the transition which way?"
 7. Compare the three Anderson regimes: thrust is strongest, normal is weakest.
-8. *Geology:* the seismogenic zone depth (~10–15 km in continents), and why deep crust flows.
+8. *Geology:* the seismogenic zone depth (~10–15 km in continents), and why deep crust flows. Point back to B11's fault-rock depth column (gouge → cataclasite → pseudotachylyte → mylonite) and B13's a − b depth profile: this lesson supplies the strength explanation for both.
 
 **Geological payoff:** Explains why earthquakes are shallow and why structures change style with depth, linking brittle (Unit 3) and ductile (Unit 6 and parked topics).
 
