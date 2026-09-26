@@ -51,3 +51,30 @@ export function strikeVector({ strike }) {
 export function dipVector({ dipDirection, dip }) {
   return lineVector(dipDirection, dip);
 }
+
+/* ---------- Rake of a line in a plane (O4 conventions, used first by B8) ---------- */
+
+/**
+ * The line in a plane at rake r (0–180°): measured in the plane from the
+ * strike direction (right-hand rule) toward the dip direction, so r = 90° is
+ * the dip line. Returned as a unit vector pointing down (or along strike).
+ */
+export function rakeVector(plane, rake) {
+  const r = rake * RAD;
+  const s = strikeVector(plane);
+  const d = dipVector(plane);
+  return { x: Math.cos(r) * s.x + Math.sin(r) * d.x, y: Math.cos(r) * s.y + Math.sin(r) * d.y, z: Math.cos(r) * s.z + Math.sin(r) * d.z };
+}
+
+/** Rake (0–180°) of a line lying in the plane; the sign of the vector does not matter. */
+export function lineToRake(plane, v) {
+  const s = strikeVector(plane);
+  const d = dipVector(plane);
+  let along = v.x * s.x + v.y * s.y + v.z * s.z;
+  let down = v.x * d.x + v.y * d.y + v.z * d.z;
+  if (down < -1e-12 || (Math.abs(down) <= 1e-12 && along < 0)) {
+    along = -along;
+    down = -down;
+  }
+  return Math.atan2(down, along) / RAD + 0;
+}

@@ -56,6 +56,27 @@ Td = (σ1 − σn)/(σ1 − σ3)
 - **Illustrative parts.** The block's layers, the length of the stress arrows, and the size of the hanging wall's offset. The traction arrows are to scale with each other (1 world unit ≈ 110 MPa).
 - **Deliberately left out.** Rate-and-state friction, cohesion on old faults, clay-gouge friction values, poroelastic coupling of Pf to total stress, and inversion of stress from data. The mapped faults in step 7 and the induced-seismicity examples in step 8 are context, not modeled sites.
 
+### Fault geometry, slip, and kinematic axes (lesson B8)
+
+Same geological frame as B6 and B7 (x north, y east, z down, compression positive). 𝐧 is the fault's downward pole, pointing into the footwall; 𝐬 is the hanging wall's slip relative to the footwall. On a vertical fault the hanging wall is, by convention, the block on the dip-direction side. Exact within these definitions:
+
+```text
+𝐬̂ = cos λ 𝐞strike + sin λ 𝐞up        (rake λ from −180° to 180°: 90° reverse, −90° normal,
+                                      0° sinistral, 180° dextral)
+s_strike = s cos λ,  s_dip = s sin λ
+slickenline rake r (0–180°): r = −λ (λ ≤ 0), r = 180° − λ (λ > 0);  sin p = sin r sin δ
+Wallace–Bott: 𝐬̂ ∥ 𝛕 = 𝐭 − (𝐭·𝐧)𝐧,  𝐭 = σ𝐧;  λ = atan2(𝛕·𝐞up, 𝛕·𝐞strike)
+P ∝ 𝐧 + 𝐬̂,  T ∝ 𝐧 − 𝐬̂,  B = 𝐧 × 𝐬̂
+beach ball: shaded where (𝐯·𝐧)(𝐯·𝐬̂) < 0 (compressional first motions, the T quadrants)
+separation of a planar marker (pole 𝐦) on a view surface: (𝐦·𝐃)/(𝐦·𝐮),  𝐮 = the fault trace
+stratigraphic separation of flat beds in a vertical well: |D_z|, the throw
+```
+
+- **Exact parts.** The slip vector and its parts, the rake and the slickenline's trend and plunge, the fault names, the Wallace–Bott slip direction and rake, the P, T, and B axes, the auxiliary plane and the beach ball (drawn as an exact even–odd fill of the two nodal half-nets on the lower-hemisphere equal-area net), the map and section separations (and the arrows showing them), and the well log.
+- **Naming convention.** Slip within 20° of pure dip-slip or pure strike-slip takes the pure name; anything else is called oblique and named by both parts. A reverse fault dipping less than 45° is called a thrust. These cut-offs are conventions, not physics.
+- **Illustrative parts.** The block is 1000 m across and 500 m deep with 62.5 m beds; the slip is 300 m (200 m in the separation step, 150 m in the well step), large on purpose so it reads on screen. The stress state is illustrative: σ1 = 130 MPa, σ3 = 30 MPa, σ2 set by the ratio φ, with the Anderson axes (optionally tilted about σ2 in step 10). The traction arrows are to scale with each other (1 world unit ≈ 70 MPa). The "cut" view erodes the land flat down to the lower block's surface. The slickenline steps are schematic, and the step shape shown (smooth toward the missing block's motion) is one common kind of indicator, not a rule for every surface.
+- **Deliberately left out.** Stress inversion from many faults (the reduced stress tensor), moment tensors and seismic radiation beyond the first-motion quadrants, fault curvature, slip that varies along the fault, and the magnitude of slip. Wallace–Bott assumes a planar fault in one uniform stress with no interaction between faults; the lesson says so.
+
 ### Trigonometry of projection (lesson M2)
 
 Everything in the M2 steps is exact, in the same x, y, z frame as M1 (z up), with angles in degrees:

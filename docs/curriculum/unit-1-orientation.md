@@ -7,7 +7,7 @@
 **Shared infrastructure first built here:**
 - **NED frame + compass rose + "outcrop block"** (O1): a block-diagram context with a north arrow and a depth axis pointing down.
 - **Orientation input widgets** (O1/O2): trend/plunge, strike/dip (RHR), and dip direction/dip, each with synchronized vector readouts.
-- **Stereonet renderer** (O3): lower hemisphere, equal-angle and equal-area, plotting lines, great circles, poles, and small circles. It is linked to a 3D reference sphere. Every later unit uses it. *An early version was built by B6 (0.10.0, built early): `src/visualization/Stereonet.js` (SVG, lower-hemisphere equal-area only) draws a raster color map, great circles, poles, principal axes by shape, lettered markers, and click/drag pole picking, bound through `data-ref`. `src/domain/stereonet.js` has `equalAreaPoint`, `equalAreaLine` (inverse), `lineFromVector`, `greatCirclePoints`, and `planeFromPole`. O3 should extend both (equal-angle, net grid, small circles, the 3D sphere) instead of starting over.*
+- **Stereonet renderer** (O3): lower hemisphere, equal-angle and equal-area, plotting lines, great circles, poles, and small circles. It is linked to a 3D reference sphere. Every later unit uses it. *An early version was built by B6 (0.10.0, built early): `src/visualization/Stereonet.js` (SVG, lower-hemisphere equal-area only) draws a raster color map, great circles, poles, principal axes by shape, lettered markers, and click/drag pole picking, bound through `data-ref`. `src/domain/stereonet.js` has `equalAreaPoint`, `equalAreaLine` (inverse), `lineFromVector`, `greatCirclePoints`, and `planeFromPole`. O3 should extend both (equal-angle, net grid, small circles, the 3D sphere) instead of starting over. B8 (0.11.0) added layers for a slip vector, an auxiliary plane, P/T/B markers, and a beach ball, and a per-lesson title and key.*
 
 ---
 
@@ -181,7 +181,7 @@
 
 **Exact vs illustrative:** exact.
 
-**Domain / scenes / tests:** `angleBetween`, `planeIntersection`, `rakeToLine`, `lineToRake`, and `planeFromTwoLines` in `orientation.js`, with tests.
+**Domain / scenes / tests:** `angleBetween`, `planeIntersection`, `rakeToLine`, `lineToRake`, and `planeFromTwoLines` in `orientation.js`, with tests. *B8 (0.11.0, built early) already added `rakeVector(plane, r)` (the line at rake r, this lesson's `rakeToLine`) and `lineToRake` to `orientation.js`, with tests, using this lesson's convention (0–180° from the RHR strike toward the dip). Reuse them.*
 
 **Out of scope:** rotations of data on the net (for example restoring tilted beds), which are parked unless F7 needs them.
 

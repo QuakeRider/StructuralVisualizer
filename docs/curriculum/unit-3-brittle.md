@@ -293,7 +293,7 @@ When B3, B4, S9, and O3 are built, revisit B6: point steps 1, 3, and 8 back to t
 - **Domain modules.** `andersonAxes`, `andersonFaults(regime, μ, shmaxTrend)`, `principalStressTensor`, `faultSlip`, and `slipSense` are in `anderson.js`; the Coulomb and Mohr helpers are in `failure.js`, and the NED plane and line helpers in `orientation.js`.
 - **Steps.** 1 the free surface; 2 which stress is vertical; 3 normal regime, with a numeric dip answer; 4 thrust regime; 5 strike-slip regime, with the sense of slip; 6 varying μ; 7 the limits of the theory; 8 inferring stress from a mapped pair (stress arrows hidden until the answer); 9 tectonic settings.
 
-When B3 is built, revisit B7: point steps 2–3 back to B3. B6 is now built (0.10.0), so B7 can add the stereonet by reusing `Stereonet.js` (axes and the conjugate great circles), and step 7 can point to B6 for reactivation.
+When B3 is built, revisit B7: point steps 2–3 back to B3. B6 is now built (0.10.0), so B7 can add the stereonet by reusing `Stereonet.js` (axes and the conjugate great circles), and step 7 can point to B6 for reactivation. B8 (0.11.0) now covers slip sense and kinematic axes, so B7's step 5 (sense of strike-slip) can point ahead to it.
 
 ---
 
@@ -334,6 +334,17 @@ When B3 is built, revisit B7: point steps 2–3 back to B3. B6 is now built (0.1
 **Out of scope:** stress inversion (the reduced stress tensor), moment tensors, and seismic wave radiation.
 
 **Acceptance criteria:** slip classification is correct for all quadrants; the separation-vs-slip demonstration works; the Wallace–Bott arrow matches `resolvedShearDirection`; P/T axes and beach balls are correct for the standard fault types.
+
+**As built (0.11.0, built early).** Built ahead of O4 and S7 for classroom use, so it stands alone:
+- **Restated prerequisites.** Step 2 introduces the rake of the slip vector (O4 gives the rake of a line), and step 6 gives the O4 rake r (0–180°) of a slickenline and sin p = sin r sin δ. Step 7 restates the traction 𝐭 = σ𝐧 in B6's form (S7).
+- **Sign conventions on screen.** 𝐧 is the downward pole, into the footwall (as in B6). 𝐬 is the hanging wall's slip. The slip's rake λ runs from −180° to 180°, measured in the fault plane from the strike direction, positive up the dip (λ = 90° reverse, −90° normal, 0° sinistral, 180° dextral: the earthquake-catalog convention). With 𝐧 pointing into the footwall the kinematic axes are **P ∝ 𝐧 + 𝐬̂ and T ∝ 𝐧 − 𝐬̂** (the spec's form with the normal reversed): the hanging wall pushes along 𝐧 and drags along 𝐬̂, and P lies halfway between. A vertical fault's hanging wall is the dip-direction block.
+- **Naming.** Slip within 20° of pure dip-slip or strike-slip takes the pure name; otherwise it is oblique, named by both parts. Reverse slip on a fault dipping under 45° is a thrust.
+- **Fault lab (`FaultScene.js`).** A 1000 m × 500 m NED block split by a fault through its center. "Moved" mode displaces the hanging wall along 𝐬 (300 m, illustrative); "cut" mode keeps both walls in the block, eroded flat to the lower block's surface, so the top is a map and the sides are cross-sections. Beds (62.5 m) and the ground grid are textured from each block's own coordinates, so they travel with it. It draws the slip vector with its strike-slip and dip-slip parts and the rake arc, a dike marker with its traces and separation arrows, a well, slickenlines with schematic steps on the exposed footwall, the principal stresses, 𝐭 and 𝛕, and P, T, B with their construction from 𝐧 and 𝐬̂. View buttons give 3D, map, and section cameras.
+- **Stereonet.** B6's `Stereonet.js` gained layers for the slip vector (with the hanging wall's sense), the auxiliary plane, P/T/B markers, the beach ball (an exact even–odd fill), and a key. **Well log.** `WellLog.js` shows the well beside the normal sequence, with the missing or repeated interval.
+- **Steps.** 1 hanging wall and footwall; 2 the slip vector and its parts (numeric); 3 naming faults (goal: make a thrust); 4 slip vs separation with a dike (goal: a slip with no map separation); 5 missing and repeated beds in a well; 6 slickenlines and rake (numeric plunge); 7 Wallace–Bott; 8 P, T, and B; 9 beach balls; 10 P and T are not σ1 and σ3 (tilting σ1 about σ2); 11 predict the rake from τ with atan2 (numeric, final).
+- **Domain modules.** `faults.js` (`faultFrame`, `slipFromRake`, `rakeFromSlip`, `lineRakeFromSlipRake`, `slipComponents`, `classifySlip`, `resolvedShearDirection`, `kinematicAxes`, `auxiliaryPlane`, `firstMotion`, `tiltAxes`, `planeThrough`, `traceSeparation`, `wellLog`) and, in `orientation.js`, `rakeVector` and `lineToRake`. The spec's `separation(marker, fault, slip, viewPlane)` is `traceSeparation`, and `beachBall(n, s)` is split into `auxiliaryPlane`, `kinematicAxes`, and `firstMotion` (the renderer draws the quadrants).
+
+When O4 and S7 are built, revisit B8: point steps 2 and 6 back to O4's rake and step 7 back to S7, and use O4's rake functions (already in `orientation.js`) there. B9 can reuse the fault lab for displacement along a fault.
 
 ---
 
