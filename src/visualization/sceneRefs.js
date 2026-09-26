@@ -96,9 +96,37 @@ export const FRICTION_SCENE_REFS = Object.freeze([
   'mapped-faults',
 ]);
 
+/** Fault lab (B8): the faulted NED block, the kinematic stereonet, and the well log. */
+export const FAULT_SCENE_REFS = Object.freeze([
+  'hanging-wall',
+  'footwall',
+  'fault',
+  'pole',
+  'slip',
+  'strike-slip',
+  'dip-slip',
+  'rake',
+  'dike',
+  'separation',
+  'well',
+  'strat-gap',
+  'sigma-1',
+  'sigma-2',
+  'sigma-3',
+  'traction',
+  'shear-stress',
+  'p-axis',
+  't-axis',
+  'b-axis',
+  // Stereonet only.
+  'auxiliary',
+  'beach-ball',
+]);
+
 export const SCENE_REFS = Object.freeze({
   'force-lab': FORCE_LAB_SCENE_REFS,
   'vector-lab': VECTOR_LAB_SCENE_REFS,
   anderson: ANDERSON_SCENE_REFS,
   friction: FRICTION_SCENE_REFS,
+  fault: FAULT_SCENE_REFS,
 });

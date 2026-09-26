@@ -23,6 +23,13 @@ const COLORS = {
   sigma3: '#56b4e9',
   marker: '#f4f5f7',
   caption: '#9aa1ad',
+  slip: '#3fd0a0',
+  auxiliary: '#c3c8d0',
+  p: '#9a8cff',
+  t: '#cc79a7',
+  b: '#c3c8d0',
+  ballLight: '#e9edf2',
+  ballDark: '#2b303b',
 };
 
 /** A dark-to-bright sequential scale (viridis stops), readable for common color-vision differences. */
@@ -50,13 +57,19 @@ const toSvg = ({ x, y }) => ({ x: CENTER.x + x * RADIUS, y: CENTER.y - y * RADIU
  * axes are marked by shape as well as color. Clicking or dragging on the net
  * picks a pole (reported through onPick). Groups carry data-ref (see
  * sceneRefs.js) for equation–model binding.
+ *
+ * Fault-kinematics layers (B8), each optional: the slip vector (a point on
+ * the fault's great circle, with an arrow showing which way the hanging wall
+ * moved), the auxiliary plane (whose pole is the slip), the P, T, and B
+ * axes, and the beach ball (the T quadrants shaded, drawn exactly with an
+ * even–odd fill of the two half-nets cut off by the nodal planes).
  */
 export class Stereonet {
   constructor(container, { onHover, onPick } = {}) {
     this.container = container;
     this.onHover = onHover;
     this.onPick = onPick;
-    this.state = { tensor: null, pf: 0, plane: null, axes: null, markers: [], options: {} };
+    this.state = { tensor: null, pf: 0, plane: null, axes: null, markers: [], slip: null, kinematic: null, auxiliary: null, options: {} };
     this.highlightRef = null;
     this.gridKey = '';
     this.canvas = document.createElement('canvas');
@@ -138,32 +151,95 @@ export class Stereonet {
   }
 
   render() {
-    const { tensor, plane, axes, markers } = this.state;
-    const options = { showMap: true, showPlane: true, showAxes: true, ...this.state.options };
-    if (!tensor) return;
+    const { tensor, plane, axes, markers, slip, kinematic, auxiliary } = this.state;
+    const options = {
+      showMap: true,
+      showPlane: true,
+      showPole: true,
+      showAxes: true,
+      showSlip: false,
+      showAuxiliary: false,
+      showKinematic: false,
+      showBeachBall: false,
+      showLegend: false,
+      title: 'Stereonet: slip tendency',
+      caption: 'Lower hemisphere, equal area. Each point is the pole of a plane.',
+      ...this.state.options,
+    };
+    if (options.showMap && !tensor) return;
     if (options.showMap) this.paintMap();
     const f = (value) => value.toFixed(1);
     const path = (points) => points.map((point, index) => {
       const { x, y } = toSvg(point);
       return `${index ? 'L' : 'M'} ${f(x)} ${f(y)}`;
     }).join(' ');
+    const halo = (d, color, width, dash = '') => `<path d="${d}" stroke="#1b1f27" stroke-width="${width + 3.1}" /><path d="${d}" stroke="${color}" stroke-width="${width}"${dash ? ` stroke-dasharray="${dash}"` : ''} />`;
 
     let planeMarkup = '';
     let ts = null;
     if (plane && options.showPlane) {
       const poleVector = planePole(plane);
       const pole = toSvg(equalAreaPoint(lineFromVector(poleVector)));
-      ts = frictionCheck(tensor, poleVector, this.state.pf).ts;
+      if (options.showMap) ts = frictionCheck(tensor, poleVector, this.state.pf).ts;
       planeMarkup = `
-        <g data-ref="plane" fill="none" stroke="${COLORS.plane}">
-          <path d="${path(greatCirclePoints(plane))}" stroke="#1b1f27" stroke-width="6.5" />
-          <path d="${path(greatCirclePoints(plane))}" stroke-width="3.4" />
-        </g>
-        <g data-ref="pole">
+        <g data-ref="${options.planeRef ?? 'plane'}" fill="none">${halo(path(greatCirclePoints(plane)), COLORS.plane, 3.4)}</g>
+        ${options.showPole ? `<g data-ref="pole">
           <circle cx="${f(pole.x)}" cy="${f(pole.y)}" r="8" fill="${COLORS.plane}" stroke="#1b1f27" stroke-width="2.4" />
           <text x="${f(pole.x + 12)}" y="${f(pole.y - 10)}" fill="${COLORS.plane}" class="mohr-small net-halo">${options.poleLabel ?? 'pole'}</text>
-        </g>`;
+        </g>` : ''}`;
     }
+
+    // Beach ball: the shaded T quadrants are where (𝐯·𝐧)(𝐯·𝐬) < 0. Each factor is negative on the half-net
+    // between a nodal plane's great circle and the primitive on its dip side (away from its lower pole),
+    // so the even–odd fill of the two half-nets is exactly the shaded region.
+    let ballMarkup = '';
+    if (options.showBeachBall && plane && slip) {
+      const half = (nodal) => {
+        const rim = Array.from({ length: 61 }, (_, index) => equalAreaPoint({ trend: nodal.strike + 180 - index * 3, plunge: 0 }));
+        return `${path([...greatCirclePoints(nodal, 121), ...rim])} Z`;
+      };
+      const aux = auxiliary ?? null;
+      const whole = `M ${CENTER.x + RADIUS} ${CENTER.y} A ${RADIUS} ${RADIUS} 0 1 0 ${CENTER.x - RADIUS} ${CENTER.y} A ${RADIUS} ${RADIUS} 0 1 0 ${CENTER.x + RADIUS} ${CENTER.y} Z`;
+      const shaded = `${half(plane)} ${aux ? half(aux) : ''} ${slip.z < 0 ? whole : ''}`;
+      ballMarkup = `<g data-ref="beach-ball">
+        <circle cx="${CENTER.x}" cy="${CENTER.y}" r="${RADIUS}" fill="${COLORS.ballLight}" />
+        <path d="${shaded}" fill="${COLORS.ballDark}" fill-rule="evenodd" clip-path="url(#net-clip)" />
+      </g>`;
+    }
+
+    const auxMarkup = options.showAuxiliary && auxiliary
+      ? `<g data-ref="auxiliary" fill="none">${halo(path(greatCirclePoints(auxiliary)), COLORS.auxiliary, 2.6, '9 7')}</g>`
+      : '';
+
+    // Slip: the hanging wall's slip line, with an arrow the way the hanging wall moved:
+    // outward for a downward (normal) component, inward for an upward (reverse) one.
+    let slipMarkup = '';
+    if (options.showSlip && slip) {
+      const net = equalAreaPoint(lineFromVector(slip));
+      const at = toSvg(net);
+      const radial = Math.hypot(net.x, net.y);
+      let arrow = '';
+      if (radial > 0.06) {
+        const ux = net.x / radial;
+        const uy = -net.y / radial;
+        const sense = slip.z < -1e-9 ? -1 : 1;
+        const from = { x: at.x + ux * 10 * sense, y: at.y + uy * 10 * sense };
+        const to = { x: at.x + ux * 38 * sense, y: at.y + uy * 38 * sense };
+        const back = { x: to.x - ux * 11 * sense, y: to.y - uy * 11 * sense };
+        const side = { x: -uy * 6.5, y: ux * 6.5 };
+        const arrowPath = `M ${f(from.x)} ${f(from.y)} L ${f(back.x)} ${f(back.y)}`;
+        const head = `M ${f(to.x)} ${f(to.y)} L ${f(back.x + side.x)} ${f(back.y + side.y)} L ${f(back.x - side.x)} ${f(back.y - side.y)} Z`;
+        arrow = `<path d="${arrowPath}" stroke="#1b1f27" stroke-width="7" /><path d="${arrowPath}" stroke="${COLORS.slip}" stroke-width="3.6" /><path d="${head}" fill="${COLORS.slip}" stroke="#1b1f27" stroke-width="1.6" />`;
+      }
+      slipMarkup = `<g data-ref="slip">${arrow}<circle cx="${f(at.x)}" cy="${f(at.y)}" r="8" fill="${COLORS.slip}" stroke="#1b1f27" stroke-width="2.4" /></g>`;
+    }
+
+    const kinematicMarkup = options.showKinematic && kinematic
+      ? [['P', 'p-axis', COLORS.p], ['T', 't-axis', COLORS.t], ['B', 'b-axis', COLORS.b]].map(([letter, ref, color]) => {
+        const { x, y } = toSvg(equalAreaPoint(kinematic[letter]));
+        return `<g data-ref="${ref}"><circle cx="${f(x)}" cy="${f(y)}" r="13" fill="${color}" stroke="#1b1f27" stroke-width="2.4" /><text x="${f(x)}" y="${f(y + 6)}" text-anchor="middle" fill="#11141a" class="mohr-small" font-weight="700" font-style="italic">${letter}</text></g>`;
+      }).join('')
+      : '';
 
     // Principal axes by shape: σ1 square, σ2 diamond, σ3 triangle. Horizontal axes appear at both ends.
     const shapes = {
@@ -173,7 +249,7 @@ export class Stereonet {
     };
     const axisMarkup = axes && options.showAxes ? ['sigma1', 'sigma2', 'sigma3'].map((key) => {
       const axis = axes[key];
-      const ends = axis.plunge > 89.9 ? [axis] : [axis, { trend: axis.trend + 180, plunge: axis.plunge }];
+      const ends = axis.plunge > 89.9 ? [axis] : axis.plunge < 0.1 ? [axis, { trend: axis.trend + 180, plunge: axis.plunge }] : [axis];
       return `<g data-ref="sigma-${key.slice(-1)}" fill="${COLORS[key]}" stroke="#1b1f27" stroke-width="2">
         ${ends.map((end, index) => {
           const net = equalAreaPoint(end);
@@ -199,17 +275,43 @@ export class Stereonet {
     const compass = [['N', 0, -1], ['E', 1, 0], ['S', 0, 1], ['W', -1, 0]];
     const slipText = this.anySlip ? 'hatched: planes that would slip' : 'no plane can slip';
 
+    // Key for the kinematic layers, in the space the slip-tendency color bar uses in B6.
+    let legendMarkup = '';
+    if (options.showLegend && !options.showMap) {
+      const entries = [];
+      if (plane && options.showPlane) entries.push([options.planeRef ?? 'plane', `<line x1="0" y1="0" x2="22" y2="0" stroke="${COLORS.plane}" stroke-width="3.4" />`, 'fault']);
+      if (options.showAuxiliary && auxiliary) entries.push(['auxiliary', `<line x1="0" y1="0" x2="22" y2="0" stroke="${COLORS.auxiliary}" stroke-width="2.6" stroke-dasharray="6 4" />`, 'auxiliary']);
+      if (options.showSlip && slip) entries.push(['slip', `<circle cx="11" cy="0" r="7" fill="${COLORS.slip}" stroke="#1b1f27" stroke-width="2" />`, 'slip']);
+      if (options.showKinematic && kinematic) {
+        for (const [letter, ref, color, word] of [['P', 'p-axis', COLORS.p, 'P axis'], ['T', 't-axis', COLORS.t, 'T axis'], ['B', 'b-axis', COLORS.b, 'B axis']]) {
+          entries.push([ref, `<circle cx="11" cy="0" r="10" fill="${color}" stroke="#1b1f27" stroke-width="2" /><text x="11" y="5" text-anchor="middle" fill="#11141a" class="mohr-small" font-weight="700" font-style="italic">${letter}</text>`, word]);
+        }
+      }
+      if (ballMarkup) entries.push(['beach-ball', `<rect x="1" y="-9" width="10" height="18" fill="${COLORS.ballDark}" /><rect x="11" y="-9" width="10" height="18" fill="${COLORS.ballLight}" /><rect x="1" y="-9" width="20" height="18" fill="none" stroke="${COLORS.primitive}" stroke-width="1.2" />`, 'shaded: T']);
+      legendMarkup = entries.map(([ref, glyph, text], index) => `<g data-ref="${ref}" transform="translate(372 ${108 + index * 34})">${glyph}<text x="30" y="5" fill="${COLORS.label}" class="mohr-small">${text}</text></g>`).join('');
+    }
+
+    const describe = [];
+    if (plane && options.showPlane) describe.push(`fault striking ${Math.round(plane.strike)}° and dipping ${Math.round(plane.dip)}°`);
+    if (options.showSlip && slip) {
+      const line = lineFromVector(slip);
+      describe.push(`slip line trending ${Math.round(line.trend)}° and plunging ${Math.round(line.plunge)}°`);
+    }
+    if (options.showKinematic && kinematic) describe.push(`P axis ${Math.round(kinematic.P.trend)}°/${Math.round(kinematic.P.plunge)}°, T axis ${Math.round(kinematic.T.trend)}°/${Math.round(kinematic.T.plunge)}°`);
+    const ariaLabel = options.showMap
+      ? `Lower-hemisphere equal-area stereonet of slip tendency. The largest slip tendency is ${formatNumber(this.maxTs ?? 0)}${ts === null ? '' : `; the current plane has slip tendency ${formatNumber(ts)}`}. ${slipText}.`
+      : `Lower-hemisphere equal-area stereonet${describe.length ? `: ${describe.join('; ')}` : ''}.`;
+
     this.container.innerHTML = `
-      <svg class="mohr-svg net-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="xMidYMid meet" role="img"
-        aria-label="Lower-hemisphere equal-area stereonet of slip tendency. The largest slip tendency is ${formatNumber(this.maxTs ?? 0)}${ts === null ? '' : `; the current plane has slip tendency ${formatNumber(ts)}`}. ${slipText}.">
+      <svg class="mohr-svg net-svg" viewBox="0 0 ${WIDTH} ${HEIGHT}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="${ariaLabel}">
         <defs>
           <clipPath id="net-clip"><circle cx="${CENTER.x}" cy="${CENTER.y}" r="${RADIUS}" /></clipPath>
           <pattern id="net-hatch" width="9" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="9" height="9" fill="transparent" /><line x1="0" y1="0" x2="0" y2="9" stroke="#11141a" stroke-width="3.2" /></pattern>
           ${options.showMap ? `<mask id="net-mask" maskUnits="userSpaceOnUse" x="${CENTER.x - RADIUS}" y="${CENTER.y - RADIUS}" width="${RADIUS * 2}" height="${RADIUS * 2}"><image href="${this.maskUrl}" x="${CENTER.x - RADIUS}" y="${CENTER.y - RADIUS}" width="${RADIUS * 2}" height="${RADIUS * 2}" preserveAspectRatio="none" /></mask>` : ''}
           <linearGradient id="net-ramp" x1="0" y1="1" x2="0" y2="0">${RAMP.map((color, index) => `<stop offset="${index / (RAMP.length - 1)}" stop-color="${color}" />`).join('')}</linearGradient>
         </defs>
-        <text class="mohr-title" x="24" y="28">Stereonet: slip tendency</text>
-        <text class="mohr-caption" x="24" y="50" fill="${COLORS.caption}">Lower hemisphere, equal area. Each point is the pole of a plane.</text>
+        <text class="mohr-title" x="24" y="28">${options.title}</text>
+        <text class="mohr-caption" x="24" y="50" fill="${COLORS.caption}">${options.caption}</text>
         ${options.showMap ? `
         <g data-ref="ts-map">
           <image href="${this.mapUrl}" x="${CENTER.x - RADIUS}" y="${CENTER.y - RADIUS}" width="${RADIUS * 2}" height="${RADIUS * 2}" preserveAspectRatio="none" clip-path="url(#net-clip)" />
@@ -222,17 +324,24 @@ export class Stereonet {
           <rect x="${BAR.x}" y="${f(barY(TS_TOP))}" width="${BAR.width}" height="${f(barY(BYERLEE.mu) - barY(TS_TOP))}" fill="url(#net-hatch)" />
           <text x="${BAR.x + BAR.width + 8}" y="${f(barY(BYERLEE.mu) + 22)}" fill="${COLORS.label}" class="mohr-small">slips</text>
         </g>` : ''}
+        ${ballMarkup}
         <circle cx="${CENTER.x}" cy="${CENTER.y}" r="${RADIUS}" fill="none" stroke="${COLORS.primitive}" stroke-width="2" />
-        <g stroke="${COLORS.primitive}" stroke-width="1.4">
+        <g stroke="${ballMarkup ? '#6b7280' : COLORS.primitive}" stroke-width="1.4">
           <line x1="${CENTER.x - 7}" y1="${CENTER.y}" x2="${CENTER.x + 7}" y2="${CENTER.y}" />
           <line x1="${CENTER.x}" y1="${CENTER.y - 7}" x2="${CENTER.x}" y2="${CENTER.y + 7}" />
+        </g>
+        <g stroke="${COLORS.primitive}" stroke-width="1.4">
           ${compass.map(([, dx, dy]) => `<line x1="${CENTER.x + dx * RADIUS}" y1="${CENTER.y + dy * RADIUS}" x2="${CENTER.x + dx * (RADIUS + 8)}" y2="${CENTER.y + dy * (RADIUS + 8)}" />`).join('')}
         </g>
         <text x="${CENTER.x - 12}" y="${CENTER.y - RADIUS - 8}" text-anchor="end" fill="${COLORS.label}" class="net-compass">N</text>
         ${ts !== null && options.showMap ? `<g data-ref="pole"><path d="M ${BAR.x - 6} ${f(barY(ts))} l -11 -7 l 0 14 z" fill="${COLORS.plane}" stroke="#1b1f27" stroke-width="1.5" /></g>` : ''}
-        ${axisMarkup}
+        ${auxMarkup}
         ${planeMarkup}
+        ${axisMarkup}
+        ${kinematicMarkup}
+        ${slipMarkup}
         ${markerMarkup}
+        ${legendMarkup}
       </svg>`;
     if (this.highlightRef) this.highlight(this.highlightRef);
   }

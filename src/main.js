@@ -13,10 +13,26 @@ import {
   principalMagnitudes,
   reactivationSigma1,
 } from './domain/failure.js';
+import {
+  auxiliaryPlane,
+  classifySlip,
+  faultFrame,
+  kinematicAxes,
+  lineRakeFromSlipRake,
+  planeThrough,
+  rakeFromSlip,
+  resolvedShearDirection,
+  slipComponents,
+  slipFromRake,
+  tiltAxes,
+  traceSeparation,
+  wellLog,
+} from './domain/faults.js';
 import { lineVector, normalizeAzimuth, planeFromStrike, planePole } from './domain/orientation.js';
-import { planeFromPole } from './domain/stereonet.js';
+import { lineFromVector, planeFromPole } from './domain/stereonet.js';
+import { resolveTraction } from './domain/tensor.js';
 import { basis, frac, hat, inline, mi, mn, mo, mtext, num, primed, row, signedTerm, squared, sub, tuple, vec } from './lessons/mathml.js';
-import { add, directionAngles, fromPolar, magnitude, polarAngle, rotate2D, scale, xyMagnitude } from './domain/vector.js';
+import { add, directionAngles, dot, fromPolar, magnitude, polarAngle, rotate2D, scale, xyMagnitude } from './domain/vector.js';
 import {
   LESSONS,
   UNITS,
@@ -32,12 +48,14 @@ import {
 } from './lessons/registry.js';
 import { AndersonScene } from './visualization/AndersonScene.js';
 import { CurvePlot } from './visualization/CurvePlot.js';
+import { FaultScene } from './visualization/FaultScene.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
 import { FrictionMohrPlot } from './visualization/FrictionMohrPlot.js';
 import { MohrPlot } from './visualization/MohrPlot.js';
 import { Stereonet } from './visualization/Stereonet.js';
 import { StressScene } from './visualization/StressScene.js';
 import { VectorScene } from './visualization/VectorScene.js';
+import { WellLog } from './visualization/WellLog.js';
 
 const DEFAULT_STATE_ID = 'uniaxial-tension';
 const DEFAULT_MAGNITUDE = 28;
@@ -50,6 +68,13 @@ const DEFAULT_ANDERSON = { regime: 'normal', mu: 0.6, slipped: false, setting: n
 const DEFAULT_FRICTION = { regime: 'normal', strike: 30, dip: 50, sigma1: 150, pf: 0, fault: null, slipped: false };
 /** B6 teaching stress state: σ3 fixed, σ2 halfway to σ1, σ1 or σ2 north–south; intact rock for comparison (illustrative). */
 const FRICTION_LAB = Object.freeze({ sigma3: 30, ratio: 0.5, shmaxTrend: 0, intact: { cohesion: 20, mu: 0.85 } });
+const DEFAULT_FAULT = { strike: 0, dip: 60, rake: -90, regime: 'normal', ratio: 0.5, tilt: 0, view: '3d', preset: null, slipped: false };
+/**
+ * B8 fault lab (NED metres, origin on the ground above the block center): the block is
+ * 1000 m across and 500 m deep, the fault passes through its center, beds are 62.5 m
+ * thick, and the slip is 300 m unless a step says otherwise (large, so it reads on screen). The stress is illustrative.
+ */
+const FAULT_LAB = Object.freeze({ sigma1: 130, sigma3: 30, shmaxTrend: 0, slipLength: 300, bed: 62.5, depth: 500, center: { x: 0, y: 0, z: 250 } });
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
 
@@ -129,6 +154,10 @@ app.innerHTML = `
           <div id="friction-viewport" class="viewport friction-viewport split-viewport" data-side="true" data-net="false">
             <div id="friction-scene" class="lab-scene"></div>
             <div class="plot-panel plot-stack"><div id="friction-mohr" class="plot-slot mohr-slot"></div><div id="friction-net" class="plot-slot net-slot"></div></div>
+          </div>
+          <div id="fault-viewport" class="viewport fault-viewport split-viewport" data-side="false" data-panel="net">
+            <div id="fault-scene" class="lab-scene"></div>
+            <div class="plot-panel plot-stack"><div id="fault-net" class="plot-slot fault-net-slot"></div><div id="fault-well" class="plot-slot fault-well-slot"></div></div>
           </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
@@ -238,6 +267,10 @@ const elements = {
   frictionScene: document.querySelector('#friction-scene'),
   frictionMohr: document.querySelector('#friction-mohr'),
   frictionNet: document.querySelector('#friction-net'),
+  faultViewport: document.querySelector('#fault-viewport'),
+  faultScene: document.querySelector('#fault-scene'),
+  faultNet: document.querySelector('#fault-net'),
+  faultWell: document.querySelector('#fault-well'),
   stressViewport: document.querySelector('#stress-viewport'),
 };
 
@@ -262,6 +295,7 @@ const state = {
   vectorLab: structuredClone(DEFAULT_VECTOR_LAB),
   anderson: { ...DEFAULT_ANDERSON },
   friction: { ...DEFAULT_FRICTION },
+  fault: { ...DEFAULT_FAULT },
 };
 
 function currentLesson() {
@@ -297,8 +331,12 @@ function isFrictionStep() {
   return isLessonView() && currentStep().visualKind === 'friction';
 }
 
+function isFaultStep() {
+  return isLessonView() && currentStep().visualKind === 'fault';
+}
+
 function isLabStep() {
-  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep();
+  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep() || isFaultStep();
 }
 
 function quantityFor(step) {
@@ -382,6 +420,19 @@ function frictionHover(ref) {
 const frictionScene = new AndersonScene(elements.frictionScene, { onHover: frictionHover });
 const frictionMohr = new FrictionMohrPlot(elements.frictionMohr, { onHover: frictionHover });
 const stereonet = new Stereonet(elements.frictionNet, { onHover: frictionHover, onPick: pickPole });
+
+function faultHover(ref) {
+  if (!isFaultStep()) return;
+  faultScene.highlight(ref);
+  faultNet.highlight(ref);
+  wellLogPlot.highlight(ref);
+  markEquationRefs(ref);
+}
+
+/** The fault lab (B8): the faulted block, a kinematic stereonet, and a well log. */
+const faultScene = new FaultScene(elements.faultScene, { onHover: faultHover });
+const faultNet = new Stereonet(elements.faultNet, { onHover: faultHover, onPick: pickFaultPole });
+const wellLogPlot = new WellLog(elements.faultWell, { onHover: faultHover });
 
 /** The vectors the student currently sees: z is hidden (zero) in the 2D view. */
 function vectorLabVectors() {
@@ -540,6 +591,9 @@ function setSceneHighlight(ref) {
   frictionScene.highlight(isFrictionStep() ? ref : null);
   frictionMohr.highlight(isFrictionStep() ? ref : null);
   stereonet.highlight(isFrictionStep() ? ref : null);
+  faultScene.highlight(isFaultStep() ? ref : null);
+  faultNet.highlight(isFaultStep() ? ref : null);
+  wellLogPlot.highlight(isFaultStep() ? ref : null);
   markEquationRefs(ref);
 }
 
@@ -666,6 +720,7 @@ function liveValues() {
   if (isVectorLabStep()) return vectorLabLiveValues();
   if (isAndersonStep()) return andersonLiveValues();
   if (isFrictionStep()) return frictionLiveValues();
+  if (isFaultStep()) return faultLiveValues();
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
@@ -1290,6 +1345,393 @@ function syncFrictionChrome(step) {
   elements.sceneLegend.innerHTML = legend.join('');
 }
 
+/* ---------- Fault lab (B8) ---------- */
+
+const ZERO_VECTOR = Object.freeze({ x: 0, y: 0, z: 0 });
+
+/** The NED plane of the block face that the Section view looks at: the face most nearly perpendicular to strike. */
+function sectionFace(plane) {
+  const strike = faultFrame(plane).strike;
+  return Math.abs(strike.x) >= Math.abs(strike.y)
+    ? planeThrough({ x: 1, y: 0, z: 0 }, { x: -FAULT_LAB.depth, y: 0, z: 0 })
+    : planeThrough({ x: 0, y: 1, z: 0 }, { x: 0, y: FAULT_LAB.depth, z: 0 });
+}
+
+/** Everything the fault lab draws, from the lab state: the fault, the slip (set by rake or by the stress), and what it offsets. */
+function faultModel() {
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  const lab = state.fault;
+  const plane = planeFromStrike(lab.strike, lab.dip);
+  const pole = planePole(plane);
+  const frame = faultFrame(plane);
+  let axes = null;
+  let tensor = null;
+  let magnitudes = null;
+  if (options.stress) {
+    axes = andersonAxes(lab.regime, FAULT_LAB.shmaxTrend);
+    if (lab.tilt) axes = tiltAxes(axes, lab.tilt);
+    magnitudes = principalMagnitudes(FAULT_LAB.sigma1, FAULT_LAB.sigma3, lab.ratio);
+    tensor = principalStressTensor(axes, magnitudes);
+  }
+  const traction = tensor ? resolveTraction(tensor, pole) : null;
+  const fromStress = options.slipSource === 'stress';
+  const slip = fromStress ? (tensor ? resolvedShearDirection(tensor, plane) : null) : slipFromRake(plane, lab.rake);
+  const rake = slip ? (fromStress ? rakeFromSlip(plane, slip) : lab.rake) : null;
+  const slipLength = options.slipLength ?? FAULT_LAB.slipLength;
+  const offset = slip ? scale(slip, slipLength) : ZERO_VECTOR;
+  const components = slip ? slipComponents(plane, offset) : null;
+  const classification = rake === null ? null : classifySlip(plane, rake);
+  const kinematic = slip ? kinematicAxes(pole, slip) : null;
+  const auxiliary = slip ? auxiliaryPlane(slip) : null;
+  const fault = planeThrough(pole, FAULT_LAB.center);
+  // In the cut (map and section) view the land is eroded flat down to the dropped block's surface.
+  const erosion = options.blockMode === 'cut' ? Math.max(0, offset.z) : 0;
+  let separation = null;
+  if (options.dike && slip) {
+    const { strike, dip, point } = options.dike;
+    const marker = planeThrough(planePole(planeFromStrike(strike, dip)), point);
+    separation = {
+      marker,
+      map: traceSeparation({ fault, marker, view: planeThrough({ x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: erosion }), offset, direction: frame.strike }),
+      section: traceSeparation({ fault, marker, view: sectionFace(plane), offset, direction: { x: 0, y: 0, z: 1 } }),
+    };
+  }
+  const log = options.well ? wellLog({ fault, offset, well: options.well, top: erosion, bottom: FAULT_LAB.depth, thickness: FAULT_LAB.bed }) : null;
+  return { plane, pole, frame, axes, tensor, magnitudes, traction, slip, rake, slipLength, offset, components, classification, kinematic, auxiliary, erosion, separation, log };
+}
+
+const FAULT_VIEWS = [['3d', '3D'], ['map', 'Map'], ['section', 'Section']];
+
+function faultControlsMarkup(step) {
+  const controls = new Set(step.controls ?? []);
+  const lab = state.fault;
+  const parts = [];
+  if (controls.has('presets')) {
+    parts.push(`
+      <div class="direction-control"><span>Fault type</span><div class="segmented-control context-control four-up" role="group" aria-label="Fault type">
+        ${step.presets.map((preset) => `<button type="button" data-fault-preset="${preset.id}" aria-pressed="${lab.preset === preset.id}">${preset.label}<small>${preset.detail}</small></button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('regime')) {
+    parts.push(`
+      <div class="direction-control"><span>Vertical principal stress</span><div class="segmented-control" role="group" aria-label="Which principal stress is vertical">
+        ${REGIME_BUTTONS.map(([regime, key]) => `<button type="button" data-fault-regime="${regime}" aria-pressed="${lab.regime === regime}">${inline(sigmaSymbol(key))} vertical</button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('view')) {
+    parts.push(`
+      <div class="direction-control"><span>View</span><div class="segmented-control" role="group" aria-label="Camera view">
+        ${FAULT_VIEWS.map(([view, label]) => `<button type="button" data-fault-view="${view}" aria-pressed="${lab.view === view}">${label}</button>`).join('')}
+      </div></div>`);
+  }
+  if (controls.has('rake')) {
+    parts.push(`<label class="lab-control" for="rake-input"><span>Rake ${inline(mi('λ'))} <output id="rake-output"></output></span><input id="rake-input" class="range" type="range" min="-180" max="180" step="5" value="${lab.rake}" /></label>`);
+  }
+  if (controls.has('strike')) {
+    parts.push(`<label class="lab-control" for="fault-strike-input"><span>Strike <output id="fault-strike-output"></output></span><input id="fault-strike-input" class="range" type="range" min="0" max="355" step="5" value="${lab.strike}" /></label>`);
+  }
+  if (controls.has('dip')) {
+    parts.push(`<label class="lab-control" for="fault-dip-input"><span>Dip <output id="fault-dip-output"></output></span><input id="fault-dip-input" class="range" type="range" min="10" max="90" step="5" value="${lab.dip}" /></label>`);
+  }
+  if (controls.has('ratio')) {
+    parts.push(`<label class="lab-control" for="ratio-input"><span>Stress ratio ${inline(mi('φ'))} <output id="ratio-output"></output></span><input id="ratio-input" class="range" type="range" min="0" max="1" step="0.05" value="${lab.ratio}" /></label>`);
+  }
+  if (controls.has('tilt')) {
+    parts.push(`<label class="lab-control" for="tilt-input"><span>Tilt ${inline(sigmaSymbol('sigma1'))} <output id="tilt-output"></output></span><input id="tilt-input" class="range" type="range" min="-45" max="75" step="5" value="${lab.tilt}" /></label>`);
+  }
+  if (controls.has('slip')) {
+    parts.push(`<button id="fault-slip-button" class="button secondary slip-button" type="button" aria-pressed="${lab.slipped}">Slip ▸</button>`);
+  }
+  return parts.length ? `<div class="lab-controls">${parts.join('')}</div>` : '';
+}
+
+/** Stereonet click or drag in the fault lab: the picked point is the fault's pole, snapped to 5°. */
+function pickFaultPole(line) {
+  if (!isFaultStep() || !currentStep().controls?.includes('strike')) return;
+  const plane = planeFromPole(line);
+  const dip = Math.min(90, Math.max(10, Math.round(plane.dip / 5) * 5));
+  state.fault.strike = normalizeAzimuth(Math.round(plane.dipDirection / 5) * 5 - 90);
+  state.fault.dip = dip;
+  state.fault.preset = null;
+  syncFault({ refreshInputs: true });
+}
+
+function bindFaultControls() {
+  const lab = () => state.fault;
+  const buttons = (selector, apply) => {
+    for (const button of elements.lessonCard.querySelectorAll(selector)) {
+      button.addEventListener('click', () => {
+        apply(button);
+        syncFault({ refreshInputs: true });
+      });
+    }
+  };
+  buttons('[data-fault-preset]', (button) => {
+    const preset = currentStep().presets.find((candidate) => candidate.id === button.dataset.faultPreset);
+    Object.assign(lab(), { strike: preset.strike, dip: preset.dip, rake: preset.rake, preset: preset.id });
+  });
+  buttons('[data-fault-regime]', (button) => {
+    lab().regime = button.dataset.faultRegime;
+  });
+  buttons('[data-fault-view]', (button) => {
+    lab().view = button.dataset.faultView;
+    faultScene.setView(lab().view);
+  });
+  const bindRange = (id, apply) => elements.lessonCard.querySelector(id)?.addEventListener('input', (event) => {
+    apply(Number(event.target.value));
+    lab().preset = null;
+    syncFault();
+  });
+  bindRange('#rake-input', (value) => { lab().rake = value; });
+  bindRange('#fault-strike-input', (value) => { lab().strike = value; });
+  bindRange('#fault-dip-input', (value) => { lab().dip = value; });
+  bindRange('#ratio-input', (value) => { lab().ratio = value; });
+  bindRange('#tilt-input', (value) => { lab().tilt = value; });
+  elements.lessonCard.querySelector('#fault-slip-button')?.addEventListener('click', () => {
+    lab().slipped = !lab().slipped;
+    syncFault();
+  });
+}
+
+function initFault(step) {
+  const initial = step.initialLabState ?? {};
+  state.fault = { ...DEFAULT_FAULT, ...initial, slipped: Boolean(step.labOptions?.slipped) };
+  // Set the scene's slip at once (no animation) and frame the step's view.
+  syncFaultScene(faultModel());
+  faultScene.setSlipped(state.fault.slipped, { animate: false });
+  faultScene.setView(state.fault.view);
+}
+
+/** Scene options for the step; with revealSlip the slip appears only after the prediction is right. */
+function faultSceneOptions(step, model) {
+  const options = step.labOptions ?? {};
+  const hideSlip = options.revealSlip && !state.lessonChoiceCorrect;
+  return {
+    blockMode: options.blockMode ?? 'moved',
+    showHangingWall: options.showHangingWall !== false,
+    showWallLabels: Boolean(options.showWallLabels),
+    showPole: Boolean(options.showPole),
+    showSlipVector: options.showSlipVector !== false && !hideSlip,
+    showComponents: Boolean(options.showComponents),
+    showRake: Boolean(options.showRake) && !hideSlip,
+    showStress: Boolean(options.showStress),
+    showTraction: Boolean(options.showTraction),
+    showKinematic: Boolean(options.showKinematic) && Boolean(model.slip),
+    showConstruction: Boolean(options.showConstruction),
+    showSlickenlines: Boolean(options.showSlickenlines),
+    showSeparation: Boolean(options.showSeparation),
+    showDike: Boolean(options.showDike),
+    showWell: Boolean(options.showWell),
+  };
+}
+
+function syncFaultScene(model) {
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  faultScene.setState({
+    plane: model.plane,
+    slip: model.slip,
+    slipLength: model.slipLength,
+    axes: model.axes,
+    tensor: model.tensor,
+    marker: model.separation?.marker ?? null,
+    separation: model.separation,
+    well: options.well ?? null,
+    wellFaultDepth: model.log?.faultDepth ?? null,
+    options: faultSceneOptions(step, model),
+  });
+}
+
+function syncFault({ refreshInputs = false } = {}) {
+  if (!isFaultStep()) return;
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  const lab = state.fault;
+  const model = faultModel();
+  const hideSlip = options.revealSlip && !state.lessonChoiceCorrect;
+  // A revealed prediction slides the hanging wall into place.
+  if (options.revealSlip && state.lessonChoiceCorrect && !lab.slipped) lab.slipped = true;
+  syncFaultScene(model);
+  faultScene.setSlipped(lab.slipped && !hideSlip);
+
+  const panel = options.panel ?? null;
+  elements.faultViewport.dataset.side = String(Boolean(panel));
+  elements.faultViewport.dataset.panel = panel ?? 'none';
+  const net = options.net ?? {};
+  if (panel === 'net') {
+    faultNet.setState({
+      plane: model.plane,
+      axes: net.axes ? model.axes : null,
+      slip: net.slip && !hideSlip ? model.slip : null,
+      kinematic: net.kinematic ? model.kinematic : null,
+      auxiliary: net.auxiliary || net.ball ? model.auxiliary : null,
+      markers: [],
+      options: {
+        showMap: false,
+        showPole: Boolean(net.pole),
+        showSlip: Boolean(net.slip) && !hideSlip,
+        showKinematic: Boolean(net.kinematic),
+        showAuxiliary: Boolean(net.auxiliary),
+        showBeachBall: Boolean(net.ball),
+        showAxes: Boolean(net.axes),
+        showLegend: true,
+        planeRef: 'fault',
+        poleLabel: '𝐧',
+        pickable: Boolean(net.pickable),
+        title: net.ball ? 'Stereonet: fault-plane solution' : 'Stereonet: fault and slip',
+        caption: 'Lower hemisphere, equal area.',
+      },
+    });
+  }
+  if (panel === 'well' && model.log) wellLogPlot.setState({ log: model.log, thickness: FAULT_LAB.bed });
+
+  for (const [selector, key] of [['[data-fault-preset]', 'preset'], ['[data-fault-regime]', 'regime'], ['[data-fault-view]', 'view']]) {
+    const data = { preset: 'faultPreset', regime: 'faultRegime', view: 'faultView' }[key];
+    for (const button of elements.lessonCard.querySelectorAll(selector)) button.setAttribute('aria-pressed', String(button.dataset[data] === lab[key]));
+  }
+  for (const [id, value] of [['#rake-input', lab.rake], ['#fault-strike-input', lab.strike], ['#fault-dip-input', lab.dip], ['#ratio-input', lab.ratio], ['#tilt-input', lab.tilt]]) {
+    const input = elements.lessonCard.querySelector(id);
+    if (input && (refreshInputs || document.activeElement !== input)) input.value = String(value);
+  }
+  const name = model.classification?.name;
+  setText('#rake-output', `${formatNumber(lab.rake, 0)}°${name ? ` (${name})` : ''}`);
+  setText('#fault-strike-output', azimuthText(lab.strike));
+  setText('#fault-dip-output', `${lab.dip}° toward ${azimuthText(model.plane.dipDirection)}`);
+  setText('#ratio-output', formatNumber(lab.ratio));
+  const s1 = model.axes?.sigma1;
+  setText('#tilt-output', s1 ? `${formatNumber(lab.tilt, 0)}°: σ1 plunges ${formatNumber(s1.plunge, 0)}°${s1.plunge < 89.5 ? ` toward ${azimuthText(s1.trend)}` : ''}` : `${lab.tilt}°`);
+  const slipButton = elements.lessonCard.querySelector('#fault-slip-button');
+  if (slipButton) {
+    slipButton.textContent = lab.slipped ? 'Undo slip' : model.slip ? 'Slip ▸' : 'Slip ▸ (no shear)';
+    slipButton.setAttribute('aria-pressed', String(lab.slipped));
+    slipButton.disabled = !model.slip;
+  }
+  const goalCard = elements.lessonCard.querySelector('#goal-card');
+  if (goalCard) {
+    const met = isGoalMet(step, { slipName: name ?? null, mapSeparation: model.separation?.map?.distance ?? null });
+    goalCard.dataset.met = String(met);
+    setText('#goal-status', met ? '✓ Goal reached' : 'Not yet');
+  }
+  syncFaultChrome(step);
+  syncEquationValues();
+}
+
+function resetFault() {
+  initFault(currentStep());
+  renderLessonPanel();
+  syncAll();
+}
+
+const lineMath = (line) => mn(`${azimuthText(line.trend)}/${formatNumber(line.plunge, 0)}°`);
+const metres = (value, decimals = 1) => quantityMath(formatNumber(value, decimals), 'm');
+
+function faultLiveValues() {
+  const model = faultModel();
+  const lab = state.fault;
+  const { rake, classification, components, slip, kinematic, traction, frame } = model;
+  const values = {
+    nVec: tuple([model.pole.x, model.pole.y, model.pole.z]),
+    nLine: lineMath(lineFromVector(model.pole)),
+    rake: rake === null ? mtext('none') : degrees(rake, 1),
+    slipName: classification ? mtext(classification.name) : mtext('no shear: the fault cannot slip'),
+    ratio: num(lab.ratio),
+  };
+  if (slip && components) {
+    values.slipLength = metres(model.slipLength, 0);
+    values.sStrike = metres(components.strikeSlip);
+    values.sDip = metres(components.dipSlip);
+    values.throw = metres(Math.abs(model.offset.z));
+    const line = lineFromVector(slip);
+    values.slipLine = lineMath(line);
+    values.plunge = degrees(line.plunge);
+    values.lineRake = degrees(lineRakeFromSlipRake(rake), 0);
+  }
+  const map = model.separation?.map;
+  if (map) {
+    if (map.distance === null) {
+      values.mapSeparation = mtext('undefined: the dike runs parallel to the fault');
+      values.mapSense = mtext('nothing: the traces never meet');
+    } else {
+      values.mapSeparation = metres(map.distance, 0);
+      const size = Math.abs(map.distance);
+      values.mapSense = mtext(size < 10 ? 'an unbroken dike' : `${formatNumber(size, 0)} m ${map.distance > 0 ? 'sinistral' : 'dextral'}`);
+    }
+  }
+  const log = model.log;
+  if (log) {
+    if (!log.gap) values.wellGap = mtext(log.faultDepth === null ? 'the well misses the fault' : 'nothing missing or repeated');
+    else {
+      values.wellGap = mtext(`${formatNumber(log.gap.thickness, 0)} m ${log.gap.kind}`);
+    }
+  }
+  if (traction) {
+    values.traction = tuple([traction.traction.x, traction.traction.y, traction.traction.z], 0);
+    values.tauVec = tuple([traction.shear.x, traction.shear.y, traction.shear.z], 1);
+    values.tauStrike = num(dot(traction.shear, frame.strike), 1);
+    values.tauUp = num(dot(traction.shear, frame.updip), 1);
+  }
+  if (kinematic) {
+    values.pLine = lineMath(kinematic.P);
+    values.tLine = lineMath(kinematic.T);
+    values.bLine = lineMath(kinematic.B);
+    if (model.axes) {
+      const s1 = lineVector(model.axes.sigma1.trend, model.axes.sigma1.plunge);
+      const angle = (Math.acos(Math.min(1, Math.abs(dot(s1, kinematic.vectors.P)))) * 180) / Math.PI;
+      values.angleS1P = degrees(angle, 0);
+    }
+  }
+  if (model.axes) values.s1Line = lineMath(model.axes.sigma1);
+  return values;
+}
+
+const FAULT_SWATCHES = {
+  sigma1: ['#f07a3c', 'solid'],
+  sigma2: ['#f0e442', 'dashed'],
+  sigma3: ['#56b4e9', 'dotted'],
+  fault: ['#d9b27c', 'solid'],
+  pole: ['#f4f5f7', 'solid'],
+  slip: ['#3fd0a0', 'solid'],
+  strikeSlip: ['#f0e442', 'dashed'],
+  dipSlip: ['#56b4e9', 'dotted'],
+  rake: ['#9a8cff', 'solid'],
+  dike: ['#f4f5f7', 'solid'],
+  separation: ['#cc79a7', 'solid'],
+  well: ['#f4f5f7', 'solid'],
+  traction: ['#e69f00', 'solid'],
+  shearStress: ['#cc79a7', 'dashed'],
+  p: ['#9a8cff', 'solid'],
+  t: ['#cc79a7', 'solid'],
+  b: ['#c3c8d0', 'dashed'],
+};
+
+function syncFaultChrome(step) {
+  const model = faultModel();
+  const options = faultSceneOptions(step, model);
+  const net = step.labOptions?.net ?? {};
+  elements.interactionHint.textContent = net.pickable && step.controls?.includes('strike')
+    ? 'Drag: orbit the block · click or drag on the stereonet to pick the fault’s pole · hover to link'
+    : 'Drag: orbit the block · scroll: zoom · hover a symbol or an object to link them';
+  const item = (key, label) => {
+    const [color, pattern] = FAULT_SWATCHES[key];
+    return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
+  };
+  const legend = [item('fault', 'fault')];
+  if (options.showStress) legend.push(item('sigma1', inline(sigmaSymbol('sigma1'))), item('sigma2', inline(sigmaSymbol('sigma2'))), item('sigma3', inline(sigmaSymbol('sigma3'))));
+  if (options.showPole) legend.push(item('pole', inline(vec('n'))));
+  if (options.showSlipVector && model.slip) legend.push(item('slip', inline(vec('s'))));
+  if (options.showComponents) legend.push(item('strikeSlip', inline(sub(mi('s'), mtext('strike')))), item('dipSlip', inline(sub(mi('s'), mtext('dip')))));
+  if (options.showRake && model.slip) legend.push(item('rake', inline(mi('λ'))));
+  if (options.showDike) legend.push(item('dike', 'dike'));
+  if (options.showSeparation) legend.push(item('separation', 'separation'));
+  if (options.showWell) legend.push(item('well', 'well'));
+  if (options.showTraction) legend.push(item('traction', inline(vec('t'))), item('shearStress', inline(vec('τ'))));
+  if (options.showKinematic) legend.push(item('p', inline(mi('P'))), item('t', inline(mi('T'))), item('b', inline(mi('B'))));
+  if (options.showSlickenlines) legend.push(item('fault', 'slickenlines (schematic)'));
+  elements.sceneLegend.hidden = false;
+  elements.sceneLegend.innerHTML = legend.join('');
+}
+
 function predictionMarkup(step) {
   if (step.choices?.length) {
     return `
@@ -1341,6 +1783,7 @@ function renderLessonPanel() {
     'vector-lab': () => `${vectorLabControlsMarkup(step)}${goalMarkup(step)}`,
     anderson: () => andersonControlsMarkup(step),
     friction: () => `${frictionControlsMarkup(step)}${goalMarkup(step)}`,
+    fault: () => `${faultControlsMarkup(step)}${goalMarkup(step)}`,
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
@@ -1363,15 +1806,20 @@ function renderLessonPanel() {
   frictionScene.highlight(null);
   frictionMohr.highlight(null);
   stereonet.highlight(null);
+  faultScene.highlight(null);
+  faultNet.highlight(null);
+  wellLogPlot.highlight(null);
   bindEquationPanel();
   bindForceLabControls();
   bindVectorLabControls();
   bindAndersonControls();
   bindFrictionControls();
+  bindFaultControls();
   syncForceLabReadouts();
   syncVectorLab();
   syncAnderson();
   syncFriction();
+  syncFault();
   syncEquationValues();
 }
 
@@ -1519,6 +1967,7 @@ function applyLessonStep(index) {
     initFriction(step);
     frictionScene.setSlipped(false, { animate: false });
   }
+  if (step.visualKind === 'fault') initFault(step);
   if (step.visualKind === 'stress-state') stressScene.replay();
   renderLessonView();
 }
@@ -1760,6 +2209,7 @@ function syncAll() {
   const vectorLabActive = isVectorLabStep();
   const andersonActive = isAndersonStep();
   const frictionActive = isFrictionStep();
+  const faultActive = isFaultStep();
   if (forceLabActive) {
     syncForceLabChrome(step);
     syncForceLabReadouts();
@@ -1769,6 +2219,8 @@ function syncAll() {
     syncAndersonChrome(step);
   } else if (frictionActive) {
     syncFrictionChrome(step);
+  } else if (faultActive) {
+    syncFaultChrome(step);
   } else {
     elements.sceneLegend.hidden = true;
     elements.interactionHint.textContent = 'Drag to orbit · scroll to zoom';
@@ -1787,7 +2239,10 @@ function syncAll() {
   frictionScene.renderer.domElement.setAttribute('aria-hidden', String(!frictionActive));
   elements.frictionMohr.setAttribute('aria-hidden', String(!frictionActive));
   elements.frictionNet.setAttribute('aria-hidden', String(!frictionActive));
-  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive;
+  faultScene.renderer.domElement.setAttribute('aria-hidden', String(!faultActive));
+  elements.faultNet.setAttribute('aria-hidden', String(!faultActive));
+  elements.faultWell.setAttribute('aria-hidden', String(!faultActive));
+  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive || faultActive;
   stressScene.renderer.domElement.setAttribute('aria-hidden', String(labActive));
   elements.replayButton.innerHTML = labActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
   for (const button of elements.presetGrid.querySelectorAll('.preset-card')) {
@@ -1837,6 +2292,7 @@ elements.replayButton.addEventListener('click', () => {
   else if (isVectorLabStep()) resetVectorLab();
   else if (isAndersonStep()) resetAnderson();
   else if (isFrictionStep()) resetFriction();
+  else if (isFaultStep()) resetFault();
   else stressScene.replay();
 });
 elements.resetViewButton.addEventListener('click', () => {
@@ -1844,6 +2300,7 @@ elements.resetViewButton.addEventListener('click', () => {
   else if (isVectorLabStep()) vectorLabScene.resetCamera();
   else if (isAndersonStep()) andersonScene.resetCamera();
   else if (isFrictionStep()) frictionScene.resetCamera();
+  else if (isFaultStep()) faultScene.resetCamera();
   else stressScene.resetCamera();
 });
 elements.resetAllButton.addEventListener('click', resetAll);

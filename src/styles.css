@@ -293,6 +293,8 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .stress-viewport { opacity: 0; pointer-events: none; }
 .app-shell[data-lesson-view='true'][data-visual-kind='friction'] .friction-viewport { opacity: 1; pointer-events: auto; }
 .app-shell[data-lesson-view='true'][data-visual-kind='friction'] .stress-viewport { opacity: 0; pointer-events: none; }
+.app-shell[data-lesson-view='true'][data-visual-kind='fault'] .fault-viewport { opacity: 1; pointer-events: auto; }
+.app-shell[data-lesson-view='true'][data-visual-kind='fault'] .stress-viewport { opacity: 0; pointer-events: none; }
 
 /* Split viewports: a 3D scene beside a 2D plot (the Mohr diagram in B7, the curve plot in M2, the Mohr diagram and stereonet in B6). The plot hides when a step does not use it. */
 .split-viewport { display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); }
@@ -328,6 +330,15 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-visual-kind='vector-lab'] .vector-lab-viewport[data-side='true'] ~ .scene-legend { right: calc(40% + 14px); }
 .app-shell[data-visual-kind='friction'] .scene-legend { right: calc(46% + 14px); }
 .app-shell[data-visual-kind='friction'] .interaction-hint { max-width: calc(54% - 32px); }
+/* B8: the faulted block beside a kinematic stereonet or a well log (one at a time). */
+.fault-viewport[data-side='true'] { grid-template-columns: minmax(0, 56fr) minmax(0, 44fr); }
+.fault-viewport[data-panel='net'] .fault-well-slot,
+.fault-viewport[data-panel='well'] .fault-net-slot { display: none; }
+.fault-net-slot, .fault-well-slot { flex: 1 1 0; }
+.fault-net-slot .net-svg { touch-action: none; }
+.app-shell[data-visual-kind='fault'] .fault-viewport[data-side='true'] ~ .scene-legend { right: calc(44% + 14px); }
+.app-shell[data-visual-kind='fault'] .fault-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(56% - 32px); }
+.mohr-svg .well-letter { fill: #11141a; font-weight: 700; }
 .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-side='true'] ~ .interaction-hint,
 .app-shell[data-visual-kind='vector-lab'] .vector-lab-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(60% - 32px); }
 .slip-button { justify-self: start; min-width: 132px; }
@@ -375,7 +386,7 @@ h3 { font-size: 17px; font-weight: 650; }
 .scene-legend .legend-line[data-pattern='dashed']::before { border-top-style: dashed; }
 .scene-legend .legend-line[data-pattern='dotted']::before { border-top-style: dotted; border-top-width: 4px; }
 .scene-legend .legend-line { color: var(--text); font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
-.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']):not([data-visual-kind='anderson']):not([data-visual-kind='friction']) .scene-legend { display: none; }
+.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']):not([data-visual-kind='anderson']):not([data-visual-kind='friction']):not([data-visual-kind='fault']) .scene-legend { display: none; }
 
 .response-strip { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(125px, 0.55fr)); border-top: 1px solid var(--border-soft); background: #15191f; }
 .response-copy, .metric { min-height: 82px; padding: 15px 17px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }
@@ -611,7 +622,8 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'][data-visual-kind='force-lab'] .replay-button,
 .app-shell[data-lesson-view='true'][data-visual-kind='vector-lab'] .replay-button,
 .app-shell[data-lesson-view='true'][data-visual-kind='anderson'] .replay-button,
-.app-shell[data-lesson-view='true'][data-visual-kind='friction'] .replay-button { display: inline-flex; }
+.app-shell[data-lesson-view='true'][data-visual-kind='friction'] .replay-button,
+.app-shell[data-lesson-view='true'][data-visual-kind='fault'] .replay-button { display: inline-flex; }
 
 .app-shell[data-mode='explore'] .lesson-panel { display: none; }
 

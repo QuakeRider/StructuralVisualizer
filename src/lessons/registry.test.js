@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { ANDERSON_REGIMES, andersonAxes, andersonFaults, principalStressTensor } from '../domain/anderson.js';
 import { frictionCheck, newFaultSigma1, principalCosines, principalMagnitudes, reactivationSigma1 } from '../domain/failure.js';
+import {
+  auxiliaryPlane,
+  classifySlip,
+  firstMotion,
+  kinematicAxes,
+  planeThrough,
+  rakeFromSlip,
+  resolvedShearDirection,
+  slipComponents,
+  slipFromRake,
+  tiltAxes,
+  traceSeparation,
+  wellLog,
+} from '../domain/faults.js';
 import { lineVector, planeFromStrike, planePole } from '../domain/orientation.js';
+import { resolveTraction } from '../domain/tensor.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
-import { magnitude, polarAngle, rotate2D } from '../domain/vector.js';
+import { dot, magnitude, polarAngle, rotate2D, scale } from '../domain/vector.js';
 import { SCENE_REFS } from '../visualization/sceneRefs.js';
 import {
   LESSONS,
@@ -51,8 +66,9 @@ describe('curriculum catalog', () => {
 });
 
 describe('lesson content', () => {
-  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6 and B7 (built early)', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7']);
+  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6, B7, and B8 (built early)', () => {
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7', 'B8']);
+    expect(getLesson('B8').status).toBe('built');
     expect(getLesson('B6').status).toBe('built');
     expect(getLesson('M2').status).toBe('built');
     expect(getLesson('B7').status).toBe('built');
@@ -128,7 +144,7 @@ describe('lesson content', () => {
   });
 
   it('gives every lab step at least one bound equation', () => {
-    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction'].includes(candidate.visualKind))) {
+    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction', 'fault'].includes(candidate.visualKind))) {
       expect(step.equations?.some((equation) => equation.symbols.length > 0), `${lesson.id}/${step.id}`).toBe(true);
     }
   });
@@ -149,7 +165,8 @@ describe('lesson navigation helpers', () => {
     expect(getNextAvailableLesson('S3').id).toBe('S7');
     expect(getNextAvailableLesson('S10').id).toBe('B6');
     expect(getNextAvailableLesson('B6').id).toBe('B7');
-    expect(getNextAvailableLesson('B7')).toBeNull();
+    expect(getNextAvailableLesson('B7').id).toBe('B8');
+    expect(getNextAvailableLesson('B8')).toBeNull();
   });
 });
 
@@ -361,5 +378,135 @@ describe('B6 friction lesson', () => {
   it('uses the stereonet only in the map steps', () => {
     const withNet = steps.filter((candidate) => candidate.labOptions.showStereonet).map((candidate) => candidate.id);
     expect(withNet).toEqual(['slip-tendency-map', 'rank-faults', 'fluid-pressure']);
+  });
+});
+
+describe('B8 fault lesson', () => {
+  const steps = getLesson('B8').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+  // The fault lab used by main.js (FAULT_LAB): 200 m of slip unless a step says otherwise, the fault
+  // through the block center at 250 m depth, σ1 = 130 and σ3 = 30 MPa, 62.5 m beds.
+  const center = { x: 0, y: 0, z: 250 };
+  const tensorFor = (regime, ratio = 0.5, tilt = 0) => principalStressTensor(tiltAxes(andersonAxes(regime, 0), tilt), principalMagnitudes(130, 30, ratio));
+  const choice = (id) => step(id).choices.find((candidate) => candidate.correct).id;
+
+  it('uses the fault lab for every step, each with a prediction, and ends the lesson', () => {
+    expect(steps).toHaveLength(11);
+    for (const candidate of steps) {
+      expect(candidate.visualKind).toBe('fault');
+      expect(hasPrediction(candidate), candidate.id).toBe(true);
+    }
+    expect(steps.at(-1).final).toBe(true);
+  });
+
+  it('checks the strike-slip part s cos λ and the slickenline plunge', () => {
+    expect(checkNumericAnswer(step('slip-vector'), '103.9').correct).toBe(true);
+    expect(checkNumericAnswer(step('slip-vector'), '60').feedback).toMatch(/dip-slip/);
+    const plane = planeFromStrike(0, 60);
+    expect(slipComponents(plane, scale(slipFromRake(plane, 30), 120)).strikeSlip).toBeCloseTo(103.9, 1);
+    expect(checkNumericAnswer(step('slickenlines'), '33.8').correct).toBe(true);
+    expect(checkNumericAnswer(step('slickenlines'), '34.6').feedback).toMatch(/sines/);
+  });
+
+  it('names λ = −135° normal–dextral, and can make a thrust by lowering the dip', () => {
+    expect(classifySlip(planeFromStrike(0, 60), -135).name).toBe('oblique normal–dextral');
+    expect(choice('classify')).toBe('normal-dextral');
+    const classify = step('classify');
+    expect(isGoalMet(classify, { slipName: classifySlip(planeFromStrike(0, 60), 90).name })).toBe(false);
+    expect(isGoalMet(classify, { slipName: classifySlip(planeFromStrike(0, 30), 90).name })).toBe(true);
+  });
+
+  it('shows 300 m of apparent sinistral map separation for pure normal slip, and a slip with none', () => {
+    const separation = step('separation');
+    const { dike } = separation.labOptions;
+    const plane = planeFromStrike(0, 60);
+    const fault = planeThrough(planePole(plane), center);
+    const marker = planeThrough(planePole(planeFromStrike(dike.strike, dike.dip)), dike.point);
+    const mapFor = (rake) => {
+      const offset = scale(slipFromRake(plane, rake), 200);
+      const view = planeThrough({ x: 0, y: 0, z: 1 }, { x: 0, y: 0, z: Math.max(0, offset.z) });
+      return traceSeparation({ fault, marker, view, offset, direction: { x: 1, y: 0, z: 0 } });
+    };
+    const normal = mapFor(-90);
+    expect(normal.distance).toBeCloseTo(300, 6);
+    expect(choice('separation')).toBe('sinistral');
+    // Both pieces of the dike reach the eroded map inside the block (±500 m).
+    for (const point of Object.values(normal.points)) expect(Math.abs(point.x)).toBeLessThan(500);
+    // The rake slider (5° steps) can reach the goal: a slip lying in the dike.
+    const reachable = Array.from({ length: 73 }, (_, index) => -180 + index * 5).filter((rake) => Math.abs(mapFor(rake).distance) < 10);
+    expect(reachable.length).toBeGreaterThan(0);
+    expect(isGoalMet(separation, { mapSeparation: mapFor(reachable[0]).distance })).toBe(true);
+    expect(isGoalMet(separation, { mapSeparation: normal.distance })).toBe(false);
+  });
+
+  it('repeats beds C and D in the well across reverse slip, within the block', () => {
+    const well = step('well');
+    const plane = planeFromStrike(0, 60);
+    const fault = planeThrough(planePole(plane), center);
+    const logFor = (rake) => {
+      const offset = scale(slipFromRake(plane, rake), well.labOptions.slipLength);
+      return wellLog({ fault, offset, well: well.labOptions.well, top: Math.max(0, offset.z), bottom: 500, thickness: 62.5 });
+    };
+    const reverse = logFor(90);
+    expect(reverse.gap.kind).toBe('repeated');
+    expect(reverse.gap.thickness).toBeCloseTo(129.9, 1);
+    // Bed letters: C and D sit just above the fault in the hanging wall and again below it.
+    expect(Math.floor(reverse.gap.from / 62.5)).toBeLessThanOrEqual(5);
+    expect(reverse.pieces.every((piece) => piece.layer < 8)).toBe(true);
+    expect(logFor(-90).gap.kind).toBe('missing');
+    expect(logFor(180).gap).toBeNull();
+    expect(choice('well')).toBe('reverse');
+  });
+
+  it('predicts oblique normal–dextral slip for the Wallace–Bott example', () => {
+    const { strike, dip, regime, ratio } = step('wallace-bott').initialLabState;
+    const plane = planeFromStrike(strike, dip);
+    const rake = rakeFromSlip(plane, resolvedShearDirection(tensorFor(regime, ratio), plane));
+    expect(rake).toBeCloseTo(-123.7, 1);
+    expect(classifySlip(plane, rake).name).toBe('oblique normal–dextral');
+    expect(choice('wallace-bott')).toBe('oblique');
+  });
+
+  it('puts P near vertical for the normal fault and shades the center for a thrust', () => {
+    const normal = planeFromStrike(0, 60);
+    expect(kinematicAxes(planePole(normal), slipFromRake(normal, -90)).P.plunge).toBeCloseTo(75, 9);
+    expect(choice('pt-axes')).toBe('steep');
+    const presets = Object.fromEntries(step('beach-ball').presets.map((preset) => [preset.id, preset]));
+    const centerMotion = ({ strike, dip, rake }) => {
+      const plane = planeFromStrike(strike, dip);
+      return firstMotion({ x: 0, y: 0, z: 1 }, planePole(plane), slipFromRake(plane, rake));
+    };
+    expect(centerMotion(presets.thrust)).toBe('compressional');
+    expect(centerMotion(presets.normal)).toBe('dilatational');
+    expect(classifySlip(planeFromStrike(presets.oblique.strike, presets.oblique.dip), presets.oblique.rake).kind).toBe('oblique');
+    expect(auxiliaryPlane(slipFromRake(normal, -90)).dip).toBeCloseTo(30, 9);
+    expect(choice('beach-ball')).toBe('thrust');
+  });
+
+  it('keeps pure normal slip over most of the tilt range, and flips it past the fault plane', () => {
+    const tiltStep = step('pt-not-stress');
+    const plane = planeFromStrike(tiltStep.initialLabState.strike, tiltStep.initialLabState.dip);
+    const rakeAt = (tilt) => {
+      const slip = resolvedShearDirection(tensorFor('normal', 0.5, tilt), plane);
+      return slip ? rakeFromSlip(plane, slip) : null;
+    };
+    for (const tilt of [-25, 0, 30, 55]) expect(rakeAt(tilt)).toBeCloseTo(-90, 6);
+    expect(rakeAt(-40)).toBeCloseTo(90, 6);
+    expect(choice('pt-not-stress')).toBe('range');
+  });
+
+  it('predicts λ = 163.9° from the two parts of τ, and catches the quadrant mistake', () => {
+    const predict = step('predict-rake');
+    const { strike, dip, regime, ratio } = predict.initialLabState;
+    const plane = planeFromStrike(strike, dip);
+    const tensor = tensorFor(regime, ratio);
+    const { shear } = resolveTraction(tensor, planePole(plane));
+    const along = dot(shear, lineVector(strike, 0));
+    expect(along).toBeLessThan(0);
+    expect(rakeFromSlip(plane, resolvedShearDirection(tensor, plane))).toBeCloseTo(163.9, 1);
+    expect(checkNumericAnswer(predict, '163.9').correct).toBe(true);
+    expect(checkNumericAnswer(predict, '-16.1').feedback).toMatch(/quadrant/);
+    expect(predict.revealAfterAnswer).toContain('rake');
+    expect(predict.controls).toEqual([]);
   });
 });

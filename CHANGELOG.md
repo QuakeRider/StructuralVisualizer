@@ -2,6 +2,32 @@
 
 All notable user-visible changes are recorded here.
 
+## 0.11.0 — 2026-09-26
+
+### Added
+
+- Lesson B8, Fault geometry, slip, and kinematic axes, built ahead of the curriculum order for classroom use (eleven steps):
+  1. Hanging wall and footwall, with the fault's pole 𝐧 pointing into the footwall (as in B6).
+  2. The slip vector 𝐬 split into its strike-slip and dip-slip parts, s cos λ and s sin λ, with the rake λ drawn in the fault plane and a numeric check.
+  3. Naming faults from the slip: normal, reverse, thrust, dextral, sinistral, and oblique, with a goal to make a thrust.
+  4. Slip vs separation: a dike offset by the fault on an eroded map and on cross-sections. Pure normal slip shows 300 m of apparent sinistral separation, and a goal asks for a slip that leaves no separation at all (𝐦·𝐬 = 0).
+  5. Missing and repeated beds in a well: a well log beside the normal sequence, with the throw as the stratigraphic separation.
+  6. Slickenlines on the exposed footwall (schematic steps give the sense of slip), the slickenline's rake and plunge (sin p = sin r sin δ, numeric check), and the slip on a stereonet.
+  7. The Wallace–Bott hypothesis: the slip follows the shear part of 𝐭 = 𝛔𝐧, set by the stress regime, the stress ratio φ, and the fault's orientation.
+  8. Kinematic axes P ∝ 𝐧 + 𝐬̂, T ∝ 𝐧 − 𝐬̂, and B = 𝐧 × 𝐬̂, built live in 3D and plotted on the stereonet.
+  9. Fault-plane solutions: beach balls for normal, thrust, strike-slip, and oblique faults, the auxiliary plane, and what the shading means.
+  10. P and T are not σ1 and σ3: tilting σ1 leaves the slip and the beach ball unchanged until σ1 crosses a nodal plane.
+  11. Predicting the rake from the stress with λ = atan2(τup, τstrike), a numeric check that catches the quadrant mistake.
+- A fault laboratory (`FaultScene.js`): an NED Earth block split by a fault of any strike and dip, with the hanging wall displaced along the slip vector ("moved"), or both walls kept in the original block and eroded flat to show a map and cross-sections ("cut"). It draws the slip vector with its component box and rake arc, a dike with its traces and the separation arrows, a well, slickenlines, the principal stresses, the traction and its shear part, and the P, T, and B axes with their construction from 𝐧 and 𝐬̂. Beds and the ground grid travel with each block. Camera buttons give 3D, map, and section views.
+- The stereonet gained fault-kinematics layers: the slip vector (with an arrow for the hanging wall's motion), the auxiliary plane, the P, T, and B axes, the beach ball (exact, as an even–odd fill of the two nodal half-nets), and a key.
+- A well-log plot (`WellLog.js`): the beds a vertical well passes through beside the undisturbed sequence, with the fault crossing and the missing or repeated interval marked.
+- New tested domain module `faults.js`: the fault frame, slip from rake and rake from slip, strike-slip and dip-slip parts, naming, Wallace–Bott (`resolvedShearDirection`), kinematic axes, the auxiliary plane, first-motion quadrants, tilting the stress axes, separation of a planar marker on any view surface, and well logs. `orientation.js` gained `rakeVector` and `lineToRake` (the O4 conventions).
+
+### Changed
+
+- The Earth-block helpers (frame change, block size, plane–box sections, bed and ground textures) moved from `AndersonScene.js` to `earthBlock.js`, shared by B6, B7, and B8.
+- The stereonet's title and caption are set per lesson, and an inclined principal axis now plots once (at its lower-hemisphere end) instead of at both ends.
+
 ## 0.10.0 — 2026-09-25
 
 ### Added

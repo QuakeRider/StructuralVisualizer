@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { andersonFaults, faultSlip, principalStressTensor } from '../domain/anderson.js';
-import { lineVector, planePole, planeUpwardNormal, strikeVector } from '../domain/orientation.js';
+import { planePole, planeUpwardNormal, strikeVector } from '../domain/orientation.js';
 import { applyTensor } from '../domain/tensor.js';
+import { CENTER, HALF, VIEW, axisWorld, exitDistance, fanGeometry, groundTexture, layerTexture, loopSegments, overlayArrow, planeSection, toWorld } from './earthBlock.js';
 import { Arrow3D, Label, arcPoints, setPoints, setTube, tubeMesh } from './sceneKit.js';
 
 const DIMMED_OPACITY_FACTOR = 0.14;
-/** Half-sizes of the Earth block in world units (east–west, depth, north–south). */
-const HALF = { x: 2, y: 1, z: 2 };
-const CENTER = new THREE.Vector3(0, -HALF.y, 0);
 const SLIP_DISTANCE = 0.5;
 /** Illustrative principal stresses used only to find the slip direction (MPa). */
 const SLIP_STRESS = { sigma1: 100, sigma2: 60, sigma3: 20 };
@@ -55,122 +53,6 @@ const GLYPHS = {
   sigma2: { radius: 0.05, length: 0.85, pattern: 'dashed', head: 0.24, headRadius: 0.12 },
   sigma3: { radius: 0.035, length: 0.55, pattern: 'dotted', head: 0.2, headRadius: 0.09 },
 };
-
-const VIEW = { position: new THREE.Vector3(6.4, 4.2, 7.6), target: new THREE.Vector3(0, -0.85, 0), up: new THREE.Vector3(0, 1, 0) };
-
-/**
- * Geological frame (north, east, down) → Three.js (y up): north is −z,
- * east is +x, down is −y. The student never sees renderer coordinates.
- */
-function toWorld(v) {
-  return new THREE.Vector3(v.y, -v.z, -v.x);
-}
-
-function axisWorld({ trend, plunge }) {
-  return toWorld(lineVector(trend, plunge));
-}
-
-/** Distance from the block center to the block surface along a unit direction. */
-function exitDistance(direction) {
-  let distance = Infinity;
-  for (const axis of ['x', 'y', 'z']) {
-    if (Math.abs(direction[axis]) > 1e-6) distance = Math.min(distance, HALF[axis] / Math.abs(direction[axis]));
-  }
-  return distance;
-}
-
-/** Polygon where a plane through the block center cuts the block, in order around its centroid. */
-function planeSection(normal) {
-  const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, CENTER);
-  const corners = [];
-  for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) corners.push(new THREE.Vector3(x * HALF.x, CENTER.y + y * HALF.y, z * HALF.z));
-  const points = [];
-  for (let i = 0; i < corners.length; i += 1) {
-    for (let j = i + 1; j < corners.length; j += 1) {
-      const a = corners[i];
-      const b = corners[j];
-      const differences = (a.x !== b.x) + (a.y !== b.y) + (a.z !== b.z);
-      if (differences !== 1) continue;
-      const da = plane.distanceToPoint(a);
-      const db = plane.distanceToPoint(b);
-      if (Math.abs(da) < 1e-9) points.push(a.clone());
-      else if (da * db < 0) points.push(a.clone().lerp(b, da / (da - db)));
-    }
-  }
-  const unique = points.filter((point, index) => points.findIndex((other) => other.distanceTo(point) < 1e-6) === index);
-  const centroid = unique.reduce((sum, point) => sum.add(point), new THREE.Vector3()).multiplyScalar(1 / unique.length);
-  const u = unique[0].clone().sub(centroid).normalize();
-  const w = new THREE.Vector3().crossVectors(normal, u).normalize();
-  return unique
-    .map((point) => ({ point, angle: Math.atan2(point.clone().sub(centroid).dot(w), point.clone().sub(centroid).dot(u)) }))
-    .sort((a, b) => a.angle - b.angle)
-    .map(({ point }) => point);
-}
-
-function fanGeometry(polygon) {
-  const positions = polygon.flatMap((point) => [point.x, point.y, point.z]);
-  const indices = [];
-  for (let index = 1; index < polygon.length - 1; index += 1) indices.push(0, index, index + 1);
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  return geometry;
-}
-
-function loopSegments(polygon) {
-  return polygon.flatMap((point, index) => [point, polygon[(index + 1) % polygon.length]]);
-}
-
-function layerTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 16;
-  canvas.height = 256;
-  const context = canvas.getContext('2d');
-  const layers = ['#b99a6b', '#6f6a64', '#a8adb1', '#9a5b45', '#c2a878', '#5f6570', '#b99a6b', '#8b6f56'];
-  const height = canvas.height / layers.length;
-  layers.forEach((color, index) => {
-    context.fillStyle = color;
-    context.fillRect(0, index * height, canvas.width, height);
-    context.fillStyle = 'rgba(20, 20, 20, 0.35)';
-    context.fillRect(0, index * height, canvas.width, 2);
-  });
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-function groundTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 256;
-  const context = canvas.getContext('2d');
-  context.fillStyle = '#56644a';
-  context.fillRect(0, 0, 256, 256);
-  context.strokeStyle = 'rgba(214, 226, 190, 0.55)';
-  context.lineWidth = 3;
-  for (let index = 1; index < 8; index += 1) {
-    const at = index * 32;
-    context.beginPath();
-    context.moveTo(at, 0);
-    context.lineTo(at, 256);
-    context.moveTo(0, at);
-    context.lineTo(256, at);
-    context.stroke();
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-/** An arrow drawn on top of the translucent block. */
-function overlayArrow(options) {
-  const arrow = new Arrow3D(options);
-  for (const part of [arrow.shaft, arrow.head]) {
-    part.material.depthTest = false;
-    part.renderOrder = 13;
-  }
-  return arrow;
-}
 
 /**
  * Earth-block laboratory in the NED frame, used by B7 (Anderson) and B6
