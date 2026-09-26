@@ -2,6 +2,22 @@
 
 All notable user-visible changes are recorded here.
 
+## Unreleased
+
+### Changed
+
+- Curriculum plan: a new **Unit 3B Faults** (`docs/curriculum/unit-3b-faults.md`), written after a review of Fossen (2016) chapters 9–10 and PSGT chapter 5 with the instructor. B7–B9 move into it and keep their IDs. Nine new lesson specs:
+  - B10 fault shapes, arrays, and terminations
+  - B11 fault zones and fault rocks (replaces B9's first step, with Sibson's classification, a power-law comminution model, pseudotachylyte, fault rocks with depth, porous vs crystalline hosts, and Caine et al.'s architecture index)
+  - B12 kinematic indicators
+  - B13 faults and earthquakes (rate-and-state friction, moment magnitude, Coulomb stress change)
+  - B14 fault mechanics puzzles
+  - B15 fault populations and paleostress (grid-search inversion)
+  - B16 faults, fluids, and the subsurface
+  - B17 and B18 fault systems, taught after Unit 6
+- Binding decision 1 gains one narrow exception: force balance along a frictional sliding surface (spring-slider, thrust sheets).
+- Paleostress inversion, fault seal, and map-scale fault systems moved from parked to core. Stress measurement, least-squares inversion, reservoir datasets, and plate-scale tectonics stay parked. Integrating instructor photographs is noted as a future item, to be discussed.
+
 ## 0.12.0 — 2026-09-26
 
 ### Added

@@ -2,21 +2,20 @@
 
 **Frame:** NED. Stress is compression positive, and Mohr axes follow the README conventions.
 
-**Unit purpose:** apply the stress tools from Unit 2 to how rocks break and slip. The Mohr diagram becomes the place where **stress (the circle) meets strength (the envelope).** The 3D scene shows the resulting fractures and faults in the orientations the math predicts. Coming right after stress keeps the Mohr and principal-axis ideas fresh. The unit moves from failure criteria (B1–B4) to the structures they produce: joints and veins (B5), reactivated planes (B6), Andersonian faults (B7), fault kinematics (B8), and how faults grow (B9).
+**Unit purpose:** apply the stress tools from Unit 2 to how rocks break and slip. The Mohr diagram becomes the place where **stress (the circle) meets strength (the envelope).** The 3D scene shows the resulting fractures and faults in the orientations the math predicts. Coming right after stress keeps the Mohr and principal-axis ideas fresh. The unit moves from failure criteria (B1–B4) to the structures they produce: joints and veins (B5) and reactivated planes (B6). Faults themselves, from Anderson's theory (B7) onward, are in [Unit 3B](unit-3b-faults.md), which shares the B prefix; B7, B8, and B9 moved there on 2026-09-26.
 
 **Shared infrastructure first built here:**
 - **Failure envelopes on the Mohr plot** (B2, B3): tensile cutoff, Griffith parabola, Coulomb line, a composite envelope, and the Byerlee line. Circle–envelope contact detection, and the fracture style at the contact point.
 - **Fracture/fault plane glyphs in the stressed cube** (B1, B3): planes that open (Mode I), slide (Mode II/III), or compact (deformation bands), with displacement arrows.
 - **Layered-block view** (B5): a stack of layers with different stiffness, used for joint spacing and mechanical stratigraphy. F5 (boudinage) reuses it.
 - **Rose diagram** (B5): orientation frequency of strikes or trends.
-- **Stereonet layers for stress and planes** (B6–B8): principal axes, planes colored by slip tendency, slip vectors, P/T axes, and beach balls (extends the O3 renderer).
-- **Fault-surface displacement map** (B9): a fault plane colored by displacement, with a tip line.
+- **Stereonet layers for stress and planes** (B6): principal axes and planes colored by slip tendency (extends the O3 renderer). Unit 3B adds the kinematic layers (B8) and the paleostress layers (B15).
 
 ---
 
 ## B1 — Brittle processes, fracture modes, and deformation bands
 
-**Prerequisites:** S8, S10. **Used later by:** B2–B9.
+**Prerequisites:** S8, S10. **Used later by:** B2–B9, B11 (faults in porous rock).
 
 **Learning objectives**
 - Distinguish tensile cracking, shear rupture, frictional sliding, and cataclastic (granular) flow.
@@ -87,7 +86,7 @@
 
 ## B3 — Coulomb failure and the composite failure envelope
 
-**Prerequisites:** B2, S9, O4. **Used later by:** B4–B9, R6.
+**Prerequisites:** B2, S9, O4. **Used later by:** B4–B9, B12 (Riedel angles), B14, R6.
 
 **Learning objectives**
 - State the Coulomb criterion `τ = C + μσn`, and relate μ to the angle of internal friction φ = tan⁻¹ μ.
@@ -128,7 +127,7 @@
 
 ## B4 — Confining pressure and pore-fluid pressure
 
-**Prerequisites:** B3, S10. **Used later by:** B5, B6, B7, R5, R6.
+**Prerequisites:** B3, S10. **Used later by:** B5, B6, B7, B14 (Hubbert–Rubey), R5, R6.
 
 **Learning objectives**
 - Explain how raising confining pressure strengthens rock: the circle moves right, away from the envelope.
@@ -204,7 +203,7 @@
 
 ## B6 — Friction and reactivation of existing planes
 
-**Prerequisites:** B3, B4, S9, O3. **Used later by:** B7, B8, B9, R6.
+**Prerequisites:** B3, B4, S9, O3. **Used later by:** B7, B8, B9, B11, B13, B14, R6.
 
 **Learning objectives**
 - State Byerlee's friction law, and compare the frictional sliding line with the intact-rock Coulomb envelope.
@@ -231,7 +230,7 @@
 
 **Domain / scenes / tests:** `byerlee(σn)`, `slipTendency(σ, n, Pf)`, `dilationTendency(σ, n)`, and `slipTendencyGrid(σ)` in `failure.js`, with tests. A stereonet color-map layer.
 
-**Out of scope:** rate-and-state friction and earthquake cycles (one context sentence at most).
+**Out of scope:** rate-and-state friction and earthquake cycles (one context sentence at most; both are taught in B13).
 
 **Acceptance criteria:** the plane ↔ Mohr point ↔ stereonet pole are all linked; the slip-tendency map is correct for known stress states.
 
@@ -246,148 +245,3 @@
 
 When B3, B4, S9, and O3 are built, revisit B6: point steps 1, 3, and 8 back to them, and use the O3 net features (grid, equal-angle toggle) where they help.
 
----
-
-## B7 — Anderson's theory of faulting
-
-**Prerequisites:** B3, B6, S10, O2. **Used later by:** B8, B9, R5, R6.
-
-**Learning objectives**
-- Explain why near Earth's surface one principal stress is vertical (S10 callback).
-- Match the three Andersonian regimes to which principal stress is vertical: σ1 vertical → normal faults, σ2 vertical → strike-slip faults, σ3 vertical → thrust faults.
-- Predict typical fault dips (about 60° normal, about 30° thrust, near-vertical strike-slip) from B3 with μ ≈ 0.6, and explain why normal faults are steeper than reverse faults.
-- State the conditions under which Anderson's theory strictly applies (a new fault in an isotropic rock, a horizontal free surface, infinitesimal slip), and why real faults deviate from it.
-- Relate stress regime to tectonic setting (a brief map-view context only; plate tectonics is parked).
-
-**Math introduced:** the combination of B3's plane angle with a vertical principal axis. Dip = 90° − (45° − φ/2) for normal faults, 45° − φ/2 for thrust faults, and vertical for strike-slip faults.
-
-**Equation–model binding:** an Earth block in NED with σ1/σ2/σ3 axis glyphs. A regime toggle rotates the axes, and the conjugate fault pair appears with dip arcs and computed dips. Hanging-wall motion is animated. A stereonet shows the axes and the fault great circles for each regime.
-
-**Step outline**
-1. Recall that the free surface makes one principal axis vertical.
-2. Three ways to assign σ1, σ2, σ3 to vertical. Predict the fault type for each.
-3. Normal regime: σ1 vertical; faults dip about 60°.
-4. Thrust regime: σ3 vertical; faults dip about 30°.
-5. Strike-slip regime: σ2 vertical; faults are near vertical.
-6. Vary μ and see the predicted dips change.
-7. Limits of the theory: pre-existing planes (B6), rotation after formation, and non-horizontal surfaces.
-8. Prompt: given an outcrop fault set, infer the stress regime.
-9. *Geology:* rift, fold-thrust belt, and transform settings as context images or blocks. Mixed regimes in orogens (one context sentence).
-
-**Geological payoff:** The single most-used link between stress and fault type in structural geology.
-
-**Misconceptions to target:** thrust faults form under vertical σ1; Anderson predicts all real fault dips (it is an idealization, and the lesson says why).
-
-**Exact vs illustrative:** dips are exact within Coulomb + Anderson assumptions; the block motion is schematic.
-
-**Domain / scenes / tests:** `andersonFaults(regime, μ)` → fault planes (strike, dip) for a chosen σ1 trend, with tests.
-
-**Out of scope:** oblique regimes and transtension/transpression (can be mentioned), and non-Andersonian faulting.
-
-**Acceptance criteria:** all three regimes are correct; the dips match the formula; the stereonet agrees with the 3D view.
-
-**As built (0.8.0, built early).** Built ahead of B3 and B6 for classroom use, so it stands alone:
-- **Coulomb angle restated.** Step 3 states β = 45° − φ/2 from the Mohr diagram instead of pointing back to B3.
-- **Stereonet deferred.** There is no stereonet view yet; it waits for the O3 renderer. That acceptance criterion is still open.
-- **Scene and Mohr diagram.** The scene is an NED Earth block with the σ axes, the conjugate pair clipped through the block, and β and δ arcs. The hanging wall slides along the resolved shear direction (`faultSlip` computes the direction from 𝐭 = −σ𝐦). A Mohr diagram beside it is fixed at failure (σ3 = 20 MPa, C = 10 MPa; illustrative magnitudes, exact angles).
-- **Domain modules.** `andersonAxes`, `andersonFaults(regime, μ, shmaxTrend)`, `principalStressTensor`, `faultSlip`, and `slipSense` are in `anderson.js`; the Coulomb and Mohr helpers are in `failure.js`, and the NED plane and line helpers in `orientation.js`.
-- **Steps.** 1 the free surface; 2 which stress is vertical; 3 normal regime, with a numeric dip answer; 4 thrust regime; 5 strike-slip regime, with the sense of slip; 6 varying μ; 7 the limits of the theory; 8 inferring stress from a mapped pair (stress arrows hidden until the answer); 9 tectonic settings.
-
-When B3 is built, revisit B7: point steps 2–3 back to B3. B6 is now built (0.10.0), so B7 can add the stereonet by reusing `Stereonet.js` (axes and the conjugate great circles), and step 7 can point to B6 for reactivation. B8 (0.11.0) now covers slip sense and kinematic axes, so B7's step 5 (sense of strike-slip) can point ahead to it.
-
----
-
-## B8 — Fault geometry, slip, and kinematic axes
-
-**Prerequisites:** B7, O4, S7. **Used later by:** B9, F6, (parked) paleostress inversion.
-
-**Learning objectives**
-- Identify the hanging wall and footwall, and classify slip as dip-slip (normal/reverse), strike-slip (dextral/sinistral), or oblique, from the slip vector.
-- Distinguish **slip** (the actual displacement vector) from **separation** (apparent offset of a marker on a map or section), including stratigraphic separation (missing or repeated section in a well).
-- Express slip as rake on the fault plane (O4) and as trend/plunge. Read the sense of slip from kinematic indicators on slip surfaces (slickenlines, mineral steps, and subsidiary fractures), treated qualitatively.
-- Apply the forward Wallace–Bott hypothesis: slip is parallel to the resolved shear traction on the fault plane. Predict the slip direction for any fault in a given stress field.
-- Construct the **kinematic P (shortening) and T (extension) axes** of a fault from its plane and slip vector, and draw the **fault-plane-solution "beach ball"** on the stereonet. Relate this to earthquake focal mechanisms, and explain why P and T are not the same as σ1 and σ3.
-
-**Math introduced:** the slip vector `s`; rake ↔ trend/plunge (O4); Wallace–Bott `ŝ ∥ τ = σn − (n·σn)n` (S7 callback). Separation vs slip as the geometric projection of an offset marker onto a surface. Kinematic axes from unit vectors `n̂` (fault normal) and `ŝ` (slip): `T ∝ n̂ + ŝ`, `P ∝ n̂ − ŝ` (with the sign convention for n̂ and ŝ declared), and `B = n̂ × ŝ` (the null axis). The beach ball is the lower-hemisphere projection of the fault plane and the auxiliary plane (the plane whose normal is ŝ), with the quadrants containing T shaded.
-
-**Equation–model binding:** a fault plane in an Earth block (by strike/dip) with the hanging-wall block displaced along a slip vector (component box: dip-slip and strike-slip parts). A marker bed shows separation vs slip. A stress-field overlay shows the resolved shear vector on the plane, the predicted slip arrow, and the slickenline rake. A stereonet with the fault great circle, the slip-vector point, the P/T/B axes, and the shaded beach ball. The P and T arrows in 3D sit at 45° between n̂ and ŝ, with their construction (`n̂ ± ŝ`) shown live.
-
-**Step outline**
-1. Hanging wall vs footwall.
-2. The slip vector split into dip-slip and strike-slip components (M3 split within the plane).
-3. Classification from the slip vector's components. Prompts: name the fault from a vector.
-4. Slip vs separation: an offset bed in map and section views can mislead. Prediction. A repeated section in a well means a reverse fault.
-5. Rake of slickenlines ↔ slip vector, and how kinematic indicators give the sense of slip.
-6. Wallace–Bott: place the fault in a stress field; the predicted slip ∥ resolved shear. Change σ and the slip direction rotates.
-7. P and T axes: build them from n̂ and ŝ. Plot the beach ball. Prompts: match beach balls to normal, thrust, and strike-slip faults.
-8. P/T vs σ1/σ3: the same beach ball arises from a range of stress states (a Wallace–Bott callback). That is why inversion needs many faults (inversion itself is parked).
-9. Numeric prompt: given σ and a fault plane → predicted rake.
-
-**Geological payoff:** Interpreting fault kinematics from slickenlines and focal mechanisms, and understanding what fault-slip data encode about stress.
-
-**Misconceptions to target:** separation equals slip; the fault name depends on the marker's apparent offset; slip is always down-dip; P and T are the principal stresses; the beach ball's shaded quadrants are "where the rock is compressed".
-
-**Exact vs illustrative:** the slip-vector geometry, Wallace–Bott prediction, and P/T/beach-ball construction are exact within their assumptions; the block displacement is schematic in magnitude.
-
-**Domain / scenes / tests:** `resolvedShearDirection(σ, n)`, `slipClassification(s, plane)`, `separation(marker, fault, slip, viewPlane)`, `kinematicAxes(n, s)` → {P, T, B}, and `beachBall(n, s)` → {nodal planes, shaded regions} in `failure.js` / `orientation.js` / `stereonet.js`, with tests (the standard normal, thrust, and strike-slip cases).
-
-**Out of scope:** stress inversion (the reduced stress tensor), moment tensors, and seismic wave radiation.
-
-**Acceptance criteria:** slip classification is correct for all quadrants; the separation-vs-slip demonstration works; the Wallace–Bott arrow matches `resolvedShearDirection`; P/T axes and beach balls are correct for the standard fault types.
-
-**As built (0.11.0, built early).** Built ahead of O4 and S7 for classroom use, so it stands alone:
-- **Restated prerequisites.** Step 2 introduces the rake of the slip vector (O4 gives the rake of a line), and step 6 gives the O4 rake r (0–180°) of a slickenline and sin p = sin r sin δ. Step 7 restates the traction 𝐭 = σ𝐧 in B6's form (S7).
-- **Sign conventions on screen.** 𝐧 is the downward pole, into the footwall (as in B6). 𝐬 is the hanging wall's slip. The slip's rake λ runs from −180° to 180°, measured in the fault plane from the strike direction, positive up the dip (λ = 90° reverse, −90° normal, 0° sinistral, 180° dextral: the earthquake-catalog convention). With 𝐧 pointing into the footwall the kinematic axes are **P ∝ 𝐧 + 𝐬̂ and T ∝ 𝐧 − 𝐬̂** (the spec's form with the normal reversed): the hanging wall pushes along 𝐧 and drags along 𝐬̂, and P lies halfway between. A vertical fault's hanging wall is the dip-direction block.
-- **Naming.** Slip within 20° of pure dip-slip or strike-slip takes the pure name; otherwise it is oblique, named by both parts. Reverse slip on a fault dipping under 45° is a thrust.
-- **Fault lab (`FaultScene.js`).** A 1000 m × 500 m NED block split by a fault through its center. "Moved" mode displaces the hanging wall along 𝐬 (300 m, illustrative); "cut" mode keeps both walls in the block, eroded flat to the lower block's surface, so the top is a map and the sides are cross-sections. Beds (62.5 m) and the ground grid are textured from each block's own coordinates, so they travel with it. It draws the slip vector with its strike-slip and dip-slip parts and the rake arc, a dike marker with its traces and separation arrows, a well, slickenlines with schematic steps on the exposed footwall, the principal stresses, 𝐭 and 𝛕, and P, T, B with their construction from 𝐧 and 𝐬̂. View buttons give 3D, map, and section cameras.
-- **Stereonet.** B6's `Stereonet.js` gained layers for the slip vector (with the hanging wall's sense), the auxiliary plane, P/T/B markers, the beach ball (an exact even–odd fill), and a key. **Well log.** `WellLog.js` shows the well beside the normal sequence, with the missing or repeated interval.
-- **Steps.** 1 hanging wall and footwall; 2 the slip vector and its parts (numeric); 3 naming faults (goal: make a thrust); 4 slip vs separation with a dike (goal: a slip with no map separation); 5 missing and repeated beds in a well; 6 slickenlines and rake (numeric plunge); 7 Wallace–Bott; 8 P, T, and B; 9 beach balls; 10 P and T are not σ1 and σ3 (tilting σ1 about σ2); 11 predict the rake from τ with atan2 (numeric, final).
-- **Domain modules.** `faults.js` (`faultFrame`, `slipFromRake`, `rakeFromSlip`, `lineRakeFromSlipRake`, `slipComponents`, `classifySlip`, `resolvedShearDirection`, `kinematicAxes`, `auxiliaryPlane`, `firstMotion`, `tiltAxes`, `planeThrough`, `traceSeparation`, `wellLog`) and, in `orientation.js`, `rakeVector` and `lineToRake`. The spec's `separation(marker, fault, slip, viewPlane)` is `traceSeparation`, and `beachBall(n, s)` is split into `auxiliaryPlane`, `kinematicAxes`, and `firstMotion` (the renderer draws the quadrants).
-
-When O4 and S7 are built, revisit B8: point steps 2 and 6 back to O4's rake and step 7 back to S7, and use O4's rake functions (already in `orientation.js`) there. B9 can reuse the fault lab for displacement along a fault.
-
----
-
-## B9 — Fault anatomy and growth
-
-**Prerequisites:** B8, B6. **Used later by:** F6, (parked) fault systems at tectonic scale.
-
-**Learning objectives**
-- Describe fault anatomy: the fault core (slip surfaces and fault rock) and the surrounding damage zone. Name the main fault rocks (breccia, gouge, cataclasite) and contrast them with mylonite (ductile, parked).
-- Describe the displacement distribution on a fault surface: displacement is largest near the center and dies out to zero at the **tip line**, so an isolated fault has an elliptical outline in 3D.
-- Use displacement–length scaling `D = c·Lⁿ` (with n ≈ 1) to estimate one from the other, and explain what c means.
-- Explain how faults grow by accumulating slip (repeated earthquakes) and by **linkage**: underlapping → overlapping (a relay ramp) → hard-linked (breached relay). Recognize the resulting bends and displacement profiles.
-- Recognize fault drag (reverse and normal drag) as a displacement-gradient effect near the fault, previewing fault-related folds (F6).
-
-**Math introduced:** an idealized displacement field on the fault plane, for example `D(x, y) = D_max · √(1 − (x/a)² − (y/b)²)` inside an elliptical tip line (declared as one idealized model among several). A displacement profile along strike as a 1D slice of that surface. `D = c·Lⁿ` on log–log axes (a straight line with slope n). For linkage, the displacement profiles of two segments are summed.
-
-**Equation–model binding:** the fault-surface displacement map (the fault plane colored by D, with contour lines and the tip line) inside an Earth block. Marker beds are offset by the local D, so the offset visibly shrinks toward the tips. A profile plot along a draggable line on the fault. A log–log D–L plot with a live point for the current fault and a scatter of synthetic "global" data. A two-segment scene: slide the segments toward and past each other and watch the relay ramp form, tilt, and breach, with the summed displacement profile shown. The core and damage-zone widths are drawn around the slip surface.
-
-**Step outline**
-1. Fault core vs damage zone. Fault rocks named with images.
-2. An isolated fault: displacement is greatest at the center and zero at the tip line. Prediction: what happens to a marker bed's offset toward the tip?
-3. The 3D picture: an elliptical fault surface colored by displacement.
-4. Displacement–length scaling. Numeric prompt: estimate D for a 2 km fault with c = 0.03.
-5. Growth by linkage: underlap → overlap (relay ramp) → breach. Watch the displacement profiles merge.
-6. Drag folds as the rock near the fault takes up the displacement gradient (preview of F6).
-7. *Geology:* relay ramps in rifts, segmented normal faults, and why fault maps show "gaps" and bends.
-
-**Geological payoff:** Explains the real shape of faults in maps, seismic data, and outcrop, including how large faults form and where relay ramps (and their fluid pathways) occur.
-
-**Misconceptions to target:** a fault has the same displacement everywhere; faults grow only by lengthening a single tip; fault gaps on maps are unrelated faults.
-
-**Exact vs illustrative:** the displacement-field model and the D–L relation are stated idealizations (exact given the model). The growth and linkage animations are illustrative, and the synthetic D–L data are labeled as synthetic.
-
-**Domain / scenes / tests:** `ellipticalDisplacement(a, b, Dmax, x, y)`, `displacementProfile(field, line)`, `dlScaling(L, c, n)`, and `linkSegments(profiles, overlap)` in a new `src/domain/faults.js`, with tests. The fault-surface displacement-map renderer.
-
-**Out of scope:** fault-seal analysis (juxtaposition diagrams, shale smear), seismic interpretation, earthquake rupture mechanics, and regional fault systems (parked with tectonics).
-
-**Acceptance criteria:** displacement dies out to the tip line in 3D and on marker offsets; the D–L plot is consistent; the relay-ramp sequence shows the summed profiles; the core and damage zone are depicted.
-
-**As built (0.12.0, built early).** Built after B8 for classroom use; its B-unit prerequisites before B6 are not built, and it needs none of their content.
-- **Setting.** Normal faults striking north and dipping 60° east in the NED block (1000 m, or a 40 m outcrop for step 1). Each wall moves half the local displacement D along the dip, so the walls slide without opening. Away from the fault the motion fades (decay length 350 m for the isolated fault, 180 m for the relay), which gives reverse drag; step 7 names it.
-- **Displacement models.** An elliptical tip line with semi-axes a = 400 m and b = 240 m and Dmax = 80 m; D = Dmax √(1 − r²) (elliptical) or Dmax (1 − r) (linear taper), with r = √((u/a)² + (w/b)²). The relay segments use a bell profile, Dmax (1 − r²), whose tips taper more steeply, so the summed profile has a displacement minimum at the relay that fills in as the overlap grows. Displacements use D/L = 0.1 so they read on screen.
-- **Linkage.** Segments A and B are 150 m apart, with fixed outer tips at ±460 m; each keeps D = cL as it grows. The growth slider moves from −200 m of underlap to 120 m of overlap, where a breaching fault (striking northeast) links them. After that the linked fault gains slip in proportion to its deficit against one fault 920 m long with the same c; the extra slip is shared by A, the breach, and B.
-- **Drag.** A fault whose tips are far away (D = 60 m everywhere) with each wall's movement (D/2)(1 − k(1 − e^(−|d|/λ))), λ = 80 m: k > 0 reverse drag, k < 0 normal drag.
-- **Steps.** 1 core and damage zone (with a fault-rock panel of schematic drawings); 2 displacement dies out at the tip line (goal: find half of Dmax); 3 the displacement map, contours, and profile lines (numeric); 4 D = c Lⁿ (numeric); 5 relay ramps (goal: 100 m of overlap); 6 breaching and the displacement deficit; 7 normal and reverse drag (goal: make normal drag); 8 segmented faults on maps (final).
-- **Domain module.** `faultGrowth.js`, not `faults.js` (which holds B8's kinematics): `tipRadius`, `displacementShape`, `ellipticalDisplacement`, `displacementAt`, `contourRadius`, `displacementProfile`, `dlScaling`, `dlLength`, `dragDisplacement`, `farFieldOffset`, `classifyDrag`, `faultDisplacement`, `RELAY`, `segmentProfile`, `linkSegments`, `relaySystem`, and `relayFaults`. The spec's `linkSegments(profiles, overlap)` is `linkSegments(segments, x)` together with `relaySystem(growth)`.

@@ -8,7 +8,7 @@
 - **Parametric fold-surface renderer** (F1): multi-layer 3D surfaces from parametric profiles (sinusoidal, chevron, box, with tunable tightness, symmetry, bluntness, plunge, and axial-plane attitude), with cut planes and a profile-plane view.
 - **Surface measurement tools** (F2): sample attitude (strike/dip) and poles at picked points on a surface and send them to the stereonet (O3).
 - **Profile-section view** (F3): a section perpendicular to the hinge line, with layer thickness and dip-isogon construction.
-- **Fault-fold cross-section** (F6): layered section with an editable fault trajectory, kink construction, and a trishear velocity-field mode.
+- **Fault-fold cross-section** (F6): layered section with an editable fault trajectory, kink construction, and a trishear velocity-field mode. It extends B10's fault cross-section view (Unit 3B) rather than starting again.
 
 The layered-block view from B5 is reused for boudinage (F5).
 
@@ -200,7 +200,7 @@ The layered-block view from B5 is reused for boudinage (F5).
 
 ## F6 — Fault-related folds
 
-**Prerequisites:** F4, B8, B9, D6, O4. **Used later by:** F7, (parked) contractional and extensional tectonics, and balanced sections.
+**Prerequisites:** F4, B8, B9, B10, D6, O4. **Used later by:** F7, B17, B18, (parked) plate-scale tectonics and balanced sections.
 
 **Learning objectives**
 - Explain how folds form in response to faulting: **drag folds** next to a fault (B9 callback), **fault-bend folds** above a ramp in a flat–ramp–flat fault, **fault-propagation folds** ahead of a propagating fault tip, and **forced folds/monoclines** draped over a basement fault.
@@ -229,7 +229,7 @@ The layered-block view from B5 is reused for boudinage (F5).
 
 **Domain / scenes / tests:** `faultBendFold(rampAngle, slip, layers)` (kink-method geometry for simple cases), `trishearStep(state, params, dt)`, and `dragProfile(displacementField, distance)` in a new `src/domain/faultFolds.js` (or `folds.js`), with tests that conserve bed length in fault-bend folds. *B9 (0.12.0, built early) already has a drag model, `dragDisplacement` in `faultGrowth.js`, and a scene that moves marker beds by a fault's displacement field (`FaultGrowthScene.js`); build on them.*
 
-**Out of scope:** Suppe's full fault-bend equations for all geometries (simplest cases only), detachment folds (a mention), cross-section balancing and restoration (parked, Lab mode), and thrust systems and duplexes (parked with tectonics).
+**Out of scope:** Suppe's full fault-bend equations for all geometries (simplest cases only), detachment folds (a mention), cross-section balancing and restoration (parked, Lab mode), and thrust systems and duplexes (B17).
 
 **Acceptance criteria:** fault-bend folds conserve bed length and place hinges at the fault bends; trishear produces the expected forelimb geometry; drag folds show the correct sense; each mode's exact vs illustrative status is labeled.
 

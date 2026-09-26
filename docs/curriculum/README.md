@@ -42,9 +42,16 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | B4 | Confining pressure and pore-fluid pressure | NED | Planned |
 | | B5 | Joints and veins | NED | Planned |
 | | B6 | Friction and reactivation of existing planes | NED | Built early (0.10.0) |
-| | B7 | Anderson's theory of faulting | NED | Built early (0.8.0) |
+| **3B Faults** — [spec](unit-3b-faults.md) | B7 | Anderson's theory of faulting | NED | Built early (0.8.0) |
 | | B8 | Fault geometry, slip, and kinematic axes (P/T, beach balls) | NED | Built early (0.11.0) |
-| | B9 | Fault anatomy and growth | NED | Built early (0.12.0) |
+| | B10 | Fault shapes, arrays, and terminations | NED | Planned |
+| | B11 | Fault zones and fault rocks | NED | Planned (next, early) |
+| | B12 | Kinematic indicators | NED | Planned |
+| | B9 | Fault displacement and growth (built as "Fault anatomy and growth") | NED | Built early (0.12.0); revision planned |
+| | B13 | Faults and earthquakes | NED | Planned |
+| | B14 | Fault mechanics puzzles | NED | Planned |
+| | B15 | Fault populations and paleostress | NED | Planned |
+| | B16 | Faults, fluids, and the subsurface | NED | Planned |
 | **4 Deformation and strain** — [spec](unit-4-strain.md) | D1 | Components of deformation | x/y/z | Planned |
 | | D2 | Homogeneous vs heterogeneous deformation | x/y/z | Planned |
 | | D3 | Measuring strain | x/y → NED | Planned |
@@ -66,16 +73,20 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | F5 | Boudinage | NED | Planned |
 | | F6 | Fault-related folds | NED | Planned |
 | | F7 | Superposed folding | NED | Planned |
+| **3B Faults, continued** (taught after Unit 6) — [spec](unit-3b-faults.md#taught-after-unit-6) | B17 | Extensional and contractional fault systems, and inversion | NED | Planned |
+| | B18 | Strike-slip fault systems | NED | Planned |
 
 "Built early" means the lesson was built ahead of its prerequisites for classroom use. B7 restates the Coulomb angle it needs from B3 and builds the first Mohr plot. B6 restates the Coulomb line (B3), the 3D Mohr region (S9), and effective stress (B4), and builds the first stereonet and the 3D Mohr plot; O3, S9, B3, and B4 should extend those rather than start again. B8 restates rake (O4) and the traction on a plane (S7, in B6's form) and builds the fault laboratory (`FaultScene.js`), the stereonet's kinematic layers (slip, auxiliary plane, P/T/B, beach ball), and a well log; it also adds O4's `rakeVector` and `lineToRake` to `orientation.js`. B9 builds the fault-growth laboratory (`FaultGrowthScene.js`), a general x–y plot (`XYPlot.js`), and the displacement, scaling, drag, and relay models in `faultGrowth.js`; F6 should reuse its drag model. When B3 is built, B6 and B7 should be revisited to point back to it, and when O4 and S7 are built, B8 should point back to them (see their "As built" notes).
 
+**Unit 3B Faults** (added 2026-09-26, after a review of Fossen chapters 9–10 and PSGT chapter 5 with the instructor) holds B7–B9 and nine new fault lessons, B10–B18. It shares the B prefix, so B7–B9 keep their IDs, and **its teaching order is not its ID order** (see the table). B11 replaces B9's first step and is built next, early, at the instructor's request; B9 is then revised and retitled "Fault displacement and growth" (see its revision note). B17 and B18 are taught after Unit 6 because they need F6 and D5–D6. The app's catalog (`src/lessons/catalog.js`) still lists B7–B9 under Unit 3 until the first 3B build session updates it.
+
 "Seed" means an early version exists in the app (moved from the 0.5 module by [Build 00](build-00-rework.md)); it does not yet meet its spec. A seed lesson's build session replaces it fully and sets the status to "Built".
 
-**Why this order.** Math comes first because every later topic is built from vectors and matrices. Orientation comes next, because a plane is defined by its normal vector, and `t = σn` needs exactly that. Stress follows, and brittle deformation comes straight after it while Mohr circles and principal stresses are still fresh. Strain comes after brittle. Rheology comes after strain because it is the relationship *between* stress and strain. Stress in the crust (R5) sits in rheology because its uniaxial-strain reference state needs Poisson's ratio (R2). It closes the loop on exhumation joints (B5) and leads into the brittle–ductile transition (R6). Folds come last because buckling needs viscosity contrast (R3), strain patterns in folds need the strain ellipse (D4), and fault-related folds (F6) need the fault lessons (B8, B9).
+**Why this order.** Math comes first because every later topic is built from vectors and matrices. Orientation comes next, because a plane is defined by its normal vector, and `t = σn` needs exactly that. Stress follows, and brittle deformation comes straight after it while Mohr circles and principal stresses are still fresh. Faults (Unit 3B) follow directly, while failure and friction are fresh. Strain comes after brittle. Rheology comes after strain because it is the relationship *between* stress and strain. Stress in the crust (R5) sits in rheology because its uniaxial-strain reference state needs Poisson's ratio (R2). It closes the loop on exhumation joints (B5) and leads into the brittle–ductile transition (R6). Folds come last because buckling needs viscosity contrast (R3), strain patterns in folds need the strain ellipse (D4), and fault-related folds (F6) need the fault lessons (B8, B9). Fault systems (B17, B18) come after folds because thrust systems are built from fault-bend folds (F6) and transpression is built from simple and pure shear (D5, D6).
 
 **Reference textbooks used while planning** (for topic coverage and depth calibration only):
 - PSGT, *Processes in Structural Geology & Tectonics* (University of Michigan open textbook).
-- Fossen, *Structural Geology*, 2nd ed. (Cambridge, 2016). Its intro-level strain chapter and appendix (deformation matrix, polar decomposition, ISA, flow apophyses, Wk) confirmed that our math depth is appropriate for the course level. It also prompted the additions of joints and veins, fault growth, P/T axes, deformation bands, flow and vorticity, uniaxial strain, the stress-reference-states lesson, boudinage, kink/chevron folds, and fault-related folds.
+- Fossen, *Structural Geology*, 2nd ed. (Cambridge, 2016). Its intro-level strain chapter and appendix (deformation matrix, polar decomposition, ISA, flow apophyses, Wk) confirmed that our math depth is appropriate for the course level. It also prompted the additions of joints and veins, fault growth, P/T axes, deformation bands, flow and vorticity, uniaxial strain, the stress-reference-states lesson, boudinage, kink/chevron folds, and fault-related folds. A second review of its chapters 9–10 against PSGT chapter 5 (2026-09-26) produced Unit 3B.
 
 Our order differs from both books: PSGT puts rheology under the lithosphere, and Fossen teaches strain before stress. We put rheology after strain, and bring orientation in when it is first needed rather than grouping it as a lab skill. We are free to reorder and to go deeper than any single textbook. **We never copy text or figures from any source.**
 
@@ -83,7 +94,7 @@ Our order differs from both books: PSGT puts rheology under the lithosphere, and
 
 These were set with the course instructor. Do not change them without asking.
 
-1. **No engineering statics.** Moments (`r × F`), free-body rotation, support reactions, section cuts, internal axial/shear resultants, bending, and torsion are **not part of this curriculum.** Equilibrium appears only as "the forces on a stationary rock element balance" (S1), plus one sentence of justification for stress-tensor symmetry (S4).
+1. **No engineering statics.** Moments (`r × F`), free-body rotation, support reactions, section cuts, internal axial/shear resultants, bending, and torsion are **not part of this curriculum.** Equilibrium appears only as "the forces on a stationary rock element balance" (S1), plus one sentence of justification for stress-tensor symmetry (S4). **One narrow exception** (agreed 2026-09-26): a block sliding on a frictional surface may be analyzed by the force balance along that surface. This covers B13's spring-slider and B14's pushed and gliding thrust sheets, and nothing else: no moments, supports, section cuts, or internal resultants.
 2. **Math is central.** A dedicated math unit comes first. Equations are always visible, live, and bound to the 3D model.
 3. **Tensor depth:** Cauchy's relation `t = σn`, the transformation equations, the Mohr circle as a picture of those equations, and principal stresses as eigenvectors (shown visually and geometrically). The matrix form `σ' = AσAᵀ` is shown. Index notation (`σij nj`) appears only as an optional aside, never as a requirement.
 4. **2D → 3D.** A topic may start in 2D, but it must always make the jump to 3D. Once in 3D, it stays in 3D unless the 3D treatment would go beyond junior/senior level (for example, full 3D Mohr construction for strain).
@@ -96,11 +107,11 @@ These were set with the course instructor. Do not change them without asking.
 | Math and stress construction frame | Abstract right-handed **x, y, z**, drawn with **z up** (2D views show the x–y plane with x right and y up). Used in Unit 0 and while building the stress tensor (S1–S6), because the principal-stress transformation is a pure-math operation. |
 | Geological frame | **NED**: x = North, y = East, z = Down (right-handed). Used from O1 onward whenever a topic is discussed in geological terms. The change of frame is **taught as an explicit step**, never done silently (O1 first, then S7 and elsewhere as needed). |
 | Renderer frame | Three.js is y-up. The renderer converts internally. Students never see renderer coordinates. |
-| Stress sign | **Compression positive**, tension negative. σ1 ≥ σ2 ≥ σ3. |
+| Stress sign | **Compression positive**, tension negative. σ1 ≥ σ2 ≥ σ3. Formulas that other books write tension-positive are converted and the conversion is shown, e.g. the Coulomb stress change ΔCFS = Δτ − μ′Δσn (B13). |
 | Traction sign | Stated explicitly wherever it matters: `t(n) = −σn` with an outward normal under compression-positive σ, or equivalently `t = σn` using the inward normal. Each lesson spec says which form is on screen; the form is never switched silently. |
 | Mohr diagram | σn on the horizontal axis (compression to the right); τ on the vertical axis. The angle θ is measured from σ1 to the **plane normal**, and the plane appears at 2θ on the circle. The sign convention for τ (sense of shear) is declared in S5 and kept thereafter. |
 | Orientation | Strike/dip with the **right-hand rule**; dip direction/dip accepted as an alternative input. Lines use trend/plunge. The stereonet is **lower hemisphere**. Equal-angle and equal-area nets are both available, and the lesson says which is shown. |
-| Unit colors | Each unit's lesson badge uses one color from the Okabe–Ito colorblind-safe palette, lightened for the dark background: 0 Math sky blue `#56b4e9`, 1 Orientation bluish green `#3fd0a0`, 2 Stress orange `#e69f00`, 3 Brittle vermillion `#f07a3c`, 4 Strain reddish purple `#cc79a7`, 5 Rheology yellow `#f0e442`, 6 Folds violet `#9a8cff`. The unit letter always appears with the color, so the color is never the only cue. |
+| Unit colors | Each unit's lesson badge uses one color from the Okabe–Ito colorblind-safe palette, lightened for the dark background: 0 Math sky blue `#56b4e9`, 1 Orientation bluish green `#3fd0a0`, 2 Stress orange `#e69f00`, 3 Brittle vermillion `#f07a3c`, 3B Faults a lighter vermillion (proposed `#f5a383`, contrast checked at the first 3B build), 4 Strain reddish purple `#cc79a7`, 5 Rheology yellow `#f0e442`, 6 Folds violet `#9a8cff`. The unit letter always appears with the color, so the color is never the only cue. |
 | Notation | Vectors bold upright (𝐯, 𝐅, 𝛔 for the tensor), scalars and components italic (v_x, d, c), unit vectors with hats (𝐯̂, ı̂, ȷ̂, k̂), units upright. Equations are MathML written with `src/lessons/mathml.js`; the same notation appears in lesson text and scene labels. |
 | Units | SI. Force in N/kN, stress in Pa/MPa, lengths in m/km, strain rate in s⁻¹. Unit conversions are shown, never hidden. |
 
@@ -150,5 +161,5 @@ Shared infrastructure (the stereonet renderer, the Mohr plot, the equation-bindi
 ## Files
 
 - [build-00-rework.md](build-00-rework.md): the first build session. It removes statics and restructures the code into a lesson registry.
-- [unit-0-math.md](unit-0-math.md) · [unit-1-orientation.md](unit-1-orientation.md) · [unit-2-stress.md](unit-2-stress.md) · [unit-3-brittle.md](unit-3-brittle.md) · [unit-4-strain.md](unit-4-strain.md) · [unit-5-rheology.md](unit-5-rheology.md) · [unit-6-folds.md](unit-6-folds.md)
+- [unit-0-math.md](unit-0-math.md) · [unit-1-orientation.md](unit-1-orientation.md) · [unit-2-stress.md](unit-2-stress.md) · [unit-3-brittle.md](unit-3-brittle.md) · [unit-3b-faults.md](unit-3b-faults.md) · [unit-4-strain.md](unit-4-strain.md) · [unit-5-rheology.md](unit-5-rheology.md) · [unit-6-folds.md](unit-6-folds.md)
 - [parked-and-expansions.md](parked-and-expansions.md): topics deliberately deferred, and future modes.
