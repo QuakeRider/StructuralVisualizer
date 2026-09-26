@@ -1,5 +1,6 @@
 import { coulombAngles, mohrCircle, mohrPoint, sigma1AtFailure } from '../domain/failure.js';
 import { formatNumber } from '../domain/format.js';
+import { applyRefHighlight, bindRefHover, niceStep, symbol } from './plotKit.js';
 
 const WIDTH = 480;
 const MARGIN = { left: 30, right: 24, top: 48, bottom: 58 };
@@ -17,17 +18,6 @@ const COLORS = {
   caption: '#9aa1ad',
 };
 
-/** σ with a numeric (upright) subscript, or any base with an italic one. */
-function symbol(base, subscript, { upright = true } = {}) {
-  return `<tspan font-style="italic">${base}</tspan><tspan font-size="0.68em" dy="0.32em"${upright ? '' : ' font-style="italic"'}>${subscript}</tspan><tspan dy="-0.32em"> </tspan>`;
-}
-
-function niceStep(span) {
-  const raw = span / 5;
-  const power = 10 ** Math.floor(Math.log10(raw));
-  return [1, 2, 5, 10].map((factor) => factor * power).find((step) => step >= raw);
-}
-
 /**
  * 2D Mohr diagram for planes that contain σ2 (the σ1–σ3 circle), with the
  * Coulomb envelope τ = C + μσn. σ3 and C are fixed teaching values; σ1 is
@@ -41,16 +31,8 @@ export class MohrPlot {
     this.onHover = onHover;
     this.state = { mu: 0.6, cohesion: 10, sigma3: 20 };
     this.highlightRef = null;
-    this.hoverRef = null;
-    container.addEventListener('pointerover', (event) => this.setHoverRef(event.target.closest?.('[data-ref]')?.dataset.ref ?? null));
-    container.addEventListener('pointerleave', () => this.setHoverRef(null));
+    bindRefHover(container, (ref) => this.onHover?.(ref));
     this.render();
-  }
-
-  setHoverRef(ref) {
-    if (ref === this.hoverRef) return;
-    this.hoverRef = ref;
-    this.onHover?.(ref);
   }
 
   setState(state) {
@@ -60,11 +42,7 @@ export class MohrPlot {
 
   highlight(ref) {
     this.highlightRef = ref;
-    const svg = this.container.querySelector('svg');
-    const refs = new Set([...svg.querySelectorAll('[data-ref]')].map((element) => element.dataset.ref));
-    const active = ref && refs.has(ref) ? ref : null;
-    svg.classList.toggle('has-highlight', Boolean(active));
-    for (const element of svg.querySelectorAll('[data-ref]')) element.classList.toggle('is-highlighted', element.dataset.ref === active);
+    applyRefHighlight(this.container.querySelector('svg'), ref);
   }
 
   render() {

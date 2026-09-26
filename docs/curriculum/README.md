@@ -41,7 +41,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | B3 | Coulomb failure and the composite failure envelope | NED | Planned |
 | | B4 | Confining pressure and pore-fluid pressure | NED | Planned |
 | | B5 | Joints and veins | NED | Planned |
-| | B6 | Friction and reactivation of existing planes | NED | Planned |
+| | B6 | Friction and reactivation of existing planes | NED | Built early (0.10.0) |
 | | B7 | Anderson's theory of faulting | NED | Built early (0.8.0) |
 | | B8 | Fault geometry, slip, and kinematic axes (P/T, beach balls) | NED | Planned |
 | | B9 | Fault anatomy and growth | NED | Planned |
@@ -67,7 +67,7 @@ The tool makes **the mathematics of structural geology understandable, visible, 
 | | F6 | Fault-related folds | NED | Planned |
 | | F7 | Superposed folding | NED | Planned |
 
-"Built early" means the lesson was built ahead of its prerequisites for classroom use. B7 restates the Coulomb angle it needs from B3, builds the first Mohr plot (later lessons reuse it), and leaves the stereonet view for after O3 is built. When B3 and B6 are built, B7 should be revisited to point back to them.
+"Built early" means the lesson was built ahead of its prerequisites for classroom use. B7 restates the Coulomb angle it needs from B3 and builds the first Mohr plot. B6 restates the Coulomb line (B3), the 3D Mohr region (S9), and effective stress (B4), and builds the first stereonet and the 3D Mohr plot; O3, S9, B3, and B4 should extend those rather than start again. When B3 is built, B6 and B7 should be revisited to point back to it (see their "As built" notes).
 
 "Seed" means an early version exists in the app (moved from the 0.5 module by [Build 00](build-00-rework.md)); it does not yet meet its spec. A seed lesson's build session replaces it fully and sets the status to "Built".
 

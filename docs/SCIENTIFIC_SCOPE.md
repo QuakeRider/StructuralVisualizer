@@ -34,6 +34,28 @@ dip: normal δ = 90° − β, thrust δ = β, strike-slip δ = 90° with strikes
 - **Mohr diagram.** It uses fixed teaching values σ3 = 20 MPa and C = 10 MPa, with σ1 set to just reach the Coulomb line: σ1 = σ3(1 + sin φ)/(1 − sin φ) + 2C cos φ/(1 − sin φ). Its magnitudes are illustrative, but its angles (φ, 2θ) are exact, and the diagram says so.
 - **Deliberately left out.** The lesson does not model pre-existing weaknesses, pore pressure, fault rotation, or tilted stress axes. Step 7 names these as the reasons real faults depart from the prediction.
 
+### Friction and reactivation of existing planes (lesson B6)
+
+Same geological frame as B7 (x north, y east, z down, compression positive). Exact within Byerlee's law and the slip-tendency definitions:
+
+```text
+𝐭 = σ𝐧                       (𝐧 = downward pole, into the footwall)
+σn = 𝐭·𝐧,  τ = |𝐭 − σn𝐧|
+Byerlee: τ = 0.85σn′ (σn′ < 200 MPa),  τ = 50 MPa + 0.6σn′ (above)
+σn′ = σn − Pf                  (effective normal stress; τ unchanged)
+Ts = τ/σn′  (slips when τ reaches Byerlee's line; Ts ≥ 0.85 below 200 MPa)
+Td = (σ1 − σn)/(σ1 − σ3)
+σ1 to reactivate:  σ3 + (a + μ(σ3 − Pf))/(g − μf)  for each Byerlee segment τ = a + μσn′,
+                   f = c1² + R c2²,  g² = c1² + R² c2² − f²  (cᵢ: cosines of 𝐧 to the principal axes, R = 0.5)
+σ1 for a new fault: σ3′(1 + sin φ)/(1 − sin φ) + 2C cos φ/(1 − sin φ) + Pf
+```
+
+- **Stress state (illustrative magnitudes).** σ3 = 30 MPa, σ2 halfway between σ3 and σ1, σ1 from 30 to 240 MPa, and Pf up to 25 MPa. The principal axes follow the Anderson regimes (σ1 vertical by default). Intact rock is a teaching Coulomb line with C = 20 MPa and μ = 0.85. It is drawn parallel to Byerlee's line on purpose, so the only difference is cohesion. Real intact strength varies widely with rock type.
+- **Exact parts.** Every plane's σn, τ, Ts, and Td; its point on the 3D Mohr diagram (upper half only, τ ≥ 0); the three circles and the region between them; the reactivation and new-fault σ1 values; and the stereonet. The stereonet is a lower-hemisphere equal-area projection, sampled on a 120 × 120 grid of poles. Its hatching marks the cells whose plane reaches Byerlee's line, and the color scale is capped at Ts = 1.2.
+- **Stopping at failure (step 5).** Once the plane slips or intact rock breaks, σ1 stops rising. This is the usual idealization: the stress cannot exceed the strength of the weakest option. Stress drops and the earthquake cycle are not modeled.
+- **Illustrative parts.** The block's layers, the length of the stress arrows, and the size of the hanging wall's offset. The traction arrows are to scale with each other (1 world unit ≈ 110 MPa).
+- **Deliberately left out.** Rate-and-state friction, cohesion on old faults, clay-gouge friction values, poroelastic coupling of Pf to total stress, and inversion of stress from data. The mapped faults in step 7 and the induced-seismicity examples in step 8 are context, not modeled sites.
+
 ### Trigonometry of projection (lesson M2)
 
 Everything in the M2 steps is exact, in the same x, y, z frame as M1 (z up), with angles in degrees:

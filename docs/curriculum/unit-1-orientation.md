@@ -7,7 +7,7 @@
 **Shared infrastructure first built here:**
 - **NED frame + compass rose + "outcrop block"** (O1): a block-diagram context with a north arrow and a depth axis pointing down.
 - **Orientation input widgets** (O1/O2): trend/plunge, strike/dip (RHR), and dip direction/dip, each with synchronized vector readouts.
-- **Stereonet renderer** (O3): lower hemisphere, equal-angle and equal-area, plotting lines, great circles, poles, and small circles. It is linked to a 3D reference sphere. Every later unit uses it.
+- **Stereonet renderer** (O3): lower hemisphere, equal-angle and equal-area, plotting lines, great circles, poles, and small circles. It is linked to a 3D reference sphere. Every later unit uses it. *An early version was built by B6 (0.10.0, built early): `src/visualization/Stereonet.js` (SVG, lower-hemisphere equal-area only) draws a raster color map, great circles, poles, principal axes by shape, lettered markers, and click/drag pole picking, bound through `data-ref`. `src/domain/stereonet.js` has `equalAreaPoint`, `equalAreaLine` (inverse), `lineFromVector`, `greatCirclePoints`, and `planeFromPole`. O3 should extend both (equal-angle, net grid, small circles, the 3D sphere) instead of starting over.*
 
 ---
 
@@ -137,7 +137,7 @@
 
 **Exact vs illustrative:** exact.
 
-**Domain / scenes / tests:** `projectEqualAngle`, `projectEqualArea`, and `greatCirclePoints(plane)` in a new `src/domain/stereonet.js`, with tests. Build the **stereonet renderer** (an SVG or canvas 2D component), designed for reuse: layers for lines, planes, poles, small circles, and shaded regions.
+**Domain / scenes / tests:** `projectEqualAngle`, `projectEqualArea`, and `greatCirclePoints(plane)` in `src/domain/stereonet.js` (it already exists from B6 with the equal-area projection and `greatCirclePoints`; add equal-angle beside it), with tests. Build the **stereonet renderer** (an SVG or canvas 2D component), designed for reuse: layers for lines, planes, poles, small circles, and shaded regions.
 
 **Out of scope:** contouring, density statistics, and Kamb or Fisher statistics (parked with Lab mode). Rotation on the net is also out of scope unless F7 needs it.
 

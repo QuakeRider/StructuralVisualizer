@@ -155,7 +155,7 @@
 
 **Exact vs illustrative:** effective-stress shifts are exact; the rig graphic is schematic.
 
-**Domain / scenes / tests:** `effectiveStress(σ, Pf)` and `hydrofractureCheck` in `failure.js`, with tests.
+**Domain / scenes / tests:** `effectiveStress(σ, Pf)` and `hydrofractureCheck` in `failure.js`, with tests. *B6 (built early) already shows effective stress in its last step: `frictionCheck(σ, n, Pf)` and `newFaultSigma1(σ3, { C, μ, Pf })` in `failure.js`, and `FrictionMohrPlot.js` draws the circles shifted left by Pf with the dry circle dashed.*
 
 **Out of scope:** poroelastic coupling (a one-sentence mention at most), and permeability or flow.
 
@@ -235,6 +235,17 @@
 
 **Acceptance criteria:** the plane ↔ Mohr point ↔ stereonet pole are all linked; the slip-tendency map is correct for known stress states.
 
+**As built (0.10.0, built early).** Built ahead of B3, B4, S9, and O3 for classroom use, so it stands alone:
+- **Restated prerequisites.** Step 1 states the Coulomb line (B3), step 3 the 3D Mohr region (S9), and step 8 effective stress (B4). No lesson is required first.
+- **Traction form on screen.** 𝐭 = 𝛔𝐧 with 𝐧 the downward pole of the plane, which points into the footwall; 𝐭 is the hanging wall's push on the footwall, and its shear part points the way the hanging wall would slide.
+- **Teaching stress state (illustrative).** σ3 = 30 MPa, σ2 halfway between σ3 and σ1, and σ1 set by the step or a slider (30–240 MPa), with Andersonian axes (σ1 vertical unless the regime is switched). Intact rock uses C = 20 MPa and μ = 0.85, so its Coulomb line is parallel to Byerlee's line and the gap between them is the cohesion.
+- **Reactivation vs a new fault** (step 5). Raising σ1 stops at whichever comes first: the σ1 that makes the plane slip (closed form, both Byerlee segments) or the σ1 that breaks intact rock. A plane that can never slip is called locked (a 30°-dipping plane in the normal regime).
+- **Stereonet.** The first stereonet, lower-hemisphere equal-area only: a slip-tendency color map (0–1.2, viridis) with the slipping planes hatched, principal axes by shape, the plane's great circle and pole, lettered mapped faults, and click/drag pole picking.
+- **Steps.** 1 weak planes; 2 Byerlee's law (numeric); 3 every plane is a point; 4 slip tendency (numeric and a goal); 5 old plane or new fault; 6 the stereonet map, with dilation tendency as an aside; 7 ranking three mapped faults; 8 pore pressure and induced earthquakes.
+- **Domain modules.** `tensor.js` (`applyTensor`, `resolveTraction`), `stereonet.js`, and in `failure.js` `BYERLEE`, `byerlee`, `principalMagnitudes`, `mohrCircles3D`, `slipTendency`, `frictionCheck`, `dilationTendency(σ, n, {σ1, σ3})`, `reactivationSigma1`, `newFaultSigma1`, `principalCosines`, and `slipTendencyGrid`.
+
+When B3, B4, S9, and O3 are built, revisit B6: point steps 1, 3, and 8 back to them, and use the O3 net features (grid, equal-angle toggle) where they help.
+
 ---
 
 ## B7 — Anderson's theory of faulting
@@ -282,7 +293,7 @@
 - **Domain modules.** `andersonAxes`, `andersonFaults(regime, μ, shmaxTrend)`, `principalStressTensor`, `faultSlip`, and `slipSense` are in `anderson.js`; the Coulomb and Mohr helpers are in `failure.js`, and the NED plane and line helpers in `orientation.js`.
 - **Steps.** 1 the free surface; 2 which stress is vertical; 3 normal regime, with a numeric dip answer; 4 thrust regime; 5 strike-slip regime, with the sense of slip; 6 varying μ; 7 the limits of the theory; 8 inferring stress from a mapped pair (stress arrows hidden until the answer); 9 tectonic settings.
 
-When B3 and B6 are built, revisit B7: point steps 2–3 back to B3, add the stereonet, and link step 7 to B6's reactivation.
+When B3 is built, revisit B7: point steps 2–3 back to B3. B6 is now built (0.10.0), so B7 can add the stereonet by reusing `Stereonet.js` (axes and the conjugate great circles), and step 7 can point to B6 for reactivation.
 
 ---
 

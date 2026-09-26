@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ANDERSON_REGIMES, andersonFaults } from '../domain/anderson.js';
+import { ANDERSON_REGIMES, andersonAxes, andersonFaults, principalStressTensor } from '../domain/anderson.js';
+import { frictionCheck, newFaultSigma1, principalCosines, principalMagnitudes, reactivationSigma1 } from '../domain/failure.js';
+import { lineVector, planeFromStrike, planePole } from '../domain/orientation.js';
 import { STRESS_STATES } from '../domain/stressStates.js';
 import { magnitude, polarAngle, rotate2D } from '../domain/vector.js';
 import { SCENE_REFS } from '../visualization/sceneRefs.js';
@@ -49,8 +51,9 @@ describe('curriculum catalog', () => {
 });
 
 describe('lesson content', () => {
-  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B7 (built early)', () => {
-    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B7']);
+  it('starts the curriculum at M1, seeds the Build 00 lessons, and includes B6 and B7 (built early)', () => {
+    expect(getAvailableLessons().map((lesson) => lesson.id)).toEqual(['M1', 'M2', 'S2', 'S3', 'S7', 'S10', 'B6', 'B7']);
+    expect(getLesson('B6').status).toBe('built');
     expect(getLesson('M2').status).toBe('built');
     expect(getLesson('B7').status).toBe('built');
     expect(getLesson('M1').status).toBe('built');
@@ -125,7 +128,7 @@ describe('lesson content', () => {
   });
 
   it('gives every lab step at least one bound equation', () => {
-    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson'].includes(candidate.visualKind))) {
+    for (const { lesson, step } of allSteps.filter(({ step: candidate }) => ['force-lab', 'vector-lab', 'anderson', 'friction'].includes(candidate.visualKind))) {
       expect(step.equations?.some((equation) => equation.symbols.length > 0), `${lesson.id}/${step.id}`).toBe(true);
     }
   });
@@ -144,7 +147,8 @@ describe('lesson navigation helpers', () => {
     expect(getNextAvailableLesson('M1').id).toBe('M2');
     expect(getNextAvailableLesson('M2').id).toBe('S2');
     expect(getNextAvailableLesson('S3').id).toBe('S7');
-    expect(getNextAvailableLesson('S10').id).toBe('B7');
+    expect(getNextAvailableLesson('S10').id).toBe('B6');
+    expect(getNextAvailableLesson('B6').id).toBe('B7');
     expect(getNextAvailableLesson('B7')).toBeNull();
   });
 });
@@ -286,5 +290,76 @@ describe('M2 trigonometry lesson', () => {
   it('keeps the unit-circle vector at length 1', () => {
     expect(magnitude(step('unit-circle').initialLabState.v)).toBeCloseTo(1, 12);
     expect(step('unit-circle').labOptions.fixedLength).toBe(1);
+  });
+});
+
+describe('B6 friction lesson', () => {
+  const steps = getLesson('B6').steps;
+  const step = (id) => steps.find((candidate) => candidate.id === id);
+  // The teaching stress state used by main.js (FRICTION_LAB): σ3 = 30 MPa, σ2 halfway, normal regime.
+  const axes = andersonAxes('normal', 0);
+  const axisVectors = Object.fromEntries(Object.entries(axes).map(([key, axis]) => [key, lineVector(axis.trend, axis.plunge)]));
+  const tensorFor = (sigma1) => principalStressTensor(axes, principalMagnitudes(sigma1, 30));
+  const checkPlane = (strike, dip, sigma1, pf = 0) => frictionCheck(tensorFor(sigma1), planePole(planeFromStrike(strike, dip)), pf);
+  const reactivation = (strike, dip, pf = 0) => reactivationSigma1(principalCosines(planePole(planeFromStrike(strike, dip)), axisVectors), { sigma3: 30, pf });
+  const intact = { cohesion: 20, mu: 0.85 };
+
+  it('accepts Byerlee’s τ at σn = 50 MPa and explains the intact-rock mistake', () => {
+    const byerlee = step('byerlee');
+    expect(checkNumericAnswer(byerlee, '42.5').correct).toBe(true);
+    expect(checkNumericAnswer(byerlee, '62.5').feedback).toMatch(/intact/);
+  });
+
+  it('puts planes that contain σ2 on the big circle (step 3’s answer)', () => {
+    const { sigmaN, tau } = checkPlane(0, 40, 150);
+    expect(Math.hypot(sigmaN - 90, tau)).toBeCloseTo(60, 9);
+    // The step starts off the big circle and below the friction line.
+    const start = step('every-plane-a-point').initialLabState;
+    const initial = checkPlane(start.strike, start.dip, start.sigma1);
+    expect(Math.hypot(initial.sigmaN - 90, initial.tau)).toBeLessThan(59);
+  });
+
+  it('starts the slip-tendency step on a plane that holds, and can reach the goal', () => {
+    const slip = step('slip-tendency');
+    const start = slip.initialLabState;
+    expect(checkPlane(start.strike, start.dip, start.sigma1).slips).toBe(false);
+    expect(isGoalMet(slip, { slips: checkPlane(0, 65, start.sigma1).slips })).toBe(true);
+    expect(checkNumericAnswer(slip, '0.75').correct).toBe(true);
+    expect(checkNumericAnswer(slip, '1.33').feedback).toMatch(/upside down/);
+  });
+
+  it('matches the numbers in the reactivation feedback', () => {
+    const start = step('old-or-new').initialLabState;
+    expect(start.dip).toBe(45);
+    expect(reactivation(start.strike, 45)).toBeCloseTo(370, 0);
+    expect(newFaultSigma1(30, intact)).toBeCloseTo(227, 0);
+    expect(reactivation(0, 65)).toBeCloseTo(140, 0);
+    expect(reactivation(0, 30)).toBe(Infinity);
+    expect(step('old-or-new').choices.find((choice) => choice.correct).id).toBe('new-fault');
+  });
+
+  it('ranks the mapped faults as the feedback says, with none slipping dry', () => {
+    const ranking = step('rank-faults');
+    const sigma1 = ranking.initialLabState.sigma1;
+    const ts = Object.fromEntries(ranking.mappedFaults.map((fault) => [fault.id, checkPlane(fault.strike, fault.dip, sigma1).ts]));
+    expect(ts.A).toBeCloseTo(0.8, 2);
+    expect(ts.C).toBeCloseTo(0.41, 2);
+    expect(ts.B).toBeCloseTo(0.23, 2);
+    expect(Math.max(...Object.values(ts))).toBeLessThan(0.85);
+    expect(ranking.choices.find((choice) => choice.correct).id).toBe('A');
+  });
+
+  it('makes fault A slip once Pf reaches about 3 MPa, without changing τ', () => {
+    const fluid = step('fluid-pressure');
+    const { strike, dip, sigma1 } = fluid.initialLabState;
+    expect(checkPlane(strike, dip, sigma1, 2.5).slips).toBe(false);
+    expect(checkPlane(strike, dip, sigma1, 3).slips).toBe(true);
+    expect(checkPlane(strike, dip, sigma1, 10).tau).toBeCloseTo(checkPlane(strike, dip, sigma1, 0).tau, 12);
+    expect(fluid.final).toBe(true);
+  });
+
+  it('uses the stereonet only in the map steps', () => {
+    const withNet = steps.filter((candidate) => candidate.labOptions.showStereonet).map((candidate) => candidate.id);
+    expect(withNet).toEqual(['slip-tendency-map', 'rank-faults', 'fluid-pressure']);
   });
 });

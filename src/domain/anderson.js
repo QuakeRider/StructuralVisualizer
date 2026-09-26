@@ -5,6 +5,7 @@
 
 import { coulombAngles } from './failure.js';
 import { lineVector, planeFromDipDirection, planeFromStrike, planeUpwardNormal, strikeVector } from './orientation.js';
+import { applyTensor } from './tensor.js';
 import { dot, magnitude, normalize, scale, subtract } from './vector.js';
 
 export const ANDERSON_REGIMES = Object.freeze({
@@ -65,15 +66,6 @@ export function principalStressTensor(axes, magnitudes) {
   return tensor;
 }
 
-function multiply(tensor, v) {
-  const [a, b, c] = tensor;
-  return {
-    x: a[0] * v.x + a[1] * v.y + a[2] * v.z,
-    y: b[0] * v.x + b[1] * v.y + b[2] * v.z,
-    z: c[0] * v.x + c[1] * v.y + c[2] * v.z,
-  };
-}
-
 /**
  * Slip direction of the block on the upward-normal side (the hanging wall, or
  * the dip-direction side of a vertical plane) relative to the other block.
@@ -83,7 +75,7 @@ function multiply(tensor, v) {
  */
 export function faultSlip(tensor, plane) {
   const m = planeUpwardNormal(plane);
-  const t = scale(multiply(tensor, m), -1);
+  const t = scale(applyTensor(tensor, m), -1);
   const shear = subtract(t, scale(m, dot(t, m)));
   const size = magnitude(shear);
   return { normal: m, shearMagnitude: size, slip: size > 1e-9 ? normalize(shear) : null };

@@ -351,7 +351,7 @@
 
 **Exact vs illustrative:** exact.
 
-**Domain / scenes / tests:** `mohr3D(σ)` and `planeToMohrPoint3D` in `stress.js`, with tests. Extend the Mohr renderer with the region shading.
+**Domain / scenes / tests:** `mohr3D(σ)` and `planeToMohrPoint3D` in `stress.js`, with tests. Extend the Mohr renderer with the region shading. *B6 (0.10.0, built early) already has these pieces: `mohrCircles3D` in `failure.js`, `resolveTraction(σ, n)` → σn, τ in `tensor.js`, and `FrictionMohrPlot.js`, which draws the three circles with the region shaded and a plane's point. Reuse or move them rather than duplicating.*
 
 **Out of scope:** graphical 3D Mohr construction for a given plane (the numeric point is enough).
 
