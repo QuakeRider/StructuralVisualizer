@@ -1,4 +1,4 @@
-// B8 — Fault geometry, slip, and kinematic axes. Spec: docs/curriculum/unit-3-brittle.md (B8).
+// B8 — Fault geometry, slip, and kinematic axes. Spec: docs/curriculum/unit-3b-faults.md (B8).
 // Frame: NED (x = North, y = East, z = Down); stress compression positive.
 // Conventions on screen (kept from B6): 𝐧 is the downward pole of the fault, pointing
 // into the footwall; 𝐭 = 𝛔𝐧 is the hanging wall's push on the footwall, and its shear

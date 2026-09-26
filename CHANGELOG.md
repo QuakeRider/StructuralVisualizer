@@ -2,9 +2,28 @@
 
 All notable user-visible changes are recorded here.
 
-## Unreleased
+## 0.13.0 — 2026-09-26
+
+### Added
+
+- Lesson B11, Fault zones and fault rocks, built ahead of the curriculum order at the instructor's request (ten steps):
+  1. From line to zone: a fault that is a line on a 1 km map becomes a zone in a 40 m outcrop, with slip surfaces, core, damage zones, host rock, and (on a map panel) the process zone ahead of a growing tip.
+  2. Real architecture: 1–3 strands, fault lenses, uneven footwall and hanging-wall damage zones, and tip, wall, and linking damage (Kim, Peacock & Sanderson 2004).
+  3. The scanline: fractures drawn on the outcrop surface from a power-law density law (n = 0.8, Savage & Brodsky 2011), counted by a draggable scanline against the law; numeric check on the damage-zone edge.
+  4. Widths grow with displacement: core D/k and damage aD against published bands on log–log axes; numeric check.
+  5. Grinding rock: a slip slider drives a stated comminution rule; the slab is drawn from the clast-size power law (the slice exponent Df − 1), with a clast-count plot and the matrix fraction.
+  6. Naming fault rocks: Sibson's (1977) chart with cohesion and fabric toggles, Woodcock & Mort's (2008) breccia names beside it, and a goal to make three rocks.
+  7. Melting on a fault: the adiabatic heating bound ΔT = τD/(ρcw), with a pseudotachylyte vein when the slip zone passes 1000 °C; numeric check (about 1850 K).
+  8. Fault rocks with depth: a crustal block and a depth column that move with the geothermal gradient; numeric check.
+  9. Crystalline vs porous hosts: fractures vs deformation bands (single bands, band zone, slip surface), with flow arrows.
+  10. Conduit, barrier, or both: Caine, Evans & Forster's (1996) architecture index and end-members (final).
+- A fault-zone laboratory (`FaultZoneScene.js`): an outcrop block painted from the zone model, fault-rock slabs (`faultRockTexture.js`), and a crustal block. New panels: Sibson's chart (`FaultRockChart.js`) and a damage map, depth column, and architecture gauge (`FaultZonePanels.js`). `XYPlot.js` gained filled areas.
+- New tested domain module `faultRocks.js`: clast-size distributions and the fraction finer, the comminution rule, slab textures whose drawn matrix matches the model, Sibson and Woodcock & Mort classification, frictional heating, the damage-density law and fracture traces with scanline counts, width scaling, fault-rock zones with depth, and the architecture index.
 
 ### Changed
+
+- The lesson catalog follows Unit 3B: B7–B18 are listed in teaching order under "3B · Faults" (badge `#f5a383`), with B17 and B18 in a second group after Unit 6. B7–B9's lesson files moved to `src/lessons/unit-3b-faults/`.
+- Lesson B9 is now "Fault displacement and growth" (seven steps): its fault-zone step moved to B11 and its fault-rock panel (`FaultRockPanel.js`) was removed, the relay step shows process zones ahead of the growing tips, and it points ahead to B13.
 
 - Curriculum plan: a new **Unit 3B Faults** (`docs/curriculum/unit-3b-faults.md`), written after a review of Fossen (2016) chapters 9–10 and PSGT chapter 5 with the instructor. B7–B9 move into it and keep their IDs. Nine new lesson specs:
   - B10 fault shapes, arrays, and terminations

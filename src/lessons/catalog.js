@@ -2,15 +2,22 @@
  * Curriculum catalog. Mirrors docs/curriculum/README.md (lesson order, titles,
  * prerequisites). Lesson content lives in per-lesson files registered in
  * registry.js; entries without content are listed as planned.
+ *
+ * Lessons are listed in teaching order. A lesson's `unit` is its unit's `id`;
+ * `number` is the label students see. Unit 3B shares the B prefix with Unit 3,
+ * its teaching order is not its ID order, and its last two lessons (B17, B18)
+ * are taught after Unit 6, in a second group with the same label.
  */
 export const UNITS = [
-  { number: 0, title: 'Math foundations' },
-  { number: 1, title: 'Orientation of lines and planes' },
-  { number: 2, title: 'Stress' },
-  { number: 3, title: 'Brittle deformation' },
-  { number: 4, title: 'Deformation and strain' },
-  { number: 5, title: 'Rheology' },
-  { number: 6, title: 'Folds and folding' },
+  { id: 0, number: 0, title: 'Math foundations' },
+  { id: 1, number: 1, title: 'Orientation of lines and planes' },
+  { id: 2, number: 2, title: 'Stress' },
+  { id: 3, number: 3, title: 'Brittle deformation' },
+  { id: '3B', number: '3B', title: 'Faults' },
+  { id: 4, number: 4, title: 'Deformation and strain' },
+  { id: 5, number: 5, title: 'Rheology' },
+  { id: 6, number: 6, title: 'Folds and folding' },
+  { id: '3B-after-6', number: '3B', title: 'Faults, continued (taught after Unit 6)' },
 ];
 
 export const LESSON_CATALOG = [
@@ -38,9 +45,16 @@ export const LESSON_CATALOG = [
   { id: 'B4', unit: 3, title: 'Confining pressure and pore-fluid pressure', prerequisites: ['B3', 'S10'] },
   { id: 'B5', unit: 3, title: 'Joints and veins', prerequisites: ['B2', 'B4', 'O3'] },
   { id: 'B6', unit: 3, title: 'Friction and reactivation of existing planes', prerequisites: ['B3', 'B4', 'S9', 'O3'] },
-  { id: 'B7', unit: 3, title: "Anderson's theory of faulting", prerequisites: ['B3', 'B6', 'S10', 'O2'] },
-  { id: 'B8', unit: 3, title: 'Fault geometry, slip, and kinematic axes', prerequisites: ['B7', 'O4', 'S7'] },
-  { id: 'B9', unit: 3, title: 'Fault anatomy and growth', prerequisites: ['B8', 'B6'] },
+  { id: 'B7', unit: '3B', title: "Anderson's theory of faulting", prerequisites: ['B3', 'B6', 'S10', 'O2'] },
+  { id: 'B8', unit: '3B', title: 'Fault geometry, slip, and kinematic axes', prerequisites: ['B7', 'O4', 'S7'] },
+  { id: 'B10', unit: '3B', title: 'Fault shapes, arrays, and terminations', prerequisites: ['B8', 'O2', 'M2'] },
+  { id: 'B11', unit: '3B', title: 'Fault zones and fault rocks', prerequisites: ['B8', 'B10', 'B6', 'B1'] },
+  { id: 'B12', unit: '3B', title: 'Kinematic indicators', prerequisites: ['B8', 'B11', 'B3', 'O3'] },
+  { id: 'B9', unit: '3B', title: 'Fault displacement and growth', prerequisites: ['B8', 'B6', 'B11'] },
+  { id: 'B13', unit: '3B', title: 'Faults and earthquakes', prerequisites: ['B6', 'B9', 'B11', 'S7'] },
+  { id: 'B14', unit: '3B', title: 'Fault mechanics puzzles', prerequisites: ['B4', 'B6', 'B7', 'B10', 'B13'] },
+  { id: 'B15', unit: '3B', title: 'Fault populations and paleostress', prerequisites: ['B8', 'B9', 'B12', 'S8', 'O3'] },
+  { id: 'B16', unit: '3B', title: 'Faults, fluids, and the subsurface', prerequisites: ['B8', 'B9', 'B10', 'B11'] },
   { id: 'D1', unit: 4, title: 'Components of deformation', prerequisites: ['M4', 'S10'] },
   { id: 'D2', unit: 4, title: 'Homogeneous vs heterogeneous deformation', prerequisites: ['D1'] },
   { id: 'D3', unit: 4, title: 'Measuring strain', prerequisites: ['D2'] },
@@ -60,6 +74,8 @@ export const LESSON_CATALOG = [
   { id: 'F3', unit: 6, title: 'Fold shape and classification', prerequisites: ['F2'] },
   { id: 'F4', unit: 6, title: 'Folding mechanisms', prerequisites: ['F3', 'D4', 'D5', 'D6', 'D7', 'R3', 'R4'] },
   { id: 'F5', unit: 6, title: 'Boudinage', prerequisites: ['F4', 'D4', 'D7', 'R4', 'B5'] },
-  { id: 'F6', unit: 6, title: 'Fault-related folds', prerequisites: ['F4', 'B8', 'B9', 'D6', 'O4'] },
+  { id: 'F6', unit: 6, title: 'Fault-related folds', prerequisites: ['F4', 'B8', 'B9', 'B10', 'D6', 'O4'] },
   { id: 'F7', unit: 6, title: 'Superposed folding', prerequisites: ['F4', 'F2', 'D7'] },
+  { id: 'B17', unit: '3B-after-6', title: 'Extensional and contractional fault systems, and inversion', prerequisites: ['B9', 'B10', 'B14', 'B15', 'F6'] },
+  { id: 'B18', unit: '3B-after-6', title: 'Strike-slip fault systems', prerequisites: ['B10', 'B12', 'B15', 'B17', 'D5', 'D6', 'F6'] },
 ];

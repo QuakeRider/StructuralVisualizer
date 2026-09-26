@@ -1,4 +1,4 @@
-// B7 — Anderson's theory of faulting. Spec: docs/curriculum/unit-3-brittle.md (B7).
+// B7 — Anderson's theory of faulting. Spec: docs/curriculum/unit-3b-faults.md (B7).
 // Frame: NED (x = North, y = East, z = Down); stress compression positive.
 // Built ahead of its prerequisites (B3, B6) for classroom use, so the steps
 // restate the Coulomb angle they rely on. The stereonet view waits for O3.

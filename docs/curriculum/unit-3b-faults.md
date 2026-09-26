@@ -6,7 +6,7 @@
 
 **Origin.** Written 2026-09-26 after a review of Fossen (2016) chapters 9–10 and PSGT chapter 5 against the built lessons B6–B9, and an interview with the course instructor. B7, B8, and B9 moved here from `unit-3-brittle.md` and keep their IDs. Unit 3B shares the B prefix, so new lessons continue from B10. **Teaching order is not ID order:** B7, B8, B10, B11, B12, B9, B13, B14, B15, B16, then (after Unit 6) B17 and B18.
 
-**Unit color.** A second, lighter vermillion, proposed `#f5a383`, always shown with the "3B" label so color is never the only cue. Check its contrast against the Brittle color at the first 3B build.
+**Unit color.** A second, lighter vermillion, `#f5a383`, always shown with the "3B" label so color is never the only cue (its contrast with the Brittle color is only 1.4:1; see the catalog note below).
 
 **Sliding-block exception to binding decision 1.** B13's spring-slider and B14's pushed and gliding thrust sheets are force balances *along a frictional surface*. The README allows exactly this and nothing more: no moments, supports, section cuts, or internal resultants.
 
@@ -28,7 +28,7 @@
 
 **Photographs.** The instructor may supply outcrop and thin-section photographs later. How to integrate them is **deferred**, to be discussed with the instructor. Until then the procedural textures carry B11, labeled as schematic in appearance.
 
-**Catalog.** The first 3B build session adds Unit 3B to `UNITS` in `src/lessons/catalog.js`, moves B7–B9 to it, adds B10–B18 with their prerequisites, adds B10 to F6's prerequisites, retitles B9, and sets the badge color. Until then the app still lists B7–B9 under Unit 3.
+**Catalog.** Done in the B11 build (0.13.0): `src/lessons/catalog.js` lists Unit 3B in teaching order with B7–B18, B17 and B18 in a second "3B" group after Unit 6, B10 in F6's prerequisites, B9 retitled, and the badge color `#f5a383`. Its contrast is 9.2:1 against the page background but only 1.4:1 against the Brittle color, so the "3B · Faults" unit label, not the color, tells the two units apart. The lesson files live in `src/lessons/unit-3b-faults/`.
 
 ---
 
@@ -178,7 +178,7 @@ When O4 and S7 are built, revisit B8: point steps 2 and 6 back to O4's rake and 
 
 **Prerequisites:** B8, B10, B6, B1 (deformation bands; restate if B1 is not built). **Used later by:** B9, B12, B13, B16, R6, (parked) shear zones.
 
-This lesson replaces B9's first step, "Inside a fault zone". It is the planned next build, ahead of M3, at the instructor's request.
+This lesson replaces B9's first step, "Inside a fault zone". It was built early (0.13.0), ahead of M3, at the instructor's request; see its "As built" note.
 
 **Learning objectives**
 - Describe a fault as a zone, with a scale-dependent definition: a line on a map, and a volume in outcrop. Name its parts: principal slip surface(s), **fault core**, **damage zone**, host rock, and the **process zone** ahead of a propagating tip.
@@ -261,6 +261,19 @@ Tests: hand values of the size integral (for example D_f = 2 makes f linear in d
 - F_a and its end-member update with the widths.
 - Crystalline and porous hosts show different damage-zone structures and flow outcomes.
 
+**As built (0.13.0, built early).** Built after B8 at the instructor's request, ahead of B10 and B1; it needs only the fault-as-a-plane idea from them and restates deformation bands in one sentence.
+- **Setting.** One lab, `visualKind: 'fault-zone'`, with three setups. *Outcrop:* a 40 m NED block (1 km at map scale) around a normal fault striking north, dipping 60° east, with 10 m of slip; its faces are painted pixel by pixel from the zone model, so what is drawn and what is hovered come from the same classification. Defaults: core 0.8 m, footwall damage 5 m, hanging-wall damage 8 m; 1–3 strands and 0–2 lenses (lenses sit between strands). *Sample:* a slab of fault rock drawn from its clast-size distribution. *Crust:* a 60 km × 30 km block with the fault-rock zones by depth, the fault zone drawn wider than true.
+- **Damage density.** ρ(x) = ρ₀(1 + x/x₀)^(−n) down to ρ_bg, with n = 0.8 (Savage & Brodsky 2011), x₀ = 0.5 m, and ρ_bg = 0.5 per m; ρ₀ is set so the decay reaches the background exactly at the chosen width. Pavement traces are placed so an east–west scanline crosses ρ(d) sin δ traces per metre, which the plot divides by sin δ to read per metre at right angles to the fault; a test averages many seeds and matches the law within 10%. In sandstone the law counts deformation bands (x₀ = 2 cm, ρ_bg = 0.2 per m), and the three stages (single bands, band zone, slip surface) set the widths.
+- **Width scaling.** D from 0.1 m to 1 km, w_core = D/k (k from 10 to 1000) and w_dmg = aD per wall (a from 0.1 to 10), against bands for D/1000–D/10 and D/10–10D (drawn only to D = 100 m). The block grows with D and the drawn density law scales with it, so the zone looks alike at every size.
+- **Comminution.** Slip from 1 cm to 100 m on a log scale t: d_max = 30 mm × 10^(−2.4t), D_f = 2.58 − 0.98 e^(−4t), d_min = 1 µm. The matrix is grains finer than 0.1 mm, Sibson's own definition. The slab is a 480 × 288 grid over a field of 6, 25, or 100 mm (the smallest at least 3 d_max). Clasts of two cells or more are equal-area outlines drawn from the slice law N(>d) ∝ d^(−(D_f − 1)) and packed without overlap, largest first; area lost to the edges or crowding is topped up from the same law, and finer fragments are single cells. The drawn matrix matches `fractionFiner` within 2% (tested).
+- **Classification.** Sibson's boundaries at 10/50/90% matrix and 30% fragments; crush breccias named by the volume median of the grains coarser than the matrix (over 5 mm, 1–5 mm, under 1 mm); foliated rock under 10% matrix has no name in the scheme. Woodcock & Mort's name appears beside it from the clasts of 2 mm or more. Phyllonite is named in the text; there is no mica control.
+- **Heating and depth.** The fault starts at 200 °C, about 8 km deep; the slab melts into a pseudotachylyte vein when 200 °C + ΔT reaches 1000 °C (quartz survives to 1700 °C). The depth column uses T₀ = 10 °C and boundaries at 100 °C (cohesion, a stated choice), 250 °C (calcite), 300 °C (quartz), and 450 °C (feldspar), with earthquakes between 100 and 300 °C.
+- **Architecture.** A core counts as well developed from 10 cm and the damage zones from 1 m in total (a stated choice); F_a is exact.
+- **Steps.** 1 from line to zone (map/outcrop switch; the damage map shows the process zone); 2 strands, lenses, uneven walls, and tip, wall, and linking damage; 3 the scanline (numeric: the edge for ρ₀ = 3 per m is 4.2 m); 4 width scaling (numeric: 0.5 m); 5 grinding; 6 naming, with a goal to make a gouge, a fine crush breccia, and an ultracataclasite; 7 melting (numeric: about 1850 K); 8 fault rocks with depth (numeric: 11.6 km); 9 crystalline vs porous host, with flow arrows; 10 conduit, barrier, or both (final).
+- **Domain module.** `faultRocks.js`. Beyond the spec's list: `rockComposition`, `sizeAtFraction`, `slabTexture`, `clastPolygon`, `damagePeak`, `zonePosition`, `zoneDensity`, `pavementTraces`, `sectionTraces`, `strikeFaceTraces`, `scanlineCrossings`, `scanlineDensity`, `widthScaling`, and `depthOfTemperature`. `damageDensity(x, params)` takes the zone width; `permeabilityStructure({ core, damage })` picks the end-member from which parts are well developed and returns F_a with it.
+- **Scenes.** `FaultZoneScene.js` (the three setups), `faultRockTexture.js` (slab drawings), `FaultRockChart.js` (Sibson's chart and Woodcock & Mort's scale), and `FaultZonePanels.js` (the damage map, the depth column, and the architecture gauge); `XYPlot.js` gained filled areas. `FaultRockPanel.js` was removed.
+- **Sources checked at build.** Sibson's crush-breccia sizes and the 0.1 mm matrix size, and Woodcock & Mort's thresholds, against the McGill fault-rock glossary; Savage & Brodsky's decay exponent of about 0.8 for small faults. Photographs: none (deferred).
+
 ---
 
 ## B12 — Kinematic indicators
@@ -311,27 +324,26 @@ Tests: hand values of the size integral (for example D_f = 2 makes f linear in d
 
 ---
 
-## B9 — Fault anatomy and growth
+## B9 — Fault displacement and growth
 
-**Prerequisites:** B8, B6 (B11 after the planned revision). **Used later by:** B13, B15, B16, B17, F6.
+**Prerequisites:** B8, B6, B11. **Used later by:** B13, B15, B16, B17, F6.
 
 **Learning objectives**
-- Describe fault anatomy: the fault core (slip surfaces and fault rock) and the surrounding damage zone. Name the main fault rocks (breccia, gouge, cataclasite) and contrast them with mylonite (ductile, parked).
 - Describe the displacement distribution on a fault surface: displacement is largest near the center and dies out to zero at the **tip line**, so an isolated fault has an elliptical outline in 3D.
 - Use displacement–length scaling `D = c·Lⁿ` (with n ≈ 1) to estimate one from the other, and explain what c means.
-- Explain how faults grow by accumulating slip (repeated earthquakes) and by **linkage**: underlapping → overlapping (a relay ramp) → hard-linked (breached relay). Recognize the resulting bends and displacement profiles.
+- Explain how faults grow by accumulating slip (repeated earthquakes) and by **linkage**: underlapping → overlapping (a relay ramp) → hard-linked (breached relay). Recognize the resulting bends and displacement profiles, and the process zone ahead of each growing tip (B11).
 - Recognize fault drag (reverse and normal drag) as a displacement-gradient effect near the fault, previewing fault-related folds (F6).
 
 **Math introduced:** an idealized displacement field on the fault plane, for example `D(x, y) = D_max · √(1 − (x/a)² − (y/b)²)` inside an elliptical tip line (declared as one idealized model among several). A displacement profile along strike as a 1D slice of that surface. `D = c·Lⁿ` on log–log axes (a straight line with slope n). For linkage, the displacement profiles of two segments are summed.
 
-**Equation–model binding:** the fault-surface displacement map (the fault plane colored by D, with contour lines and the tip line) inside an Earth block. Marker beds are offset by the local D, so the offset visibly shrinks toward the tips. A profile plot along a draggable line on the fault. A log–log D–L plot with a live point for the current fault and a scatter of synthetic "global" data. A two-segment scene: slide the segments toward and past each other and watch the relay ramp form, tilt, and breach, with the summed displacement profile shown. The core and damage-zone widths are drawn around the slip surface.
+**Equation–model binding:** the fault-surface displacement map (the fault plane colored by D, with contour lines and the tip line) inside an Earth block. Marker beds are offset by the local D, so the offset visibly shrinks toward the tips. A profile plot along a draggable line on the fault. A log–log D–L plot with a live point for the current fault and a scatter of synthetic "global" data. A two-segment scene: slide the segments toward and past each other and watch the relay ramp form, tilt, and breach, with the summed displacement profile shown and process zones ahead of the growing tips.
 
 **Step outline**
-1. Fault core vs damage zone. Fault rocks named with images.
-2. An isolated fault: displacement is greatest at the center and zero at the tip line. Prediction: what happens to a marker bed's offset toward the tip?
-3. The 3D picture: an elliptical fault surface colored by displacement.
-4. Displacement–length scaling. Numeric prompt: estimate D for a 2 km fault with c = 0.03.
-5. Growth by linkage: underlap → overlap (relay ramp) → breach. Watch the displacement profiles merge.
+1. An isolated fault: displacement is greatest at the center and zero at the tip line. Prediction: what happens to a marker bed's offset toward the tip?
+2. The 3D picture: an elliptical fault surface colored by displacement. Repeated earthquakes, each an elliptical patch, sum to the cumulative profile (B13).
+3. Displacement–length scaling. Numeric prompt: estimate D for a 2 km fault with c = 0.03.
+4. Growth by linkage: underlap → overlap (relay ramp), with a process zone ahead of each growing tip. Watch the displacement profiles merge.
+5. Breaching the ramp: linking damage is widest at the breach.
 6. Drag folds as the rock near the fault takes up the displacement gradient (preview of F6).
 7. *Geology:* relay ramps in rifts, segmented normal faults, and why fault maps show "gaps" and bends.
 
@@ -339,13 +351,13 @@ Tests: hand values of the size integral (for example D_f = 2 makes f linear in d
 
 **Misconceptions to target:** a fault has the same displacement everywhere; faults grow only by lengthening a single tip; fault gaps on maps are unrelated faults.
 
-**Exact vs illustrative:** the displacement-field model and the D–L relation are stated idealizations (exact given the model). The growth and linkage animations are illustrative, and the synthetic D–L data are labeled as synthetic.
+**Exact vs illustrative:** the displacement-field model and the D–L relation are stated idealizations (exact given the model). The growth and linkage animations are illustrative, the process zones are schematic, and the synthetic D–L data are labeled as synthetic.
 
 **Domain / scenes / tests:** `ellipticalDisplacement(a, b, Dmax, x, y)`, `displacementProfile(field, line)`, `dlScaling(L, c, n)`, and `linkSegments(profiles, overlap)` in a new `src/domain/faults.js`, with tests. The fault-surface displacement-map renderer.
 
-**Out of scope:** fault-seal analysis (juxtaposition diagrams, shale smear), seismic interpretation, earthquake rupture mechanics, and regional fault systems (parked with tectonics).
+**Out of scope:** fault seal (B16), earthquake rupture mechanics (B13), and fault systems (B17, B18).
 
-**Acceptance criteria:** displacement dies out to the tip line in 3D and on marker offsets; the D–L plot is consistent; the relay-ramp sequence shows the summed profiles; the core and damage zone are depicted.
+**Acceptance criteria:** displacement dies out to the tip line in 3D and on marker offsets; the D–L plot is consistent; the relay-ramp sequence shows the summed profiles and the process zones.
 
 **As built (0.12.0, built early).** Built after B8 for classroom use; its B-unit prerequisites before B6 are not built, and it needs none of their content.
 - **Setting.** Normal faults striking north and dipping 60° east in the NED block (1000 m, or a 40 m outcrop for step 1). Each wall moves half the local displacement D along the dip, so the walls slide without opening. Away from the fault the motion fades (decay length 350 m for the isolated fault, 180 m for the relay), which gives reverse drag; step 7 names it.
@@ -355,11 +367,7 @@ Tests: hand values of the size integral (for example D_f = 2 makes f linear in d
 - **Steps.** 1 core and damage zone (with a fault-rock panel of schematic drawings); 2 displacement dies out at the tip line (goal: find half of Dmax); 3 the displacement map, contours, and profile lines (numeric); 4 D = c Lⁿ (numeric); 5 relay ramps (goal: 100 m of overlap); 6 breaching and the displacement deficit; 7 normal and reverse drag (goal: make normal drag); 8 segmented faults on maps (final).
 - **Domain module.** `faultGrowth.js`, not `faults.js` (which holds B8's kinematics): `tipRadius`, `displacementShape`, `ellipticalDisplacement`, `displacementAt`, `contourRadius`, `displacementProfile`, `dlScaling`, `dlLength`, `dragDisplacement`, `farFieldOffset`, `classifyDrag`, `faultDisplacement`, `RELAY`, `segmentProfile`, `linkSegments`, `relaySystem`, and `relayFaults`. The spec's `linkSegments(profiles, overlap)` is `linkSegments(segments, x)` together with `relaySystem(growth)`.
 
-**Revision planned (2026-09-26, Unit 3B).** When B11 is built, B9 changes as follows:
-- **Title and first step.** B9 becomes **"Fault displacement and growth"**. Its step 1 ("Inside a fault zone") and `FaultRockPanel.js` move to B11, and B11's architecture replaces the outcrop setup. B9's prerequisites become B8, B6, and B11. The learning objective on fault anatomy and fault rocks moves to B11.
-- **Process zone.** In step 5 or 6, add one sentence and a scene cue: a process zone ahead of each tip, which becomes damage zone as the fault passes (a B11 callback). Linking damage is widest at the breach.
-- **Earthquakes.** Step 3 points ahead to B13: repeated ruptures, each an elliptical patch, sum to the cumulative profile.
-- **Out of scope.** The B9 out-of-scope line changes to: fault seal (B16), earthquake rupture mechanics (B13), and fault systems (B17, B18).
+**Revised (0.13.0), after B11 was built.** B9 is now "Fault displacement and growth", with seven steps. Its first step ("Inside a fault zone"), the outcrop setup, and `FaultRockPanel.js` (now removed) gave way to B11; the relay step draws a process zone 35 m ahead of each growing tip (a dashed loop on the bed, `process-zone`) until the breach; the displacement-map step points ahead to B13; the breach step says linking damage is widest at the breach; and the first step opens with a bridge from B11. The step numbers in the "As built" note above are now one lower.
 
 ---
 

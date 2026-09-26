@@ -1,4 +1,4 @@
-// B9 — Fault anatomy and growth. Spec: docs/curriculum/unit-3-brittle.md (B9).
+// B9 — Fault displacement and growth. Spec: docs/curriculum/unit-3b-faults.md (B9).
 // Frame: NED (x = North, y = East, z = Down), lengths in metres. All faults
 // are normal faults striking north and dipping 60° east (the relay breach
 // strikes northeast). On a fault, u runs along strike and w down the dip from
@@ -6,7 +6,8 @@
 // The displacement models are stated idealizations (faultGrowth.js): an
 // elliptical tip line with D = Dmax √(1 − r²) or D = Dmax (1 − r), D = c Lⁿ,
 // summed segment profiles, and a drag factor k. Built ahead of its B-unit
-// prerequisites for classroom use, after B8.
+// prerequisites for classroom use, after B8. Revised after B11 was built:
+// the fault zone's anatomy and fault rocks moved to B11.
 
 import { bound, frac, inline, live, math, mi, mn, mo, mtext, paren, row, sqrt, sub, sup } from '../mathml.js';
 
@@ -35,8 +36,6 @@ const D_SUM = bound('sum-profile', sub(mi('D'), mtext('sum')));
 const D_LINK = bound('breach', sub(mi('D'), mtext('link')));
 const D_ONE = bound('target-profile', sub(mi('D'), mtext('one')));
 const K = bound('drag-profile', mi('k'));
-const W_CORE = bound('core', sub(mi('w'), mtext('core')));
-const W_DAMAGE = bound('damage-zone', sub(mi('w'), mtext('damage')));
 
 const I = {
   D: inline(mi('D')),
@@ -55,13 +54,6 @@ const I = {
 };
 
 const SYMBOL = {
-  core: { symbol: sub(mi('w'), mtext('core')), sceneRef: 'core', description: 'Width of the fault core: crushed fault rock around the main slip surface (dark slab)' },
-  damage: { symbol: sub(mi('w'), mtext('damage')), sceneRef: 'damage-zone', description: 'Width of each damage zone: fractured rock beside the core (orange, dashed edges)' },
-  slipSurface: { symbol: mtext('slip surface'), sceneRef: 'slip-surface', description: 'Principal slip surface: where most of the slip happened (white line along the core)' },
-  breccia: { symbol: mtext('breccia'), sceneRef: 'breccia', description: 'Fault breccia: angular broken pieces, loose; found in the core' },
-  gouge: { symbol: mtext('gouge'), sceneRef: 'gouge', description: 'Fault gouge: rock crushed to fine, often clay-rich powder, loose' },
-  cataclasite: { symbol: mtext('cataclasite'), sceneRef: 'cataclasite', description: 'Cataclasite: crushed rock that has been cemented or healed (cohesive)' },
-  mylonite: { symbol: mtext('mylonite'), sceneRef: 'mylonite', description: 'Mylonite: a ductile shear-zone rock, layered; not a brittle fault rock' },
   D: { symbol: mi('D'), sceneRef: 'displacement', description: 'Displacement: how far the two walls slipped past each other at a point on the fault (fault colors, yellow the most)' },
   Dmax: { symbol: sub(mi('D'), mtext('max')), sceneRef: 'displacement', description: 'Largest displacement, at the fault’s center' },
   ab: { symbol: row(mi('a'), COMMA, mi('b')), sceneRef: 'tip-line', description: 'Half-length along strike (a) and half-height down the dip (b) of the elliptical tip line (white loop)' },
@@ -76,6 +68,7 @@ const SYMBOL = {
   DB: { symbol: sub(mi('D'), mtext('B')), sceneRef: 'segment-b', description: 'Displacement on segment B, the eastern fault' },
   sum: { symbol: sub(mi('D'), mtext('sum')), sceneRef: 'sum-profile', description: 'Total displacement across the fault system at each point along strike (solid white)' },
   ramp: { symbol: mtext('ramp'), sceneRef: 'relay-ramp', description: 'Relay ramp: the tilted bed between the overlapping segments' },
+  process: { symbol: mtext('process zone'), sceneRef: 'process-zone', description: 'Process zone: cracked rock just ahead of a growing tip (pink dashed loop), which becomes damage zone as the fault grows through it (B11)' },
   link: { symbol: sub(mi('D'), mtext('link')), sceneRef: 'breach', description: 'Extra slip on the linked fault after the breach, including the breaching fault across the ramp' },
   one: { symbol: sub(mi('D'), mtext('one')), sceneRef: 'target-profile', description: 'Profile of a single fault 920 m long with the same c (dashed)' },
   k: { symbol: mi('k'), sceneRef: 'drag-profile', description: 'Drag factor: how each wall’s movement changes away from the fault (the curve on the plot)' },
@@ -94,42 +87,11 @@ export default {
   status: 'built',
   steps: [
     {
-      id: 'fault-zone',
-      label: 'Core and damage zone',
-      title: 'Inside a fault zone',
-      activeLabel: 'Fault core and damage zone',
-      body: `B8 drew a fault as one clean plane. Look closer at a fault that has slipped a few metres. Most of the slip happened on one or a few <strong>slip surfaces</strong> inside a narrow <strong>fault core</strong> of crushed rock, called <strong>fault rock</strong>. On both sides is a wider <strong>damage zone</strong>: rock broken by fractures, most of them close to the core, that took up little of the slip. Beyond that is unbroken host rock. The beds cannot be traced through the core. The type of fault rock depends on how and where the rock broke. Mylonite is the odd one out: it forms by ductile flow in deep shear zones, not by breaking.`,
-      task: 'Orbit the outcrop. Hover the core, the damage zone, and each fault rock.',
-      visualKind: 'fault-growth',
-      controls: ['view'],
-      labOptions: { setup: 'outcrop', panel: 'rocks', views: ['3d', 'map', 'section'] },
-      initialLabState: { view: '3d' },
-      equations: [
-        {
-          id: 'zone',
-          html: math(mi('W'), EQ, W_CORE, PLUS, mn('2'), W_DAMAGE)
-            + math(EQ, live('zoneSum'), EQ, live('zoneWidth'))
-            + math(bound('slip-surface', mtext('slip')), SPACE(0.3), mi('D'), EQ, live('outcropSlip', 'slip-surface'))
-            + math(mtext('core:'), SPACE(0.3), bound('breccia', mtext('breccia')), COMMA, SPACE(0.3), bound('gouge', mtext('gouge')), COMMA)
-            + math(mtext('and'), SPACE(0.3), bound('cataclasite', mtext('cataclasite')))
-            + math(mtext('not brittle:'), SPACE(0.3), bound('mylonite', mtext('mylonite')))
-            + '<small>Widths are measured at right angles to the fault. They vary a lot from fault to fault; damage zones tend to widen as the displacement grows. The fractures are schematic.</small>',
-          symbols: [SYMBOL.core, SYMBOL.damage, SYMBOL.slipSurface, SYMBOL.breccia, SYMBOL.gouge, SYMBOL.cataclasite, SYMBOL.mylonite],
-        },
-      ],
-      prompt: 'This fault’s core is clay-rich gouge, and its damage zone is full of connected fractures. How does groundwater move near the fault?',
-      choices: [
-        { id: 'along', label: 'Easily along the fault in the damage zone, but hardly across the core', correct: true, feedback: 'Right. The fractures join into pathways parallel to the fault, while fine clay gouge lets very little water through. One fault can be a conduit along its length and a barrier across it.' },
-        { id: 'seal', label: 'Nowhere: the whole fault zone seals', correct: false, feedback: 'The core may seal, but the damage zone is full of connected fractures that let water through. Hover the damage zone.' },
-        { id: 'across', label: 'Mostly straight across the fault, through the core', correct: false, feedback: 'Gouge is fine-grained and clay-rich, so it passes very little water. The easy paths run along the fault, in the fractured damage zone.' },
-      ],
-    },
-    {
       id: 'tip-line',
       label: 'Displacement dies out',
       title: 'Displacement dies out at the tip line',
       activeLabel: 'Displacement along a fault',
-      body: `B8 moved a whole block by one slip vector, as if the fault ran through the block from end to end. A real fault ends. This normal fault lies inside the block, which holds three marker beds. The <strong>displacement</strong> ${I.D}, the slip between the walls at a point, is largest near the fault’s center and falls to zero on its edge, the <strong>tip line</strong>. Beyond the tip line the beds are not broken at all. The blue section cuts the block at a distance ${I.u} north of the fault’s center, and the pink arrow is the offset of the middle bed there. Along that bed ${I.D} follows the equation beside the block, where ${I.a} is half the fault’s length. It is one idealized shape; step 3 shows another.`,
+      body: `B11 looked inside a fault zone. Step back to see the whole fault. B8 moved a whole block by one slip vector, as if the fault ran through the block from end to end. A real fault ends. This normal fault lies inside the block, which holds three marker beds. The <strong>displacement</strong> ${I.D}, the slip between the walls at a point, is largest near the fault’s center and falls to zero on its edge, the <strong>tip line</strong>. Beyond the tip line the beds are not broken at all. The blue section cuts the block at a distance ${I.u} north of the fault’s center, and the pink arrow is the offset of the middle bed there. Along that bed ${I.D} follows the equation beside the block, where ${I.a} is half the fault’s length. It is one idealized shape; step 2 shows another.`,
       task: `Slide the section from the fault’s center toward its north tip and watch the offset.`,
       visualKind: 'fault-growth',
       controls: ['section', 'view'],
@@ -142,7 +104,7 @@ export default {
           html: math(D, paren(U_SECTION), EQ, DMAX, sqrt(mn('1'), MINUS, squaredRatio(U_SECTION, A)))
             + math(U_SECTION, EQ, live('u', 'section'), COMMA, SPACE(), bound('offset', mi('D')), EQ, live('dAtU', 'offset'))
             + math(DMAX, EQ, live('dMax', 'displacement'), COMMA, SPACE(), A, EQ, live('a', 'tip-line'))
-            + `<small>${I.u} is measured along strike, north positive. ${I.D} is measured along the slip, down the dip; its vertical part, the throw, is ${I.D} sin 60°. The beds bend near the fault; step 7 explains why.</small>`,
+            + `<small>${I.u} is measured along strike, north positive. ${I.D} is measured along the slip, down the dip; its vertical part, the throw, is ${I.D} sin 60°. The beds bend near the fault; step 6 explains why.</small>`,
           symbols: [SYMBOL.D, SYMBOL.u, SYMBOL.offset, SYMBOL.Dmax, SYMBOL.ab],
         },
       ],
@@ -158,7 +120,7 @@ export default {
       label: 'The displacement map',
       title: 'The fault surface as a map of displacement',
       activeLabel: 'Displacement on the fault surface',
-      body: `Lift the hanging wall away and look at the fault itself, face on. Each point is colored by its displacement ${I.D}. The contours of equal ${I.D} are ellipses, and the outermost one, ${I.D} = 0, is the tip line: an isolated fault has an elliptical outline. In fault coordinates, ${I.u} along strike and ${I.w} down the dip, the <strong>elliptical radius</strong> ${I.r} is 0 at the center and 1 on the tip line, and ${I.D} depends only on ${I.r}. A profile measured along a bed, the orange line, is a 1D slice through this 2D surface. Move it up or down the fault and the profile gets shorter and lower. The two models are both idealizations; measured profiles take many shapes, often between these two.`,
+      body: `Lift the hanging wall away and look at the fault itself, face on. Each point is colored by its displacement ${I.D}. The contours of equal ${I.D} are ellipses, and the outermost one, ${I.D} = 0, is the tip line: an isolated fault has an elliptical outline. In fault coordinates, ${I.u} along strike and ${I.w} down the dip, the <strong>elliptical radius</strong> ${I.r} is 0 at the center and 1 on the tip line, and ${I.D} depends only on ${I.r}. A profile measured along a bed, the orange line, is a 1D slice through this 2D surface. Move it up or down the fault and the profile gets shorter and lower. The two models are both idealizations; measured profiles take many shapes, often between these two. The displacement builds up over many earthquakes: each one slips a patch of the fault, roughly elliptical, and the patches add up to this cumulative picture (B13).`,
       task: 'Move the profile line up and down the fault. Switch between the two models.',
       visualKind: 'fault-growth',
       controls: ['profile', 'model', 'view'],
@@ -231,18 +193,18 @@ export default {
       label: 'Relay ramps',
       title: 'Growth by linkage: the relay ramp',
       activeLabel: 'Soft linkage and relay ramps',
-      body: `Large faults rarely grow from one tip alone. Many start as separate segments that grow toward each other. Here two normal-fault segments, A and B, are 150 m apart across strike. As each grows longer it gains displacement (${I.D} = ${I.c}${I.L}). While they <strong>underlap</strong>, the rock between their tips is not faulted. Once they <strong>overlap</strong>, the bed between them is tilted into a <strong>relay ramp</strong>, which passes displacement from one segment to the other: the segments are <strong>soft-linked</strong>. The plot adds the two profiles. Only one bed is drawn, shaded dark where it is deep and light where it is high, with contours every 5 m of depth.`,
+      body: `Large faults rarely grow from one tip alone. Many start as separate segments that grow toward each other. Here two normal-fault segments, A and B, are 150 m apart across strike. As each grows longer it gains displacement (${I.D} = ${I.c}${I.L}). While they <strong>underlap</strong>, the rock between their tips is not faulted. Once they <strong>overlap</strong>, the bed between them is tilted into a <strong>relay ramp</strong>, which passes displacement from one segment to the other: the segments are <strong>soft-linked</strong>. Just ahead of each growing tip is a <strong>process zone</strong> of cracked rock (pink); as the tip moves on, it is left behind as damage zone (B11). The plot adds the two profiles. Only one bed is drawn, shaded dark where it is deep and light where it is high, with contours every 5 m of depth.`,
       task: 'Grow the segments with the slider until they overlap. Look at the ramp from above (Map) and from the side.',
       visualKind: 'fault-growth',
       controls: ['growth', 'view'],
-      labOptions: { setup: 'relay', panel: 'relay', growthRange: [0, 0.59], views: ['3d', 'map'] },
+      labOptions: { setup: 'relay', panel: 'relay', growthRange: [0, 0.59], processZones: true, views: ['3d', 'map'] },
       initialLabState: { growth: 0.2, view: '3d' },
       goal: { text: 'Grow the segments until they overlap by at least 100 m.', check: (lab) => lab.overlap !== null && lab.overlap >= 100 },
       equations: [
         {
           id: 'relay',
-          html: RELAY_SUM + RELAY_STAGE + RELAY_SEGMENTS + RELAY_RAMP + RELAY_NOTE,
-          symbols: [SYMBOL.sum, SYMBOL.DA, SYMBOL.DB, SYMBOL.ramp],
+          html: RELAY_SUM + RELAY_STAGE + RELAY_SEGMENTS + RELAY_RAMP + math(bound('process-zone', mtext('process zones')), SPACE(0.3), mtext('at the tips')) + RELAY_NOTE,
+          symbols: [SYMBOL.sum, SYMBOL.DA, SYMBOL.DB, SYMBOL.ramp, SYMBOL.process],
         },
       ],
       prompt: 'Between the overlapping segments, which way does the relay ramp dip?',
@@ -257,7 +219,7 @@ export default {
       label: 'Breaching the ramp',
       title: 'Breaching the ramp: one fault from two',
       activeLabel: 'Hard linkage',
-      body: `As the overlap grows, the ramp bends more until a fault cuts across it. The ramp is <strong>breached</strong>, and the segments are <strong>hard-linked</strong> into one fault with a bend in its trace. The old tips beyond the link are left as inactive splays. The linked fault is 920 m long, but its displacement was built by two shorter faults, so it has less than ${I.D} = ${I.c}${I.L} gives for 920 m (the dashed profile). It is under-displaced. As it keeps slipping it gains most where it lags most, until its profile looks like that of one fault.`,
+      body: `As the overlap grows, the ramp bends more until a fault cuts across it. The ramp is <strong>breached</strong>, and the segments are <strong>hard-linked</strong> into one fault with a bend in its trace. The old tips beyond the link are left as inactive splays, and the rock around the breach is where linking damage is widest (B11). The linked fault is 920 m long, but its displacement was built by two shorter faults, so it has less than ${I.D} = ${I.c}${I.L} gives for 920 m (the dashed profile). It is under-displaced. As it keeps slipping it gains most where it lags most, until its profile looks like that of one fault.`,
       task: 'Move past the breach and keep growing. Compare the total with the dashed profile of one 920 m fault.',
       visualKind: 'fault-growth',
       controls: ['growth', 'view'],
@@ -286,7 +248,7 @@ export default {
       label: 'Fault drag',
       title: 'Fault drag: beds bend near the fault',
       activeLabel: 'Normal and reverse drag',
-      body: `Look back at step 2: near the fault the beds bent down toward it in the hanging wall and up in the footwall. That is <strong>reverse drag</strong>. The rock right beside the fault moved more than the rock farther away, so the beds curve toward the fault. <strong>Normal drag</strong> is the opposite: the beds bend back, as if the fault had dragged them. There the rock beside the fault moved less, because some of the offset was taken up by bending before or while the fault broke through. Both are displacement gradients near the fault. This fault’s tips are far away, so the slip on it is ${I.D} = 60 m everywhere. The drag factor ${I.k} sets how each wall’s movement changes with the distance ${I.d} from the fault. Normal drag is where fault-related folds begin (F6).`,
+      body: `Look back at step 1: near the fault the beds bent down toward it in the hanging wall and up in the footwall. That is <strong>reverse drag</strong>. The rock right beside the fault moved more than the rock farther away, so the beds curve toward the fault. <strong>Normal drag</strong> is the opposite: the beds bend back, as if the fault had dragged them. There the rock beside the fault moved less, because some of the offset was taken up by bending before or while the fault broke through. Both are displacement gradients near the fault. This fault’s tips are far away, so the slip on it is ${I.D} = 60 m everywhere. The drag factor ${I.k} sets how each wall’s movement changes with the distance ${I.d} from the fault. Normal drag is where fault-related folds begin (F6).`,
       task: `Change the drag factor ${I.k} and compare the section with the plot.`,
       visualKind: 'fault-growth',
       controls: ['drag', 'view'],

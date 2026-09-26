@@ -39,6 +39,32 @@ import {
   relayFaults,
   relaySystem,
 } from './domain/faultGrowth.js';
+import {
+  COMMINUTION,
+  DAMAGE,
+  MELTING,
+  WELL_DEVELOPED,
+  ZONE_TEMPERATURES,
+  clastSizeDistribution,
+  comminutionState,
+  damagePeak,
+  damageZoneEdge,
+  depthOfTemperature,
+  faultRockZones,
+  fractionFiner,
+  frictionalHeating,
+  pavementTraces,
+  permeabilityStructure,
+  rockComposition,
+  scanlineCrossings,
+  scanlineDensity,
+  sectionTraces,
+  sibsonClass,
+  slabTexture,
+  strikeFaceTraces,
+  woodcockMortClass,
+  zoneDensity,
+} from './domain/faultRocks.js';
 import { lineVector, normalizeAzimuth, planeFromStrike, planePole } from './domain/orientation.js';
 import { lineFromVector, planeFromPole } from './domain/stereonet.js';
 import { resolveTraction } from './domain/tensor.js';
@@ -60,8 +86,10 @@ import {
 import { AndersonScene } from './visualization/AndersonScene.js';
 import { CurvePlot } from './visualization/CurvePlot.js';
 import { FaultGrowthScene, formatLength } from './visualization/FaultGrowthScene.js';
-import { FaultRockPanel } from './visualization/FaultRockPanel.js';
+import { FaultRockChart } from './visualization/FaultRockChart.js';
 import { FaultScene } from './visualization/FaultScene.js';
+import { FaultZoneScene } from './visualization/FaultZoneScene.js';
+import { ArchitectureGauge, DamageMap, DepthColumn } from './visualization/FaultZonePanels.js';
 import { ForceLabScene } from './visualization/ForceLabScene.js';
 import { FrictionMohrPlot } from './visualization/FrictionMohrPlot.js';
 import { MohrPlot } from './visualization/MohrPlot.js';
@@ -93,21 +121,51 @@ const DEFAULT_GROWTH = { view: '3d', section: 0, profileW: 0, model: 'elliptical
 /**
  * B9 fault-growth lab (NED metres, origin on the ground above the block center). The
  * faults strike north and dip 60° east. 'isolated': one blind fault with an elliptical
- * tip line in the 1 km block; 'through': a fault whose tips are far away (drag);
- * 'outcrop': a 40 m block with the fault core and damage zone. The relay model is
- * RELAY in faultGrowth.js. Displacements are large (D/L = 0.1) so they read on screen.
+ * tip line in the 1 km block; 'through': a fault whose tips are far away (drag). The
+ * relay model is RELAY in faultGrowth.js; process zones reach 35 m ahead of each
+ * growing tip. Displacements are large (D/L = 0.1) so they read on screen.
  */
 const GROWTH_LAB = Object.freeze({
   horizonColors: ['#c2a878', '#9a5b45', '#8f9a6a'],
   isolated: { center: { x: 0, y: 0, z: 250 }, a: 400, b: 240, dMax: 80, decay: 350, horizons: [125, 250, 375], contourLevels: [20, 40, 60] },
   through: { center: { x: 0, y: 0, z: 250 }, slip: 60, dragWidth: 80, horizons: [125, 250, 375], section: -300 },
-  outcrop: { metersPerUnit: 10, center: { x: 0, y: 0, z: 10 }, slip: 4, core: 0.8, damage: 5, horizons: [5, 10, 15] },
+  processZone: { ahead: 35, rx: 40, ry: 24 },
   /** Fault lengths and scaling constants the D–L sliders step through (m). */
   lengths: [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000],
   constants: [0.001, 0.002, 0.003, 0.005, 0.01, 0.02, 0.03, 0.05, 0.1],
   /** The block shows a fault 800 m long; D/L is drawn to scale up to this value. */
   displayLength: 800,
   maxDisplayRatio: 0.25,
+});
+const DEFAULT_ZONE = {
+  view: '3d', scale: 'outcrop', strands: 1, lenses: 0, core: 0.8, footwall: 5, hangingWall: 8, host: 'crystalline', stage: 'slip', scanline: 0,
+  logD: 1, logK: 2, logA: 0, logSlip: -1.5, logDMax: 1, df: 2.2, cohesive: true, foliated: false, tau: 50, logHeatSlip: 0, logWidth: -2, gradient: 30, madeRocks: [],
+};
+/**
+ * B11 fault-zone lab (NED metres, origin on the outcrop surface above the fault).
+ * The fault strikes north, dips 60° east, and has slipped 10 m; the outcrop is
+ * 40 m across (1 km at map scale). In sandstone the density law counts
+ * deformation bands; its stages set the zone's widths. The melting step starts
+ * at 200 °C with a cataclasite ground by 3 m of slip. The slab is drawn on a
+ * 480 × 288 grid. The other stated values live in faultRocks.js.
+ */
+const ZONE_LAB = Object.freeze({
+  dip: 60,
+  slip: 10,
+  outcrop: 40,
+  mapScale: 1000,
+  traceLength: 3,
+  sandLaw: { background: 0.2, x0: 0.02, n: 0.8 },
+  stages: {
+    bands: { core: 0, footwall: 0.6, hangingWall: 0.6, strands: 0 },
+    zone: { core: 0, footwall: 1.5, hangingWall: 1.8, strands: 0 },
+    slip: { core: 0.05, footwall: 3, hangingWall: 4, strands: 1 },
+  },
+  ambient: 200,
+  meltHostSlip: 3,
+  slab: { nx: 480, ny: 288 },
+  surfaceT: 10,
+  crust: 60000,
 });
 const COMPONENT_LIMIT = 6;
 const DEFAULT_LESSON_ID = getAvailableLessons()[0].id;
@@ -195,7 +253,14 @@ app.innerHTML = `
           </div>
           <div id="growth-viewport" class="viewport growth-viewport split-viewport" data-side="true" data-panel="profile">
             <div id="growth-scene" class="lab-scene"></div>
-            <div class="plot-panel plot-stack"><div id="growth-plot" class="plot-slot growth-plot-slot"></div><div id="growth-rocks" class="plot-slot growth-rocks-slot"></div></div>
+            <div class="plot-panel plot-stack"><div id="growth-plot" class="plot-slot growth-plot-slot"></div></div>
+          </div>
+          <div id="zone-viewport" class="viewport zone-viewport split-viewport" data-side="true">
+            <div id="zone-scene" class="lab-scene"></div>
+            <div class="plot-panel plot-stack">
+              <div id="zone-plot-a" class="plot-slot"></div><div id="zone-plot-b" class="plot-slot"></div><div id="zone-map" class="plot-slot"></div>
+              <div id="zone-chart" class="plot-slot"></div><div id="zone-depth" class="plot-slot"></div><div id="zone-gauge" class="plot-slot"></div>
+            </div>
           </div>
           <div id="stress-viewport" class="viewport stress-viewport"></div>
           <div id="interaction-hint" class="interaction-hint"></div>
@@ -312,7 +377,8 @@ const elements = {
   growthViewport: document.querySelector('#growth-viewport'),
   growthScene: document.querySelector('#growth-scene'),
   growthPlot: document.querySelector('#growth-plot'),
-  growthRocks: document.querySelector('#growth-rocks'),
+  zoneViewport: document.querySelector('#zone-viewport'),
+  zoneScene: document.querySelector('#zone-scene'),
   stressViewport: document.querySelector('#stress-viewport'),
 };
 
@@ -339,6 +405,7 @@ const state = {
   friction: { ...DEFAULT_FRICTION },
   fault: { ...DEFAULT_FAULT },
   growth: { ...DEFAULT_GROWTH },
+  zone: structuredClone(DEFAULT_ZONE),
 };
 
 function currentLesson() {
@@ -350,7 +417,7 @@ function currentStep() {
 }
 
 function unitOf(lesson) {
-  return UNITS.find((unit) => unit.number === lesson.unit);
+  return UNITS.find((unit) => unit.id === lesson.unit);
 }
 
 /** Guided mode, or Present mode entered from Guided, shows the current lesson. */
@@ -382,8 +449,12 @@ function isGrowthStep() {
   return isLessonView() && currentStep().visualKind === 'fault-growth';
 }
 
+function isZoneStep() {
+  return isLessonView() && currentStep().visualKind === 'fault-zone';
+}
+
 function isLabStep() {
-  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep() || isFaultStep() || isGrowthStep();
+  return isForceLabStep() || isVectorLabStep() || isAndersonStep() || isFrictionStep() || isFaultStep() || isGrowthStep() || isZoneStep();
 }
 
 function quantityFor(step) {
@@ -485,15 +556,32 @@ function growthHover(ref) {
   if (!isGrowthStep()) return;
   growthScene.highlight(ref);
   growthPlot.highlight(ref);
-  rockPanel.highlight(ref);
   markEquationRefs(ref);
 }
 
-/** The fault-growth lab (B9): marker beds and fault surfaces in the block, with a plot or the fault rocks beside it. */
+/** The fault-growth lab (B9): marker beds and fault surfaces in the block, with a plot beside it. */
 const growthScene = new FaultGrowthScene(elements.growthScene, { onHover: growthHover });
 const growthPlot = new XYPlot(elements.growthPlot, { onHover: growthHover });
-const rockPanel = new FaultRockPanel(elements.growthRocks, { onHover: growthHover });
-rockPanel.render();
+
+function zoneHover(ref) {
+  if (!isZoneStep()) return;
+  setZoneHighlight(ref);
+  markEquationRefs(ref);
+}
+
+function setZoneHighlight(ref) {
+  for (const view of [zoneScene, zonePlotA, zonePlotB, zoneChart, damageMap, depthColumn, architectureGauge]) view.highlight(ref);
+}
+
+/** The fault-zone lab (B11): the outcrop, a fault-rock slab, or the crust, with plots and panels beside it. */
+const zoneScene = new FaultZoneScene(elements.zoneScene, { onHover: zoneHover });
+const zonePlotA = new XYPlot(elements.zoneViewport.querySelector('#zone-plot-a'), { onHover: zoneHover });
+const zonePlotB = new XYPlot(elements.zoneViewport.querySelector('#zone-plot-b'), { onHover: zoneHover });
+const zoneChart = new FaultRockChart(elements.zoneViewport.querySelector('#zone-chart'), { onHover: zoneHover });
+const damageMap = new DamageMap(elements.zoneViewport.querySelector('#zone-map'), { onHover: zoneHover });
+const depthColumn = new DepthColumn(elements.zoneViewport.querySelector('#zone-depth'), { onHover: zoneHover });
+const architectureGauge = new ArchitectureGauge(elements.zoneViewport.querySelector('#zone-gauge'), { onHover: zoneHover });
+damageMap.render();
 
 /** The vectors the student currently sees: z is hidden (zero) in the 2D view. */
 function vectorLabVectors() {
@@ -552,7 +640,7 @@ function renderLessonPicker() {
   const statusNote = { planned: ' (planned)', seed: ' (preview)', built: '' };
   elements.lessonSelect.innerHTML = UNITS.map((unit) => `
     <optgroup label="Unit ${unit.number} · ${unit.title}">
-      ${LESSONS.filter((lesson) => lesson.unit === unit.number).map((lesson) => `
+      ${LESSONS.filter((lesson) => lesson.unit === unit.id).map((lesson) => `
         <option value="${lesson.id}"${isLessonAvailable(lesson) ? '' : ' disabled'}>${lesson.id} · ${lesson.title}${statusNote[lesson.status]}</option>`).join('')}
     </optgroup>`).join('');
   elements.lessonSelect.value = state.lessonId;
@@ -657,7 +745,7 @@ function setSceneHighlight(ref) {
   wellLogPlot.highlight(isFaultStep() ? ref : null);
   growthScene.highlight(isGrowthStep() ? ref : null);
   growthPlot.highlight(isGrowthStep() ? ref : null);
-  rockPanel.highlight(isGrowthStep() ? ref : null);
+  setZoneHighlight(isZoneStep() ? ref : null);
   markEquationRefs(ref);
 }
 
@@ -786,6 +874,7 @@ function liveValues() {
   if (isFrictionStep()) return frictionLiveValues();
   if (isFaultStep()) return faultLiveValues();
   if (isGrowthStep()) return growthLiveValues();
+  if (isZoneStep()) return zoneLiveValues();
   if (!isForceLabStep()) return {};
   const quantity = quantityFor(currentStep());
   const result = decomposeTraction(state.forceVector, state.contactArea, state.surfaceNormal);
@@ -1823,21 +1912,7 @@ function growthModel() {
   const lab = state.growth;
   const colors = GROWTH_LAB.horizonColors;
   const horizonsAt = (depths) => depths.map((depth, index) => ({ depth, color: colors[index % colors.length] }));
-  const base = { setup: options.setup, metersPerUnit: 250, contourInterval: 10, colorMax: 1, contourLevels: [], section: null, profile: null, anatomy: null, relay: null, dimension: null, scaleParts: null };
-
-  if (options.setup === 'outcrop') {
-    const setup = GROWTH_LAB.outcrop;
-    return {
-      ...base,
-      metersPerUnit: setup.metersPerUnit,
-      contourInterval: 1,
-      faults: [{ id: 'main', ref: 'fault', center: setup.center, plane: FAULT_PLANE, field: { uniform: true, dMax: setup.slip }, decay: null }],
-      horizons: horizonsAt(setup.horizons),
-      anatomy: { core: setup.core, damage: setup.damage },
-      wallLabelsNorth: 0,
-      options: { showWallLabels: true, colorFault: false },
-    };
-  }
+  const base = { setup: options.setup, metersPerUnit: 250, contourInterval: 10, colorMax: 1, contourLevels: [], section: null, profile: null, relay: null, dimension: null, scaleParts: null };
 
   if (options.setup === 'through') {
     const setup = GROWTH_LAB.through;
@@ -1885,6 +1960,11 @@ function growthModel() {
         labels: { A: { x: -380, y: -half, z: RELAY.depth }, B: { x: 380, y: half, z: RELAY.depth }, ...(system.breach ? { breach: { x: 30, y: 30, z: RELAY.depth } } : {}) },
         ramp: overlap > 0 ? { x: system.breach ? -80 : 0, y: 0, z: RELAY.depth } : null,
         rampZone: overlap > 0 ? { xMin: -overlap / 2, xMax: overlap / 2, yMin: -half, yMax: half } : null,
+        // Ahead of the growing inner tips: A's northern tip and B's southern tip.
+        processZones: options.processZones && !system.breach ? [
+          { x: overlap / 2 + GROWTH_LAB.processZone.ahead, y: -half, rx: GROWTH_LAB.processZone.rx, ry: GROWTH_LAB.processZone.ry },
+          { x: -overlap / 2 - GROWTH_LAB.processZone.ahead, y: half, rx: GROWTH_LAB.processZone.rx, ry: GROWTH_LAB.processZone.ry },
+        ] : [],
       },
       system,
       tilt,
@@ -2120,7 +2200,7 @@ function syncGrowth({ refreshInputs = false } = {}) {
   const panel = options.panel ?? null;
   elements.growthViewport.dataset.side = String(Boolean(panel));
   elements.growthViewport.dataset.panel = panel ?? 'none';
-  if (panel && panel !== 'rocks') syncGrowthPlot(step, model);
+  if (panel) syncGrowthPlot(step, model);
 
   for (const button of elements.lessonCard.querySelectorAll('[data-growth-view]')) button.setAttribute('aria-pressed', String(button.dataset.growthView === lab.view));
   for (const button of elements.lessonCard.querySelectorAll('[data-growth-model]')) button.setAttribute('aria-pressed', String(button.dataset.growthModel === lab.model));
@@ -2156,14 +2236,6 @@ function growthLiveValues() {
   const lab = state.growth;
   const values = {};
   const m = (value, decimals = 0) => metres(value, decimals);
-  if (model.anatomy) {
-    const { core, damage } = model.anatomy;
-    values.zoneSum = row(num(core, 1), mo('+'), mn('2'), mo('×'), num(damage, 0));
-    values.zoneWidth = m(core + 2 * damage, 1);
-    values.coreWidth = m(core, 1);
-    values.damageWidth = m(damage, 0);
-    values.outcropSlip = m(GROWTH_LAB.outcrop.slip, 0);
-  }
   if (model.field) {
     values.dMax = m(model.field.dMax, 0);
     values.a = m(model.field.a, 0);
@@ -2212,10 +2284,8 @@ const GROWTH_SWATCHES = {
   section: ['#56b4e9', 'solid'],
   offset: ['#cc79a7', 'solid'],
   profile: ['#e69f00', 'solid'],
-  core: ['#6b6259', 'solid'],
-  damage: ['#e69f00', 'dashed'],
-  slipSurface: ['#f4f5f7', 'solid'],
   ramp: ['#3fd0a0', 'solid'],
+  processZone: ['#cc79a7', 'dashed'],
 };
 
 function syncGrowthChrome(step, model = growthModel()) {
@@ -2225,16 +2295,552 @@ function syncGrowthChrome(step, model = growthModel()) {
     return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
   };
   const legend = [item('bed', 'marker beds')];
-  if (model.anatomy) legend.push(item('core', 'fault core'), item('damage', 'damage zone'), item('slipSurface', 'slip surface'));
   if (model.options.colorFault) {
     legend.push(item('displacement', `fault, colored by ${inline(mi('D'))}`));
     if (model.options.showTipLine !== false) legend.push(item('tip', 'tip line'));
-  } else if (!model.anatomy) {
+  } else {
     legend.push(item('fault', 'fault'));
   }
   if (model.section) legend.push(item('section', 'section'), item('offset', 'offset'));
   if (model.profile) legend.push(item('profile', 'profile line'));
   if (model.relay?.ramp) legend.push(item('ramp', 'relay ramp'));
+  if (model.relay?.processZones?.length) legend.push(item('processZone', 'process zone'));
+  elements.sceneLegend.hidden = false;
+  elements.sceneLegend.innerHTML = legend.join('');
+}
+
+/* ---------- Fault-zone lab (B11) ---------- */
+
+const ZONE_VIEWS = { '3d': '3D', map: 'Map', section: 'Section' };
+const ROCK_FIELDS = [6, 25, 100];
+const zoneCache = new Map();
+
+/** Build once per key: traces and slab drawings are slow to regenerate on every slider move. */
+function cachedZone(key, build) {
+  if (!zoneCache.has(key)) {
+    if (zoneCache.size > 60) zoneCache.clear();
+    zoneCache.set(key, build());
+  }
+  return zoneCache.get(key);
+}
+
+/** The smallest of 1, 1.5, 2, 3, 4, 5, 6, 8 × 10ⁿ that is at least `value`. */
+function niceSize(value) {
+  const power = 10 ** Math.floor(Math.log10(value));
+  return ([1, 1.5, 2, 3, 4, 5, 6, 8, 10].find((step) => step * power >= value - 1e-9) ?? 10) * power;
+}
+
+/** The outcrop's fault zone for this step: from the widths, the width-scaling rule, or the sandstone stage. */
+function outcropZone(options, lab) {
+  const dip = ZONE_LAB.dip;
+  if (options.scaling) {
+    const D = 10 ** lab.logD;
+    const core = D / 10 ** lab.logK;
+    const damage = D * 10 ** lab.logA;
+    const size = niceSize((2.6 * (core / 2 + damage)) / Math.sin((dip * Math.PI) / 180));
+    // The block keeps its look at every size: the density law scales with it (drawing only).
+    const scale = size / ZONE_LAB.outcrop;
+    return { size, zone: { core, footwall: damage, hangingWall: damage, dip, law: { ...DAMAGE, background: DAMAGE.background / scale, x0: DAMAGE.x0 * scale } }, traceLength: ZONE_LAB.traceLength * scale, strands: 1, lenses: 0, host: 'crystalline', scaling: { D, core, damage } };
+  }
+  if (lab.host === 'porous') {
+    const stage = ZONE_LAB.stages[lab.stage];
+    return { size: ZONE_LAB.outcrop, zone: { core: stage.core, footwall: stage.footwall, hangingWall: stage.hangingWall, dip, law: ZONE_LAB.sandLaw }, traceLength: ZONE_LAB.traceLength, strands: stage.strands, lenses: 0, host: 'porous' };
+  }
+  const map = options.setup === 'outcrop' && lab.scale === 'map';
+  return {
+    size: map ? ZONE_LAB.mapScale : ZONE_LAB.outcrop,
+    zone: { core: lab.core, footwall: lab.footwall, hangingWall: lab.hangingWall, dip },
+    traceLength: ZONE_LAB.traceLength,
+    strands: lab.strands,
+    lenses: lab.strands >= 2 ? lab.lenses : 0,
+    host: 'crystalline',
+    lineOnly: map,
+  };
+}
+
+/** The fault rock in the slab for this step: from the slip (comminution rule), the free distribution, or a cataclasite that melts. */
+function sampleRock(step, lab) {
+  const controls = new Set(step.controls ?? []);
+  let dist;
+  if (controls.has('slip')) dist = comminutionState(10 ** lab.logSlip).dist;
+  else if (controls.has('dmax')) dist = clastSizeDistribution({ dMin: COMMINUTION.dMin, dMax: 10 ** lab.logDMax, Df: lab.df });
+  else dist = comminutionState(ZONE_LAB.meltHostSlip).dist;
+  const naming = controls.has('cohesion');
+  const cohesive = naming ? lab.cohesive : true;
+  const foliated = naming ? lab.foliated : false;
+  let heating = null;
+  if (controls.has('tau')) {
+    const slip = 10 ** lab.logHeatSlip;
+    const width = 10 ** lab.logWidth;
+    const deltaT = frictionalHeating({ tau: lab.tau, slip, width });
+    heating = { tau: lab.tau, slip, width, deltaT, temperature: ZONE_LAB.ambient + deltaT };
+  }
+  const melt = heating && heating.temperature >= MELTING.onset ? 'melt' : 'none';
+  return { dist, cohesive, foliated, heating, melt };
+}
+
+/** Everything the fault-zone lab draws, from the step's setup and the lab state. */
+function zoneModel() {
+  const step = currentStep();
+  const options = step.labOptions ?? {};
+  const lab = state.zone;
+  if (options.setup === 'crust') {
+    return { setup: 'crust', size: ZONE_LAB.crust, gradient: lab.gradient, surface: ZONE_LAB.surfaceT, zones: faultRockZones(lab.gradient, { surface: ZONE_LAB.surfaceT }), labels: true };
+  }
+  if (options.setup === 'sample') {
+    const rock = sampleRock(step, lab);
+    const { dist, foliated } = rock;
+    const composition = rockComposition(dist);
+    const field = ROCK_FIELDS.find((value) => value >= 3 * dist.dMax) ?? ROCK_FIELDS.at(-1);
+    const { nx, ny } = ZONE_LAB.slab;
+    const slab = cachedZone(`slab:${dist.dMax}:${dist.Df}:${field}:${foliated}`, () => slabTexture(dist, { width: field, height: 0.6 * field, nx, ny, foliated }));
+    const sibson = sibsonClass({ cohesive: rock.cohesive, ...composition, foliated, glass: rock.melt !== 'none' });
+    return { setup: 'sample', ...rock, slab, field, composition, sibson, wm: woodcockMortClass(composition.clastPct2mm) };
+  }
+  const outcrop = outcropZone(options, lab);
+  const { size, zone, traceLength: length } = outcrop;
+  const key = `traces:${size}:${zone.core}:${zone.footwall}:${zone.hangingWall}:${JSON.stringify(zone.law ?? null)}:${length}`;
+  const traces = outcrop.lineOnly ? null : cachedZone(key, () => ({
+    top: pavementTraces(zone, { halfLength: size / 2, halfWidth: size / 2, length }),
+    section: sectionTraces(zone, { east: [-size / 2, size / 2], depth: size / 2, length }),
+    strikeEast: strikeFaceTraces(zone, { east: size / 2, north: [-size / 2, size / 2], depth: size / 2, length, seed: 11 }),
+    strikeWest: strikeFaceTraces(zone, { east: -size / 2, north: [-size / 2, size / 2], depth: size / 2, length, seed: 13 }),
+  }));
+  const panels = options.panels ?? [];
+  const scanline = panels.includes('scanline') ? { north: lab.scanline, crossings: scanlineCrossings(traces.top, lab.scanline) } : null;
+  return {
+    setup: 'outcrop',
+    ...outcrop,
+    slip: ZONE_LAB.slip,
+    traces,
+    scanline,
+    flow: options.flow ? outcrop.host : null,
+    labels: true,
+  };
+}
+
+function zoneControlsMarkup(step) {
+  const controls = new Set(step.controls ?? []);
+  const options = step.labOptions ?? {};
+  const lab = state.zone;
+  const parts = [];
+  const range = (id, label, min, max, stepSize, value, disabled = false) => `<label class="lab-control" for="${id}"><span>${label} <output id="${id}-output"></output></span><input id="${id}" class="range" type="range" min="${min}" max="${max}" step="${stepSize}" value="${value}"${disabled ? ' disabled' : ''} /></label>`;
+  const segmented = (label, attribute, items, current) => `
+      <div class="direction-control"><span>${label}</span><div class="segmented-control" role="group" aria-label="${label}">
+        ${items.map(([value, text]) => `<button type="button" data-${attribute}="${value}" aria-pressed="${current === value}">${text}</button>`).join('')}
+      </div></div>`;
+  if (controls.has('view')) parts.push(segmented('View', 'zone-view', (options.views ?? ['3d']).map((view) => [view, ZONE_VIEWS[view]]), lab.view));
+  if (controls.has('scale')) parts.push(segmented('Scale', 'zone-scale', [['map', 'Map (1 km)'], ['outcrop', 'Outcrop (40 m)']], lab.scale));
+  if (controls.has('host')) parts.push(segmented('Host rock', 'zone-host', [['crystalline', 'Granite'], ['porous', 'Porous sandstone']], lab.host));
+  if (controls.has('stage')) parts.push(segmented('Sandstone stage', 'zone-stage', [['bands', 'Single bands'], ['zone', 'Band zone'], ['slip', 'Slip surface']], lab.host === 'porous' ? lab.stage : null));
+  if (controls.has('cohesion')) parts.push(segmented('Cohesion', 'zone-cohesion', [['loose', 'Loose'], ['cohesive', 'Healed or cemented']], lab.cohesive ? 'cohesive' : 'loose'));
+  if (controls.has('fabric')) parts.push(segmented('Fabric', 'zone-fabric', [['random', 'Random'], ['foliated', 'Foliated']], lab.foliated ? 'foliated' : 'random'));
+  if (controls.has('strands')) parts.push(range('zone-strands-input', 'Slip surfaces (strands)', 1, 3, 1, lab.strands));
+  if (controls.has('lenses')) parts.push(range('zone-lenses-input', 'Fault lenses', 0, 2, 1, lab.lenses, lab.strands < 2));
+  if (controls.has('core')) parts.push(range('zone-core-input', `Core ${inline(sub(mi('w'), mtext('core')))}`, 0.02, 3, 0.02, lab.core));
+  if (controls.has('footwall')) parts.push(range('zone-footwall-input', `Footwall damage ${inline(sub(mi('w'), mtext('FW')))}`, 0.5, 12, 0.1, lab.footwall));
+  if (controls.has('hangingWall')) parts.push(range('zone-hanging-input', `Hanging-wall damage ${inline(sub(mi('w'), mtext('HW')))}`, 0.5, 12, 0.1, lab.hangingWall));
+  if (controls.has('scanline')) parts.push(range('zone-scanline-input', 'Scanline position', -18, 18, 1, lab.scanline));
+  if (controls.has('displacement')) parts.push(range('zone-d-input', `Displacement ${inline(mi('D'))}`, -1, 3, 0.05, lab.logD));
+  if (controls.has('coreRatio')) parts.push(range('zone-k-input', `Core ratio ${inline(mi('k'))}`, 1, 3, 0.05, lab.logK));
+  if (controls.has('damageRatio')) parts.push(range('zone-a-input', `Damage ratio ${inline(mi('a'))}`, -1, 1, 0.05, lab.logA));
+  if (controls.has('slip')) parts.push(range('zone-slip-input', 'Slip (grinding)', -2, 2, 0.02, lab.logSlip));
+  if (controls.has('dmax')) parts.push(range('zone-dmax-input', `Largest clast ${inline(sub(mi('d'), mtext('max')))}`, Math.log10(0.12), Math.log10(30), 0.01, lab.logDMax));
+  if (controls.has('df')) parts.push(range('zone-df-input', `Fractal dimension ${inline(sub(mi('D'), mtext('f')))}`, 1.6, 2.9, 0.02, lab.df));
+  if (controls.has('tau')) parts.push(range('zone-tau-input', `Shear stress ${inline(mi('τ'))}`, 10, 100, 5, lab.tau));
+  if (controls.has('heatSlip')) parts.push(range('zone-heat-slip-input', `Slip ${inline(mi('D'))}`, -2, 0.7, 0.02, lab.logHeatSlip));
+  if (controls.has('width')) parts.push(range('zone-width-input', `Slip-zone width ${inline(mi('w'))}`, -4, -1, 0.05, lab.logWidth));
+  if (controls.has('gradient')) parts.push(range('zone-gradient-input', `Geothermal gradient ${inline(mi('G'))}`, 15, 60, 1, lab.gradient));
+  return parts.length ? `<div class="lab-controls">${parts.join('')}</div>` : '';
+}
+
+const ZONE_RANGES = [
+  ['#zone-strands-input', 'strands'],
+  ['#zone-lenses-input', 'lenses'],
+  ['#zone-core-input', 'core'],
+  ['#zone-footwall-input', 'footwall'],
+  ['#zone-hanging-input', 'hangingWall'],
+  ['#zone-scanline-input', 'scanline'],
+  ['#zone-d-input', 'logD'],
+  ['#zone-k-input', 'logK'],
+  ['#zone-a-input', 'logA'],
+  ['#zone-slip-input', 'logSlip'],
+  ['#zone-dmax-input', 'logDMax'],
+  ['#zone-df-input', 'df'],
+  ['#zone-tau-input', 'tau'],
+  ['#zone-heat-slip-input', 'logHeatSlip'],
+  ['#zone-width-input', 'logWidth'],
+  ['#zone-gradient-input', 'gradient'],
+];
+
+function bindZoneControls() {
+  const lab = () => state.zone;
+  const bindButtons = (attribute, apply) => {
+    for (const button of elements.lessonCard.querySelectorAll(`[data-${attribute}]`)) {
+      button.addEventListener('click', () => {
+        apply(button.dataset[attribute.replace(/-(\w)/g, (_, letter) => letter.toUpperCase())]);
+        syncZone();
+      });
+    }
+  };
+  bindButtons('zone-view', (value) => {
+    lab().view = value;
+    zoneScene.setView(value);
+  });
+  bindButtons('zone-scale', (value) => { lab().scale = value; });
+  bindButtons('zone-host', (value) => { lab().host = value; });
+  bindButtons('zone-stage', (value) => {
+    lab().host = 'porous';
+    lab().stage = value;
+  });
+  bindButtons('zone-cohesion', (value) => { lab().cohesive = value === 'cohesive'; });
+  bindButtons('zone-fabric', (value) => { lab().foliated = value === 'foliated'; });
+  for (const [id, key] of ZONE_RANGES) {
+    elements.lessonCard.querySelector(id)?.addEventListener('input', (event) => {
+      lab()[key] = Number(event.target.value);
+      syncZone();
+    });
+  }
+}
+
+function initZone(step) {
+  state.zone = { ...DEFAULT_ZONE, ...(step.initialLabState ?? {}), madeRocks: [] };
+  zoneScene.setState(zoneModel());
+  zoneScene.setView(state.zone.view);
+}
+
+const lengthText = (metres) => (metres >= 1000 ? `${formatNumber(metres / 1000, 1)} km` : metres >= 1 ? `${formatNumber(metres, metres >= 100 ? 0 : 1)} m` : metres >= 0.01 ? `${formatNumber(metres * 100, 1)} cm` : `${formatNumber(metres * 1000, 1)} mm`);
+const sizeText = (mm) => (mm >= 10 ? `${formatNumber(mm, 0)} mm` : mm >= 1 ? `${formatNumber(mm, 1)} mm` : `${formatNumber(mm, mm >= 0.1 ? 2 : 3)} mm`);
+const lengthMath = (metres) => {
+  const [value, unit] = lengthText(metres).split(' ');
+  return quantityMath(value, unit);
+};
+
+/** Log-spaced samples from a to b. */
+function logSamples(a, b, count = 120) {
+  return Array.from({ length: count }, (_, index) => a * (b / a) ** (index / (count - 1)));
+}
+
+/** The panels beside the block: plots, the fault-rock chart, the damage map, the depth column, or the architecture gauge. */
+function syncZonePanels(step, model) {
+  const panels = step.labOptions?.panels ?? [];
+  const xyPanels = panels.filter((panel) => ['scanline', 'scaling', 'counts', 'fraction', 'heating'].includes(panel));
+  const slots = { 'zone-plot-a': xyPanels[0], 'zone-plot-b': xyPanels[1], 'zone-map': panels.includes('damage-map'), 'zone-chart': panels.includes('chart'), 'zone-depth': panels.includes('depth'), 'zone-gauge': panels.includes('gauge') };
+  for (const [id, shown] of Object.entries(slots)) elements.zoneViewport.querySelector(`#${id}`).hidden = !shown;
+  xyPanels.forEach((panel, index) => zoneXYPanel(panel, index ? zonePlotB : zonePlotA, model));
+  if (panels.includes('chart')) zoneChart.setState({ matrixPct: model.composition.matrixPct, clastPct2mm: model.composition.clastPct2mm, sibson: model.sibson, wmName: model.wm });
+  if (panels.includes('depth')) depthColumn.setState({ gradient: model.gradient, surface: model.surface, zones: model.zones });
+  if (panels.includes('gauge')) {
+    const damage = model.zone.footwall + model.zone.hangingWall;
+    const structure = permeabilityStructure({ core: model.zone.core, damage });
+    architectureGauge.setState({ Fa: structure.Fa, structure, limits: WELL_DEVELOPED });
+  }
+}
+
+function zoneXYPanel(panel, plot, model) {
+  if (panel === 'scanline') {
+    const { zone } = model;
+    const reach = (model.size / 2) * Math.sin((zone.dip * Math.PI) / 180);
+    const from = -Math.floor(reach);
+    const bins = scanlineDensity(zone, model.scanline.crossings, { from, to: -from, bin: 1 });
+    const half = zone.core / 2;
+    const side = (sign) => {
+      const points = [];
+      for (let d = half; d <= reach; d += 0.05) points.push([sign * d, zoneDensity(zone, sign * (d + 1e-9))]);
+      return points;
+    };
+    const background = zone.law?.background ?? DAMAGE.background;
+    const peak = Math.max(damagePeak(zone.footwall, zone.law), damagePeak(zone.hangingWall, zone.law), ...bins.map((item) => item.density));
+    const yMax = niceSize(peak * 1.15);
+    const porous = model.host === 'porous';
+    plot.setState({
+      title: 'Scanline across the fault',
+      caption: 'Bars: counted in 1 m bins. Lines: the density law.',
+      x: { label: '<tspan font-style="italic">d</tspan> (m), footwall ← → hanging wall', min: from, max: -from },
+      y: { label: `<tspan font-style="italic">ρ</tspan> (${porous ? 'bands' : 'fractures'} per m)`, min: 0, max: yMax },
+      areas: bins.filter((item) => item.count > 0).map((item, index) => ({ ref: 'density-counts', points: [[item.from, 0], [item.to, 0], [item.to, item.density], [item.from, item.density]], color: '#56b4e9', opacity: 0.42, label: index === 0 ? 'counted' : undefined })),
+      series: [
+        { ref: 'background', points: [[from, background], [-from, background]], color: '#9aa1ad', width: 1.8, dash: '6 5', label: `background <tspan font-style="italic">ρ</tspan><tspan dy="0.3em" font-size="0.7em">bg</tspan>` },
+        { ref: 'density-law', points: side(-1), color: '#f4f5f7', width: 3, label: '<tspan font-style="italic">ρ</tspan>(<tspan font-style="italic">x</tspan>)' },
+        { ref: 'density-law', points: side(1), color: '#f4f5f7', width: 3 },
+      ],
+      bands: zone.core > 0 ? [{ ref: 'core', from: -half, to: half, color: '#6b6259', opacity: 0.6 }] : [],
+      vlines: [
+        ...(zone.footwall > 0 ? [{ ref: 'damage-edge', x: -half - zone.footwall, color: '#e69f00', dash: '8 6', width: 2.2 }] : []),
+        ...(zone.hangingWall > 0 ? [{ ref: 'damage-edge', x: half + zone.hangingWall, color: '#e69f00', dash: '8 6', width: 2.2 }] : []),
+      ],
+      ariaLabel: `Scanline density across the fault: ${model.scanline.crossings.length} crossings, peak ${formatNumber(peak, 1)} per metre, background ${background} per metre.`,
+    });
+    return;
+  }
+  if (panel === 'scaling') {
+    const { D, core, damage } = model.scaling;
+    const format = (value) => lengthText(value).replace(/\.0 /, ' ');
+    plot.setState({
+      title: 'Widths grow with displacement',
+      caption: 'Log–log axes. Bands: published scatter (summary).',
+      x: { label: '<tspan font-style="italic">D</tspan>', min: 0.1, max: 1000, log: true, format },
+      y: { label: 'width', min: 1e-4, max: 1e4, log: true, format },
+      areas: [
+        { ref: 'core-band', points: [[0.1, 1e-4], [1000, 1], [1000, 100], [0.1, 0.01]], color: '#9aa1ad', opacity: 0.25, label: 'core, <tspan font-style="italic">D</tspan>/1000 to <tspan font-style="italic">D</tspan>/10' },
+        { ref: 'damage-band', points: [[0.1, 0.01], [100, 10], [100, 1000], [0.1, 1]], color: '#e69f00', opacity: 0.22, label: 'damage, <tspan font-style="italic">D</tspan>/10 to 10<tspan font-style="italic">D</tspan>' },
+      ],
+      series: [
+        { ref: 'core-band', points: [[0.1, 0.001], [1000, 10]], color: '#c3c8d0', width: 1.6, dash: '6 5' },
+        { ref: 'damage-band', points: [[0.1, 0.1], [100, 100]], color: '#e69f00', width: 1.6, dash: '6 5' },
+      ],
+      markers: [
+        { ref: 'core-point', x: D, y: core, color: '#f4f5f7', shape: 'diamond', key: 'this core', label: state.lessonChoiceCorrect ? format(core) : '', dx: 14 },
+        { ref: 'damage-point', x: D, y: damage, color: '#e69f00', key: 'this damage zone', label: format(damage), dx: 14 },
+      ],
+      ariaLabel: `Width against displacement on log–log axes. D = ${format(D)}: damage zone ${format(damage)}.`,
+    });
+    return;
+  }
+  if (panel === 'counts') {
+    const { slab, dist } = model;
+    const areaCm2 = (model.field * 0.6 * model.field) / 100;
+    const sizes = slab.polygons.map((polygon) => polygon.d).sort((a, b) => b - a);
+    const k = dist.Df - 1;
+    const total = sizes.length;
+    const low = slab.dDraw;
+    const law = (d) => (total * (d ** -k - dist.dMax ** -k)) / (low ** -k - dist.dMax ** -k) / areaCm2;
+    const step = Math.max(1, Math.floor(total / 250));
+    const points = sizes.map((d, index) => [d, (index + 1) / areaCm2]).filter((_, index) => index % step === 0 || index === total - 1);
+    const yMax = 10 ** Math.ceil(Math.log10(Math.max(total, 1) / areaCm2) + 0.3);
+    const yMin = 10 ** Math.floor(Math.log10(0.5 / areaCm2));
+    plot.setState({
+      title: 'Clast sizes in the slab',
+      caption: `Log–log. Slope of the line: −(D<tspan dy="0.3em" font-size="0.7em">f</tspan><tspan dy="-0.3em"> − 1) = −${formatNumber(k, 2)}.</tspan>`,
+      x: { label: '<tspan font-style="italic">d</tspan>', min: 0.01, max: 100, log: true, format: sizeText },
+      y: { label: 'clasts larger than <tspan font-style="italic">d</tspan>, per cm²', min: yMin, max: yMax, log: true, format: (value) => (value >= 1 ? formatNumber(value, 0) : String(value)) },
+      series: [
+        { ref: 'clast-size', kind: 'points', points, color: '#cdbb9f', radius: 3, opacity: 0.8, label: 'counted in the slab' },
+        { ref: 'clast-size', points: logSamples(low, dist.dMax * 0.999, 60).map((d) => [d, law(d)]), color: '#f4f5f7', width: 2.6, label: 'slice law' },
+      ],
+      vlines: [
+        { ref: 'matrix-cutoff', x: 0.1, color: '#9aa1ad', dash: '4 5' },
+        { ref: 'largest-clast', x: dist.dMax, color: '#e69f00', dash: '8 5', width: 2.2 },
+      ],
+      notes: [{ ref: 'matrix-cutoff', x: 0.1, y: yMin, text: 'matrix', dy: -8, anchor: 'end', dx: -6, color: '#9aa1ad' }],
+      ariaLabel: `Number of clasts larger than d in the slab, on log–log axes: ${total} clasts drawn, slope ${formatNumber(-k, 2)}.`,
+    });
+    return;
+  }
+  if (panel === 'fraction') {
+    const { dist, composition } = model;
+    const matrix = composition.matrixPct;
+    const finer2 = 100 - composition.clastPct2mm;
+    plot.setState({
+      title: 'How much of the rock is finer',
+      caption: 'Volume (or slice area) finer than each size.',
+      x: { label: '<tspan font-style="italic">d</tspan>', min: 0.001, max: 100, log: true, format: sizeText },
+      y: { label: '<tspan font-style="italic">f</tspan> (%)', min: 0, max: 100, ticks: [0, 20, 40, 60, 80, 100] },
+      series: [{ ref: 'fraction-curve', points: logSamples(0.001, 100, 160).map((d) => [d, 100 * fractionFiner(dist, d)]), color: '#f4f5f7', width: 3, label: '<tspan font-style="italic">f</tspan>(<tspan font-style="italic">d</tspan>)' }],
+      vlines: [
+        { ref: 'matrix-cutoff', x: 0.1, color: '#9aa1ad', dash: '4 5' },
+        { ref: 'breccia-cutoff', x: 2, color: '#9aa1ad', dash: '4 5' },
+        { ref: 'largest-clast', x: dist.dMax, color: '#e69f00', dash: '8 5', width: 2.2 },
+      ],
+      markers: [
+        { ref: 'matrix', x: 0.1, y: matrix, color: '#56b4e9', label: `${formatNumber(matrix, 1)}% matrix`, dx: matrix > 70 ? -12 : 12, anchor: matrix > 70 ? 'end' : 'start', dy: matrix > 85 ? 20 : -10 },
+        ...(dist.dMax > 2 ? [{ ref: 'breccia-cutoff', x: 2, y: finer2, color: '#cc79a7', label: `${formatNumber(100 - finer2, 0)}% ≥ 2 mm`, dx: 12, dy: 20 }] : []),
+      ],
+      ariaLabel: `Volume fraction finer than each size: ${formatNumber(matrix, 1)}% finer than 0.1 mm.`,
+    });
+    return;
+  }
+  if (panel === 'heating') {
+    const { heating } = model;
+    const temperature = (width) => ZONE_LAB.ambient + frictionalHeating({ tau: heating.tau, slip: heating.slip, width });
+    const format = (value) => lengthText(value).replace(/\.0 /, ' ');
+    plot.setState({
+      title: 'Heating of the slip zone',
+      caption: `Adiabatic bound, starting at ${ZONE_LAB.ambient} °C.`,
+      x: { label: 'slip-zone width <tspan font-style="italic">w</tspan>', min: 1e-4, max: 0.1, log: true, format },
+      y: { label: '<tspan font-style="italic">T</tspan> (°C)', min: 100, max: 1e6, log: true, format: (value) => formatNumber(value, 0) },
+      series: [
+        { ref: 'melt-line', points: [[1e-4, MELTING.onset], [0.1, MELTING.onset]], color: '#f07a3c', width: 2.2, dash: '8 5', label: 'rock melts, 1000 °C' },
+        { ref: 'melt-line', points: [[1e-4, MELTING.quartz], [0.1, MELTING.quartz]], color: '#9aa1ad', width: 1.6, dash: '3 5', label: 'quartz melts, 1700 °C' },
+        { ref: 'heating-curve', points: logSamples(1e-4, 0.1, 60).map((width) => [width, temperature(width)]), color: '#f4f5f7', width: 3, label: '<tspan font-style="italic">T</tspan> = 200 °C + Δ<tspan font-style="italic">T</tspan>' },
+      ],
+      markers: [{ ref: 'heating-point', x: heating.width, y: heating.temperature, color: model.melt === 'melt' ? '#f07a3c' : '#56b4e9', label: `${formatNumber(heating.temperature, 0)} °C`, dx: heating.width > 0.01 ? -12 : 12, anchor: heating.width > 0.01 ? 'end' : 'start' }],
+      ariaLabel: `Slip-zone temperature against width: ${formatNumber(heating.temperature, 0)} degrees at ${format(heating.width)}.`,
+    });
+  }
+}
+
+function syncZone({ refreshInputs = false } = {}) {
+  if (!isZoneStep()) return;
+  const step = currentStep();
+  const lab = state.zone;
+  const model = zoneModel();
+  zoneScene.setState(model);
+  const panels = step.labOptions?.panels ?? [];
+  elements.zoneViewport.dataset.side = String(panels.length > 0);
+  syncZonePanels(step, model);
+  if (model.setup === 'sample' && model.sibson.name && !lab.madeRocks.includes(model.sibson.name)) lab.madeRocks.push(model.sibson.name);
+
+  const pressed = (attribute, value) => {
+    for (const button of elements.lessonCard.querySelectorAll(`[data-${attribute}]`)) button.setAttribute('aria-pressed', String(button.getAttribute(`data-${attribute}`) === value));
+  };
+  pressed('zone-view', lab.view);
+  pressed('zone-scale', lab.scale);
+  pressed('zone-host', lab.host);
+  pressed('zone-stage', lab.host === 'porous' ? lab.stage : '');
+  pressed('zone-cohesion', lab.cohesive ? 'cohesive' : 'loose');
+  pressed('zone-fabric', lab.foliated ? 'foliated' : 'random');
+  for (const [id, key] of ZONE_RANGES) {
+    const input = elements.lessonCard.querySelector(id);
+    if (input && (refreshInputs || document.activeElement !== input)) input.value = String(lab[key]);
+  }
+  const lenses = elements.lessonCard.querySelector('#zone-lenses-input');
+  if (lenses) lenses.disabled = lab.strands < 2;
+  setText('#zone-strands-input-output', String(lab.strands));
+  setText('#zone-lenses-input-output', lab.strands < 2 ? 'needs 2 strands' : String(lab.lenses));
+  setText('#zone-core-input-output', lengthText(lab.core));
+  setText('#zone-footwall-input-output', lengthText(lab.footwall));
+  setText('#zone-hanging-input-output', lengthText(lab.hangingWall));
+  setText('#zone-scanline-input-output', `${formatNumber(Math.abs(lab.scanline), 0)} m ${lab.scanline > 0 ? 'north' : lab.scanline < 0 ? 'south' : ''}`.trim());
+  setText('#zone-d-input-output', lengthText(10 ** lab.logD));
+  setText('#zone-k-input-output', formatNumber(10 ** lab.logK, 0));
+  setText('#zone-a-input-output', formatNumber(10 ** lab.logA, 2));
+  setText('#zone-slip-input-output', lengthText(10 ** lab.logSlip));
+  setText('#zone-dmax-input-output', sizeText(10 ** lab.logDMax));
+  setText('#zone-df-input-output', formatNumber(lab.df, 2));
+  setText('#zone-tau-input-output', `${formatNumber(lab.tau, 0)} MPa`);
+  setText('#zone-heat-slip-input-output', lengthText(10 ** lab.logHeatSlip));
+  setText('#zone-width-input-output', lengthText(10 ** lab.logWidth));
+  setText('#zone-gradient-input-output', `${formatNumber(lab.gradient, 0)} °C/km`);
+  const goalCard = elements.lessonCard.querySelector('#goal-card');
+  if (goalCard) {
+    const met = isGoalMet(step, { madeRocks: lab.madeRocks });
+    goalCard.dataset.met = String(met);
+    const made = ['fault gouge', 'fine crush breccia', 'ultracataclasite'].filter((name) => lab.madeRocks.includes(name));
+    setText('#goal-status', met ? '✓ Goal reached' : made.length ? `Made: ${made.join(', ')}` : 'Not yet');
+  }
+  syncZoneChrome(step, model);
+  syncEquationValues();
+}
+
+function resetZone() {
+  initZone(currentStep());
+  renderLessonPanel();
+  syncAll();
+}
+
+function zoneLiveValues() {
+  const model = zoneModel();
+  const lab = state.zone;
+  const values = {};
+  if (model.setup === 'outcrop') {
+    const { zone } = model;
+    values.zoneSum = row(num(zone.core, 2), mo('+'), num(zone.footwall, 1), mo('+'), num(zone.hangingWall, 1));
+    values.zoneWidth = lengthMath(zone.core + zone.footwall + zone.hangingWall);
+    values.fw = lengthMath(zone.footwall);
+    values.hw = lengthMath(zone.hangingWall);
+    values.strandCount = mtext(`${model.strands} slip surface${model.strands === 1 ? '' : 's'}`);
+    values.lensCount = mtext(model.lenses ? `${model.lenses} lens${model.lenses === 1 ? '' : 'es'}` : 'no lenses');
+    const peakFW = damagePeak(zone.footwall, zone.law);
+    const peakHW = damagePeak(zone.hangingWall, zone.law);
+    values.rho0FW = num(peakFW, 2);
+    values.rho0HW = num(peakHW, 2);
+    values.edgeFW = lengthMath(damageZoneEdge({ peak: peakFW, ...zone.law }));
+    values.edgeHW = lengthMath(damageZoneEdge({ peak: peakHW, ...zone.law }));
+    if (model.scaling) {
+      const { D, core, damage } = model.scaling;
+      values.displacement = lengthMath(D);
+      values.coreRatio = num(10 ** lab.logK, 0);
+      values.damageRatio = num(10 ** lab.logA, 2);
+      values.coreWidth = lengthMath(core);
+      values.damageWidth = lengthMath(damage);
+    }
+    const porous = model.host === 'porous';
+    values.hostName = mtext(porous ? 'porous sandstone' : 'granite (crystalline)');
+    values.damageKind = mtext(porous ? { bands: 'single deformation bands', zone: 'a zone of many bands', slip: 'slip surface in a band zone' }[lab.stage] : 'open fractures, gouge core');
+    values.flowAlong = mtext(porous ? 'slowed in the band zone' : 'easy, in the fractures');
+    values.flowAcross = mtext(porous ? 'slowed by the bands' : 'blocked by the core');
+    const damage = zone.footwall + zone.hangingWall;
+    const structure = permeabilityStructure({ core: zone.core, damage });
+    values.damageSum = num(damage, 1);
+    values.coreValue = num(zone.core, 2);
+    values.fa = structure.Fa === null ? mtext('undefined') : num(structure.Fa, 2);
+    values.endMember = mtext(structure.name);
+  }
+  if (model.setup === 'sample') {
+    const { dist, composition, sibson } = model;
+    values.slip = lengthMath(10 ** lab.logSlip);
+    values.dMax = quantityMath(sizeText(dist.dMax).split(' ')[0], 'mm');
+    values.df = num(dist.Df, 2);
+    values.matrixPct = mn(`${formatNumber(composition.matrixPct, 1)}%`);
+    values.drawnMatrix = mn(`${formatNumber(model.slab.drawnMatrixPct, 1)}%`);
+    values.clastPct = mn(`${formatNumber(composition.clastPct2mm, 1)}%`);
+    values.fragmentSize = composition.matrixPct >= 100 ? mtext('none') : quantityMath(sizeText(composition.fragmentSize).split(' ')[0], 'mm');
+    values.cohesion = mtext(model.cohesive ? 'cohesive' : 'loose');
+    values.fabric = mtext(model.foliated ? 'foliated' : 'random fabric');
+    values.sibsonName = mtext(sibson.name ?? 'no name in the scheme');
+    values.wmName = mtext(model.wm ?? 'not a breccia (under 30%)');
+    if (model.heating) {
+      const { tau, slip, width, deltaT, temperature } = model.heating;
+      values.tauPa = row(num(tau, 0), mo('×'), sup(mn('10'), mn('6')));
+      values.heatSlip = num(slip, slip < 0.1 ? 3 : 2);
+      values.widthM = num(width, width < 0.001 ? 5 : 4);
+      values.deltaT = quantityMath(formatNumber(deltaT, deltaT < 100 ? 1 : 0), 'K');
+      values.temperature = quantityMath(formatNumber(temperature, 0), '°C');
+      values.meltState = mtext(model.melt === 'melt' ? 'melts → pseudotachylyte' : 'no melt');
+    }
+  }
+  if (model.setup === 'crust') {
+    const depth = (temperature) => quantityMath(formatNumber(depthOfTemperature(temperature, model.gradient, model.surface), 1), 'km');
+    values.gradient = quantityMath(formatNumber(model.gradient, 0), '°C/km');
+    values.zCohesive = depth(ZONE_TEMPERATURES.cohesive);
+    values.zQuartz = depth(ZONE_TEMPERATURES.quartz);
+    values.zFeldspar = depth(ZONE_TEMPERATURES.feldspar);
+  }
+  return values;
+}
+
+const ZONE_SWATCHES = {
+  host: ['#a79c90', 'solid'],
+  sandstone: ['#d9c49a', 'solid'],
+  damage: ['#e69f00', 'dashed'],
+  core: ['#4a433c', 'solid'],
+  slip: ['#f4f5f7', 'solid'],
+  fracture: ['#1c1917', 'solid'],
+  band: ['#f6f0e2', 'solid'],
+  scanline: ['#56b4e9', 'solid'],
+  along: ['#56b4e9', 'solid'],
+  across: ['#cc79a7', 'solid'],
+  matrix: ['#2e2926', 'solid'],
+  clast: ['#cdbb9f', 'solid'],
+  vein: ['#16110f', 'solid'],
+  isotherm: ['#f0e442', 'dashed'],
+  quake: ['#f07a3c', 'solid'],
+};
+
+function syncZoneChrome(step, model = zoneModel()) {
+  const item = (key, label) => {
+    const [color, pattern] = ZONE_SWATCHES[key];
+    return `<span class="legend-line" data-pattern="${pattern}" style="--swatch: ${color}">${label}</span>`;
+  };
+  const legend = [];
+  if (model.setup === 'sample') {
+    elements.interactionHint.textContent = 'Drag: orbit the slab · scroll: zoom · hover the slab or a symbol to link them';
+    legend.push(item('clast', 'clasts (schematic shapes)'), item('matrix', 'matrix, under 0.1 mm'));
+    if (model.melt === 'melt') legend.push(item('vein', 'pseudotachylyte'));
+  } else if (model.setup === 'crust') {
+    elements.interactionHint.textContent = 'Drag: orbit the block · scroll: zoom · hover a zone or a symbol to link them';
+    legend.push(item('isotherm', 'isotherms'), item('quake', 'earthquakes'));
+  } else {
+    elements.interactionHint.textContent = 'Drag: orbit the outcrop · scroll: zoom · hover a part of the zone or a symbol to link them';
+    legend.push(item(model.host === 'porous' ? 'sandstone' : 'host', model.host === 'porous' ? 'sandstone beds' : 'granite'));
+    if (model.zone.core > 0) legend.push(item('core', 'fault core'));
+    if (!model.lineOnly) legend.push(item('damage', 'damage-zone edge'));
+    if (model.strands > 0) legend.push(item('slip', 'slip surface'));
+    if (model.traces) legend.push(model.host === 'porous' ? item('band', 'deformation bands') : item('fracture', 'fractures'));
+    if (model.scanline) legend.push(item('scanline', 'scanline'));
+    if (model.flow) legend.push(...(model.flow === 'crystalline' ? [item('along', 'flow along')] : []), item('across', 'flow across, stopped'));
+  }
   elements.sceneLegend.hidden = false;
   elements.sceneLegend.innerHTML = legend.join('');
 }
@@ -2292,6 +2898,7 @@ function renderLessonPanel() {
     friction: () => `${frictionControlsMarkup(step)}${goalMarkup(step)}`,
     fault: () => `${faultControlsMarkup(step)}${goalMarkup(step)}`,
     'fault-growth': () => `${growthControlsMarkup(step)}${goalMarkup(step)}`,
+    'fault-zone': () => `${zoneControlsMarkup(step)}${goalMarkup(step)}`,
   }[step.visualKind]?.() ?? '';
 
   elements.lessonCard.innerHTML = `
@@ -2319,7 +2926,7 @@ function renderLessonPanel() {
   wellLogPlot.highlight(null);
   growthScene.highlight(null);
   growthPlot.highlight(null);
-  rockPanel.highlight(null);
+  setZoneHighlight(null);
   bindEquationPanel();
   bindForceLabControls();
   bindVectorLabControls();
@@ -2327,12 +2934,14 @@ function renderLessonPanel() {
   bindFrictionControls();
   bindFaultControls();
   bindGrowthControls();
+  bindZoneControls();
   syncForceLabReadouts();
   syncVectorLab();
   syncAnderson();
   syncFriction();
   syncFault();
   syncGrowth();
+  syncZone();
   syncEquationValues();
 }
 
@@ -2482,6 +3091,7 @@ function applyLessonStep(index) {
   }
   if (step.visualKind === 'fault') initFault(step);
   if (step.visualKind === 'fault-growth') initGrowth(step);
+  if (step.visualKind === 'fault-zone') initZone(step);
   if (step.visualKind === 'stress-state') stressScene.replay();
   renderLessonView();
 }
@@ -2725,6 +3335,7 @@ function syncAll() {
   const frictionActive = isFrictionStep();
   const faultActive = isFaultStep();
   const growthActive = isGrowthStep();
+  const zoneActive = isZoneStep();
   if (forceLabActive) {
     syncForceLabChrome(step);
     syncForceLabReadouts();
@@ -2738,6 +3349,8 @@ function syncAll() {
     syncFaultChrome(step);
   } else if (growthActive) {
     syncGrowthChrome(step);
+  } else if (zoneActive) {
+    syncZoneChrome(step);
   } else {
     elements.sceneLegend.hidden = true;
     elements.interactionHint.textContent = 'Drag to orbit · scroll to zoom';
@@ -2761,8 +3374,9 @@ function syncAll() {
   elements.faultWell.setAttribute('aria-hidden', String(!faultActive));
   growthScene.renderer.domElement.setAttribute('aria-hidden', String(!growthActive));
   elements.growthPlot.setAttribute('aria-hidden', String(!growthActive));
-  elements.growthRocks.setAttribute('aria-hidden', String(!growthActive));
-  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive || faultActive || growthActive;
+  zoneScene.renderer.domElement.setAttribute('aria-hidden', String(!zoneActive));
+  elements.zoneViewport.querySelector('.plot-panel').setAttribute('aria-hidden', String(!zoneActive));
+  const labActive = forceLabActive || vectorLabActive || andersonActive || frictionActive || faultActive || growthActive || zoneActive;
   stressScene.renderer.domElement.setAttribute('aria-hidden', String(labActive));
   elements.replayButton.innerHTML = labActive ? 'Reset values' : '<span aria-hidden="true">↻</span> Replay';
   for (const button of elements.presetGrid.querySelectorAll('.preset-card')) {
@@ -2814,6 +3428,7 @@ elements.replayButton.addEventListener('click', () => {
   else if (isFrictionStep()) resetFriction();
   else if (isFaultStep()) resetFault();
   else if (isGrowthStep()) resetGrowth();
+  else if (isZoneStep()) resetZone();
   else stressScene.replay();
 });
 elements.resetViewButton.addEventListener('click', () => {
@@ -2823,6 +3438,7 @@ elements.resetViewButton.addEventListener('click', () => {
   else if (isFrictionStep()) frictionScene.resetCamera();
   else if (isFaultStep()) faultScene.resetCamera();
   else if (isGrowthStep()) growthScene.resetCamera();
+  else if (isZoneStep()) zoneScene.resetCamera();
   else stressScene.resetCamera();
 });
 elements.resetAllButton.addEventListener('click', resetAll);

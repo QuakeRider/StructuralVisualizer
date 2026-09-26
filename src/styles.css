@@ -231,6 +231,7 @@ h3 { font-size: 17px; font-weight: 650; }
 .lesson-badge[data-unit='1'] { --unit-color: #3fd0a0; }
 .lesson-badge[data-unit='2'] { --unit-color: #e69f00; }
 .lesson-badge[data-unit='3'] { --unit-color: #f07a3c; }
+.lesson-badge[data-unit='3B'] { --unit-color: #f5a383; }
 .lesson-badge[data-unit='4'] { --unit-color: #cc79a7; }
 .lesson-badge[data-unit='5'] { --unit-color: #f0e442; }
 .lesson-badge[data-unit='6'] { --unit-color: #9a8cff; }
@@ -297,6 +298,8 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-lesson-view='true'][data-visual-kind='fault'] .stress-viewport { opacity: 0; pointer-events: none; }
 .app-shell[data-lesson-view='true'][data-visual-kind='fault-growth'] .growth-viewport { opacity: 1; pointer-events: auto; }
 .app-shell[data-lesson-view='true'][data-visual-kind='fault-growth'] .stress-viewport { opacity: 0; pointer-events: none; }
+.app-shell[data-lesson-view='true'][data-visual-kind='fault-zone'] .zone-viewport { opacity: 1; pointer-events: auto; }
+.app-shell[data-lesson-view='true'][data-visual-kind='fault-zone'] .stress-viewport { opacity: 0; pointer-events: none; }
 
 /* Split viewports: a 3D scene beside a 2D plot (the Mohr diagram in B7, the curve plot in M2, the Mohr diagram and stereonet in B6). The plot hides when a step does not use it. */
 .split-viewport { display: grid; grid-template-columns: minmax(0, 60fr) minmax(0, 40fr); }
@@ -341,14 +344,20 @@ h3 { font-size: 17px; font-weight: 650; }
 .app-shell[data-visual-kind='fault'] .fault-viewport[data-side='true'] ~ .scene-legend { right: calc(44% + 14px); }
 .app-shell[data-visual-kind='fault'] .fault-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(56% - 32px); }
 .mohr-svg .well-letter { fill: #11141a; font-weight: 700; }
-/* B9: the block beside a plot (profiles, D–L scaling, drag) or the fault-rock drawings. */
+/* B9: the block beside a plot (profiles, D–L scaling, drag). */
 .growth-viewport[data-side='true'] { grid-template-columns: minmax(0, 56fr) minmax(0, 44fr); }
-.growth-viewport[data-panel='rocks'] .growth-plot-slot,
-.growth-viewport:not([data-panel='rocks']) .growth-rocks-slot { display: none; }
-.growth-plot-slot, .growth-rocks-slot { flex: 1 1 0; }
+.growth-plot-slot { flex: 1 1 0; }
 .app-shell[data-visual-kind='fault-growth'] .growth-viewport[data-side='true'] ~ .scene-legend { right: calc(44% + 14px); }
 .app-shell[data-visual-kind='fault-growth'] .growth-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(56% - 32px); }
 .mohr-svg .rock-name { font-weight: 600; font-size: 16px; }
+/* B11: the outcrop, slab, or crustal block beside one or two panels (plots, the fault-rock chart, the damage map, the depth column, the architecture gauge). */
+.zone-viewport[data-side='true'] { grid-template-columns: minmax(0, 56fr) minmax(0, 44fr); }
+.zone-viewport .plot-slot { flex: 1 1 0; }
+.zone-viewport .plot-slot[hidden] { display: none; }
+.app-shell[data-visual-kind='fault-zone'] .zone-viewport[data-side='true'] ~ .scene-legend { right: calc(44% + 14px); }
+.app-shell[data-visual-kind='fault-zone'] .zone-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(56% - 32px); }
+.mohr-svg .chart-cell { font-family: inherit; font-size: 13px; fill: #c3c8d0; }
+.mohr-svg .chart-tick { font-family: inherit; font-size: 13px; }
 .app-shell[data-visual-kind='anderson'] .anderson-viewport[data-side='true'] ~ .interaction-hint,
 .app-shell[data-visual-kind='vector-lab'] .vector-lab-viewport[data-side='true'] ~ .interaction-hint { max-width: calc(60% - 32px); }
 .slip-button { justify-self: start; min-width: 132px; }
@@ -396,7 +405,7 @@ h3 { font-size: 17px; font-weight: 650; }
 .scene-legend .legend-line[data-pattern='dashed']::before { border-top-style: dashed; }
 .scene-legend .legend-line[data-pattern='dotted']::before { border-top-style: dotted; border-top-width: 4px; }
 .scene-legend .legend-line { color: var(--text); font-family: 'DM Mono', ui-monospace, monospace; font-size: 12px; }
-.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']):not([data-visual-kind='anderson']):not([data-visual-kind='friction']):not([data-visual-kind='fault']):not([data-visual-kind='fault-growth']) .scene-legend { display: none; }
+.app-shell:not([data-visual-kind='force-lab']):not([data-visual-kind='vector-lab']):not([data-visual-kind='anderson']):not([data-visual-kind='friction']):not([data-visual-kind='fault']):not([data-visual-kind='fault-growth']):not([data-visual-kind='fault-zone']) .scene-legend { display: none; }
 
 .response-strip { display: grid; grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(125px, 0.55fr)); border-top: 1px solid var(--border-soft); background: #15191f; }
 .response-copy, .metric { min-height: 82px; padding: 15px 17px; display: flex; flex-direction: column; justify-content: center; gap: 7px; }

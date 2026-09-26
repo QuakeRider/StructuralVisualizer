@@ -135,19 +135,12 @@ export const GROWTH_SCENE_REFS = Object.freeze([
   'profile-line',
   'hanging-wall',
   'footwall',
-  // Fault anatomy (the block and the fault-rock panel).
-  'core',
-  'damage-zone',
-  'slip-surface',
-  'breccia',
-  'gouge',
-  'cataclasite',
-  'mylonite',
   // Linkage.
   'segment-a',
   'segment-b',
   'relay-ramp',
   'breach',
+  'process-zone',
   // Plot only.
   'sum-profile',
   'target-profile',
@@ -158,6 +151,67 @@ export const GROWTH_SCENE_REFS = Object.freeze([
   'far-offset',
 ]);
 
+/** B11 fault-zone lab: the outcrop, the fault-rock slab, the crustal block, and the panels beside them. */
+export const ZONE_SCENE_REFS = Object.freeze([
+  // Outcrop.
+  'host',
+  'core',
+  'damage-zone',
+  'damage-fw',
+  'damage-hw',
+  'damage-edge',
+  'zone-width',
+  'slip-surface',
+  'lens',
+  'fractures',
+  'deformation-bands',
+  'scanline',
+  'flow-along',
+  'flow-across',
+  // Plan view of damage (panel).
+  'fault-trace',
+  'wall-damage',
+  'tip-damage',
+  'linking-damage',
+  'process-zone',
+  // Scanline and width plots.
+  'density-law',
+  'density-counts',
+  'background',
+  'core-band',
+  'damage-band',
+  'core-point',
+  'damage-point',
+  // Fault-rock slab and its plots.
+  'matrix',
+  'fragments',
+  'largest-clast',
+  'clast-size',
+  'fraction-curve',
+  'matrix-cutoff',
+  'breccia-cutoff',
+  'sibson-chart',
+  'sample-point',
+  'wm-name',
+  // Melting.
+  'melt-vein',
+  'heating-curve',
+  'heating-point',
+  'melt-line',
+  // Depth.
+  'zone-incohesive',
+  'zone-cataclasite',
+  'zone-quartz',
+  'zone-mylonite',
+  'fault-zone',
+  'isotherms',
+  'earthquakes',
+  // Architecture.
+  'fa-gauge',
+  'fa-point',
+  'end-member',
+]);
+
 export const SCENE_REFS = Object.freeze({
   'force-lab': FORCE_LAB_SCENE_REFS,
   'vector-lab': VECTOR_LAB_SCENE_REFS,
@@ -165,4 +219,5 @@ export const SCENE_REFS = Object.freeze({
   friction: FRICTION_SCENE_REFS,
   fault: FAULT_SCENE_REFS,
   'fault-growth': GROWTH_SCENE_REFS,
+  'fault-zone': ZONE_SCENE_REFS,
 });
